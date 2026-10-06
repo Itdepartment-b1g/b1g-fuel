@@ -1,0 +1,15 @@
+# Authentication and access control
+
+Supabase Auth handles passwords and verifies users. Express uses `@supabase/ssr` to read/write session cookies and `auth.getUser()` to validate every protected request. Sessions are refreshed via response cookies. Cookies are HttpOnly, SameSite=Lax, and Secure in production. The browser talks to the frontend host through the `/api` proxy.
+
+Apply `requireAuthUser` to future protected resource routers. For per-user data, constrain every repository query by the verified session owner. Profiles are created only after verified authentication.
+
+Prisma uses a trusted Postgres connection; **application authorization must be enforced regardless of Supabase RLS**. The initial migration enables RLS with no public policies to prevent unintentional access via Supabase's browser Data API. Use a trusted backend database role for Prisma. If you intentionally expose data through PostgREST later, add explicit policies rather than disabling RLS.
+
+Mutation requests must have an Origin matching `APP_ORIGIN`, including scheme and port. This check also covers login/logout. Scripts using the API must supply that Origin header; it is CSRF protection, not a substitute for authentication. Next.js forwards the browser Origin and Cookie headers. Auth attempts are rate limited per connecting IP with an in-memory limiter. Behind the default Next.js proxy that IP can be shared; configure trusted proxy topology and a distributed limiter before scaling to multiple API instances.
+
+Never expose `DATABASE_URL` or a Supabase service-role key to the client. `.env` is ignored; `.env.example` contains placeholders. Unexpected failures are logged only on the API service and return generic messages. Request bodies are limited to 16 KB. Serve the production frontend over HTTPS and keep Express behind a trusted proxy or private network.
+
+`SUPABASE_SECRET_KEY` is used only by the explicit super-admin seed. `prisma/seed.ts` never logs credentials and preserves the password when reusing an existing confirmed account. Global role assignments live in Postgres, rather than editable user metadata. `/api/auth/session` verifies the Supabase user, returns that user's global role slugs, and uses `private, no-store` caching. Next.js `src/proxy.ts` checks that endpoint before serving `/dashboard`, and forwards refreshed or cleared session cookies. The empty dashboard requires authentication; future administrative endpoints must additionally enforce the global `super_admin` role.
+
+For a new resource, decide whether it is public, shared/authenticated, or per-user. Add auth middleware when protected; scope all per-user repository methods; use included credentials in client requests; document endpoints; verify unauthenticated rejection and cross-user isolation.
