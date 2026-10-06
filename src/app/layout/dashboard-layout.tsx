@@ -1,11 +1,18 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
-import { Fuel, Menu } from "lucide-react";
+import localFont from "next/font/local";
+import { Menu } from "lucide-react";
+import { cn } from "@/lib/utils";
 import AppSideBar from "./AppSideBar";
 import type { SideBarAccess } from "./sideBarMenuItems";
 
 type DashboardLayoutProps = SideBarAccess & { children: ReactNode };
+
+const designer = localFont({
+  src: "../../../fonts/Designer.otf",
+  display: "swap",
+});
 
 export default function DashboardLayout({ children, pages = [], permissions, role }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -16,7 +23,7 @@ export default function DashboardLayout({ children, pages = [], permissions, rol
       <AppSideBar pages={pages} permissions={permissions} role={role} open={sidebarOpen} onClose={closeSidebar} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 lg:hidden">
+        <header className="sticky top-0 z-30 grid h-14 shrink-0 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-3 border-b bg-card px-4 lg:hidden">
           <button
             id="sidebar-toggle"
             type="button"
@@ -28,11 +35,10 @@ export default function DashboardLayout({ children, pages = [], permissions, rol
           >
             <Menu aria-hidden="true" className="size-5" />
           </button>
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary">
-              <Fuel aria-hidden="true" className="size-4 text-primary-foreground" />
-            </div>
-            <span className="truncate text-sm font-bold">B1G Fuel</span>
+          <div className="flex min-w-0 items-center justify-center">
+            <span className={cn(designer.className, "block truncate text-xl font-bold tracking-tight text-black")}>
+              B1G <span className="text-[#0F52BA]">Fuel</span>
+            </span>
           </div>
         </header>
 

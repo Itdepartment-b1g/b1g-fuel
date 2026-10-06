@@ -2,18 +2,31 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import localFont from "next/font/local";
 import { usePathname } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, LogOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { APP_PATHS } from "@/lib/auth/dashboard";
-import { get_side_bar_menu_items, sideBarMenuItems, type SideBarAccess } from "./sideBarMenuItems";
+import { format_role_label, get_side_bar_menu_items, sideBarMenuItems, type SideBarAccess } from "./sideBarMenuItems";
 
 type AppSideBarProps = SideBarAccess & {
   open?: boolean;
   onClose?: () => void;
 };
+
+type SessionUser = {
+  name: string | null;
+  email: string | null;
+  role: string | null;
+};
+
+const designer = localFont({
+  src: "../../../fonts/Designer.otf",
+  display: "swap",
+});
 
 const noop = () => {};
 
@@ -22,6 +35,27 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
   const signingOut = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/session", { credentials: "include", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json() as { user?: { name?: unknown; email?: unknown }; global_roles?: unknown };
+        const roles = Array.isArray(data.global_roles)
+          ? data.global_roles.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+          : [];
+        if (controller.signal.aborted) return;
+        setUser({
+          name: typeof data.user?.name === "string" ? data.user.name.trim() || null : null,
+          email: typeof data.user?.email === "string" ? data.user.email.trim() || null : null,
+          role: roles.includes("super_admin") ? "super_admin" : roles[0] ?? null,
+        });
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   async function signOut() {
     if (signingOut.current) return;
@@ -51,6 +85,25 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
     desktop.addEventListener("change", handleChange);
     return () => desktop.removeEventListener("change", handleChange);
   }, [onClose]);
+
+  const brand = (
+    <Link
+      href={APP_PATHS.home}
+      onClick={onClose}
+      aria-label="B1G Fuel home"
+      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-[#0F52BA] lg:flex">
+        <img src="/butane-logo1.png" alt="B1G Fuel logo" width={50} height={35} className="size-8" />
+      </span>
+      <span className="min-w-0 ">
+        <span className={cn(designer.className, "block truncate text-xl font-bold tracking-tight text-black")}>B1G <span className="text-[#0F52BA]">Fuel</span></span>
+        <span className="block truncate text-[12px] text-black font-bold" title={format_role_label(role ?? user?.role)}>
+          {format_role_label(role ?? user?.role)}
+        </span>
+      </span>
+    </Link>
+  );
 
   const menu = items.length > 0 ? (
     <nav aria-label="Sidebar navigation" className="p-3">
@@ -91,10 +144,16 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
 
   const footer = (
     <div className="shrink-0 border-t p-3">
+      {(user?.name || user?.email) && (
+        <div aria-label="Signed-in user" className="mb-2 min-w-0 pb-3">
+          {user.name && <p title={user.name} className="truncate px-3 text-sm font-medium">{user.name}</p>}
+          {user.email && <p title={user.email} className="truncate px-3 text-xs text-[#0F52BA]">{user.email}</p>}
+        </div>
+      )}
       {error && <p role="alert" className="mb-2 text-sm text-destructive">{error}</p>}
-      <Button type="button" variant="ghost" className="w-full justify-start" onClick={signOut} disabled={loading} aria-busy={loading}>
-        <LogOut aria-hidden="true" className="size-4" />
-        {loading ? "Signing out..." : "Logout"}
+      <Button type="button" className="w-full justify-center bg-[#0F52BA] text-white hover:bg-[#0F52BA]/90" onClick={signOut} disabled={loading} aria-busy={loading}>
+        <LogOut aria-hidden="true" className="size-4 text-white-500" />
+        {loading ? "Logging out..." : "Logout"}
       </Button>
     </div>
   );
@@ -102,6 +161,7 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
   return (
     <>
       <aside aria-label="Sidebar" className="hidden h-full w-64 shrink-0 flex-col border-r bg-card lg:flex">
+        <div className="flex shrink-0 border-b px-4 py-5">{brand}</div>
         <div className="min-h-0 flex-1 overflow-y-auto">{menu}</div>
         {footer}
       </aside>
@@ -119,8 +179,9 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
             }}
           >
             <Dialog.Title className="sr-only">Sidebar</Dialog.Title>
-            <div className="flex shrink-0 justify-end p-2">
-              <Dialog.Close className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-accent" aria-label="Close menu">
+            <div className="flex shrink-0 items-center gap-2 border-b px-4 py-5">
+              {brand}
+              <Dialog.Close className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-accent" aria-label="Close menu">
                 <X aria-hidden="true" className="size-5" />
               </Dialog.Close>
             </div>

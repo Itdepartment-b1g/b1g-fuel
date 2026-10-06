@@ -37,7 +37,7 @@ npm run db:seed
 npm run dev
 ```
 
-The seed creates an email-confirmed Supabase Auth account, a matching Prisma profile, the global/system `super_admin` role, and its `user_role` assignment. It does not require a company membership or expose public registration. Reruns reuse an existing confirmed account without resetting its password and upsert the database records without duplicate assignments. If an account already exists, use its existing password to log in. A database failure after Auth creation is recoverable by rerunning the seed; Auth creation is outside the Prisma transaction.
+The seed creates an email-confirmed Supabase Auth account, a matching Prisma profile, the global/system `super_admin` role, and its `user_role` assignment. It does not require a company membership or expose public registration. Reruns reuse an existing confirmed account without resetting its password and upsert the database records without duplicate assignments. Set the optional `SEED_SUPER_ADMIN_FULL_NAME` to save `user_metadata.full_name` for a new or existing account; leaving it blank preserves the existing name. The sidebar displays this name above the email and Logout button. If an account already exists, use its existing password to log in. A database failure after Auth creation is recoverable by rerunning the seed; Auth creation is outside the Prisma transaction.
 
 Keep `[auth].enable_signup = false` and `[auth.email].enable_signup = true` in local Supabase configuration: the first blocks registration, while the second keeps the email provider available for sign-in. Restart this project's Supabase stack after changing Auth settings.
 

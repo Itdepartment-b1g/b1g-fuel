@@ -11,6 +11,7 @@ async function main() {
   const secretKey = process.env.SUPABASE_SECRET_KEY;
   const email = process.env.SEED_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.SEED_SUPER_ADMIN_PASSWORD;
+  const fullName = process.env.SEED_SUPER_ADMIN_FULL_NAME?.trim();
   for (const [name, value] of Object.entries({ DATABASE_URL: databaseUrl, NEXT_PUBLIC_SUPABASE_URL: supabaseUrl, SUPABASE_SECRET_KEY: secretKey, SEED_SUPER_ADMIN_EMAIL: email, SEED_SUPER_ADMIN_PASSWORD: password })) {
     if (!value || value.startsWith("replace-with-")) throw new SeedError(`Missing environment variable: ${name}`);
   }
@@ -34,8 +35,17 @@ async function main() {
     if (authUser && !authUser.email_confirmed_at) throw new SeedError("The existing account is not email-confirmed. Confirm it through Supabase administration before rerunning the seed.");
     const created = !authUser;
     if (!authUser) {
-      const { data, error } = await supabase.auth.admin.createUser({ email: email!, password: password!, email_confirm: true });
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: email!, password: password!, email_confirm: true,
+        ...(fullName ? { user_metadata: { full_name: fullName } } : {}),
+      });
       if (error || !data.user) throw new SeedError(`Unable to create the Supabase account (${error?.code ?? "admin_request_failed"}).`);
+      authUser = data.user;
+    } else if (fullName && authUser.user_metadata?.full_name !== fullName) {
+      const { data, error } = await supabase.auth.admin.updateUserById(authUser.id, {
+        user_metadata: { ...authUser.user_metadata, full_name: fullName },
+      });
+      if (error || !data.user) throw new SeedError(`Unable to update the account name (${error?.code ?? "admin_request_failed"}).`);
       authUser = data.user;
     }
     const authId = authUser.id;
