@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Folder, LayoutDashboard } from "lucide-react";
+import { Building2, Folder, LayoutDashboard, ShieldCheck, UsersRound } from "lucide-react";
 import { PAGE_CATALOG, PAGE_GROUPS, PAGE_KEYS, type PageKey } from "@/lib/auth/catalog";
 
 type MenuIcon = ComponentType<{ className?: string }>;
@@ -23,9 +23,13 @@ export type SideBarAccess = {
 
 const icons_by_page: Record<PageKey, MenuIcon> = {
   [PAGE_KEYS.home]: LayoutDashboard,
+  [PAGE_KEYS.users]: UsersRound,
+  [PAGE_KEYS.roles]: ShieldCheck,
+  [PAGE_KEYS.companies]: Building2,
 };
 
-export function get_side_bar_menu_items(pages: string[], access?: SideBarAccess): SideBarMenuItem[] {
+export function listSidebarMenu(pages: string[], access?: SideBarAccess): SideBarMenuItem[] {
+  const superAdmin = access?.role === "super_admin";
   const allowedPages = new Set(access?.pages ?? pages);
   const allowedPermissions = new Set(access?.permissions ?? []);
   const groupDefinitions = new Map(PAGE_GROUPS.map((group) => [group.key, group]));
@@ -33,8 +37,8 @@ export function get_side_bar_menu_items(pages: string[], access?: SideBarAccess)
   const items: SideBarMenuItem[] = [];
 
   for (const page of PAGE_CATALOG) {
-    if (!allowedPages.has(page.key)) continue;
-    if (page.view_permission && !allowedPermissions.has(page.view_permission)) continue;
+    if (!superAdmin && !allowedPages.has(page.key)) continue;
+    if (!superAdmin && page.view_permission && !allowedPermissions.has(page.view_permission)) continue;
     const groupDefinition = page.group ? groupDefinitions.get(page.group) : undefined;
     if (groupDefinition) {
       let group = groups.get(groupDefinition.key);
@@ -53,8 +57,8 @@ export function get_side_bar_menu_items(pages: string[], access?: SideBarAccess)
   return items;
 }
 
-export function format_role_label(role: string | null | undefined) {
+export function formatRoleLabel(role: string | null | undefined) {
   return role ? role.replaceAll("_", " ").toUpperCase() : "USER";
 }
 
-export const sideBarMenuItems: SideBarMenuItem[] = get_side_bar_menu_items([]);
+export const sideBarMenuItems: SideBarMenuItem[] = listSidebarMenu([]);

@@ -31,7 +31,7 @@ Use navy for actions that deserve emphasis. A white layout with consistent spaci
 
 ## Shared theme tokens
 
-Maintain the brand values in `src/app/globals.css`. The following is the target token configuration, not an already-applied change:
+Maintain the brand values in `src/app/globals.css`. The following token configuration is now applied:
 
 ```css
 :root {
@@ -72,9 +72,9 @@ This is a light theme. A dark-theme palette would need its own background, text 
 
 ## Adoption checklist
 
-- [ ] Change `--background` from the current `#F8FAFC` to white in `src/app/globals.css`.
-- [ ] Change `--primary` from the current green `#166534` to navy `#02066F`.
-- [ ] Replace remaining `#0F52BA` accents in the mobile dashboard header and sidebar email with semantic navy classes.
+- [x] Set `--background` to white in `src/app/globals.css`.
+- [x] Set `--primary` to navy `#02066F`.
+- [x] Use semantic navy classes in the mobile dashboard header and sidebar email.
 - [ ] Consolidate existing sidebar `#02066F` literals into `bg-primary` and `text-primary` where appropriate.
 - [ ] Review login, sidebar, mobile header, buttons, inputs, tables and dialogs together.
 - [ ] Verify hover, focus, selected, disabled and status states remain clear.

@@ -1,5 +1,7 @@
 # Shared GET pagination
 
+The frontend counterpart is `Pagination` in `src/components/common/pagination.tsx`. It consumes `PaginationMetadata` with `page`, `limit`, `total`, `total_pages` and navigation flags, plus parent callbacks. Use `paginationFromApi` to adapt the existing API format. See [responsive pagination](RESPONSIVE_PAGINATION.md) for desktop/mobile controls, array helpers and complete examples. Users explicitly retains 10/20/50/100 options, resets to page 1 on search/filter/limit changes, and clamps its page after totals shrink.
+
 Import `parsePagination`, `paginationMetadata` and the `Pagination` type from `@/server/utils/pagination`.
 
 Controllers parse `req.query` once and pass the result into their repository. The repository uses `skip` and `take` for Prisma, counts records with the same filters, and attaches the shared metadata to its resource array:

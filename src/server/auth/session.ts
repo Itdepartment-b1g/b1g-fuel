@@ -1,18 +1,20 @@
 import type { RequestHandler } from "express";
 import { createAuthClient } from "./supabase";
 import { clearAuthSession } from "./clear-session";
-import { authRepository } from "@/server/repositories/auth_repository";
+import { authService } from "@/server/services/auth_service";
+import { UserError } from "@/server/utils/errors";
 
 export const requireAuthUser: RequestHandler = async (req, res, next) => {
   const auth = createAuthClient(req, res).auth;
-  const { data: { user }, error } = await auth.getUser();
-  if (error || !user) { res.status(401).json({ error: "Sign in to continue." }); return; }
-  const profile = await authRepository.findProfile(user.id);
-  if (!profile) {
-    await clearAuthSession(req, res, auth);
-    res.status(403).json({ error: "Your account has not been provisioned. Contact your administrator." }); return;
+  try {
+    const { user, profile } = await authService.requireUserAccess(auth);
+    res.locals.user = user; res.locals.profile = profile;
+  } catch (error) {
+    if (error instanceof UserError) {
+      if (error.status === 403) await clearAuthSession(req, res, auth);
+      res.status(error.status).json({ error: error.message }); return;
+    }
+    throw error;
   }
-  res.locals.user = user;
-  res.locals.profile = profile;
   next();
 };

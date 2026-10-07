@@ -14,7 +14,13 @@ export async function proxy(request: NextRequest) {
     } else if (session.status === 403) {
       response = NextResponse.redirect(new URL("/login?auth_error=account_not_provisioned", request.url));
     } else if (session.ok) {
-      response = NextResponse.next();
+      const adminPage = ["/users", "/roles", "/companies"].some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`));
+      if (adminPage) {
+        const data = await session.json();
+        response = Array.isArray(data.global_roles) && data.global_roles.includes("super_admin")
+          ? NextResponse.next()
+          : NextResponse.redirect(new URL("/dashboard", request.url));
+      } else response = NextResponse.next();
     } else {
       response = new NextResponse("Unable to verify your session. Please try again.", { status: 503 });
     }
@@ -27,4 +33,4 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-export const config = { matcher: ["/dashboard/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/users/:path*", "/roles/:path*", "/companies/:path*"] };

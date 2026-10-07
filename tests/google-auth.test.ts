@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import type { Request, Response } from "express";
 import { createClient, type User, type Session } from "@supabase/supabase-js";
-import { createGoogleAuthHandlers } from "../src/server/controllers/google_auth_controller";
+import { createGoogleController } from "../src/server/controllers/google_auth_controller";
 import { clearAuthSession } from "../src/server/auth/clear-session";
 
 const user = { id: "approved-user" } as User;
@@ -28,9 +28,9 @@ test("Google initiation uses a trusted callback and returns the provider URL", a
   setOrigin(t, "http://localhost:3000");
   const auth = createClient("http://localhost:56321", "test-key").auth;
   const start = t.mock.method(auth, "signInWithOAuth", async () => ({ data: { provider: "google", url: "http://localhost:56321/auth/v1/authorize?provider=google" }, error: null }));
-  const handlers = createGoogleAuthHandlers({ authClient: () => auth, findProfile: async () => null });
+  const handlers = createGoogleController({ authClient: () => auth, getUserProfile: async () => null });
   const { res, result } = response();
-  await handlers.start({ query: { next: "https://other.example" } } as unknown as Request, res, () => {});
+  await handlers.startGoogleLogin({ query: { next: "https://other.example" } } as unknown as Request, res, () => {});
   const options = (start.mock.calls[0].arguments as unknown as [{ options: { redirectTo: string; skipBrowserRedirect: boolean } }])[0].options;
   assert.equal(options.redirectTo, "http://localhost:3000/api/auth/google/callback");
   assert.equal(options.skipBrowserRedirect, true);
@@ -43,9 +43,9 @@ test("Google callback verifies identity, preserves profile and redirects only to
   const exchange = t.mock.method(auth, "exchangeCodeForSession", async () => ({ data: { user, session }, error: null }));
   t.mock.method(auth, "getUser", async () => ({ data: { user }, error: null }));
   const profiles = t.mock.fn(async (id: string) => ({ id, name: "Juan", email: "juan@example.com" }));
-  const handlers = createGoogleAuthHandlers({ authClient: () => auth, findProfile: profiles });
+  const handlers = createGoogleController({ authClient: () => auth, getUserProfile: profiles });
   const { res, result } = response();
-  await handlers.callback({ query: { code: "test-code", next: "https://other.example" }, cookies: {} } as unknown as Request, res, () => {});
+  await handlers.finishGoogleLogin({ query: { code: "test-code", next: "https://other.example" }, cookies: {} } as unknown as Request, res, () => {});
   assert.deepEqual(exchange.mock.calls[0].arguments, ["test-code"]);
   assert.deepEqual(profiles.mock.calls[0].arguments, [user.id]);
   assert.equal(result.status, 303); assert.equal(result.location, "https://fuel.example.com/dashboard");
@@ -55,10 +55,10 @@ test("Google callback verifies identity, preserves profile and redirects only to
 test("Google callback rejects missing/repeated codes and canceled flows without exchanging", async (t) => {
   setOrigin(t, "http://localhost:3000");
   const factory = t.mock.fn(() => createClient("http://localhost:56321", "test-key").auth);
-  const handlers = createGoogleAuthHandlers({ authClient: factory, findProfile: async () => null });
+  const handlers = createGoogleController({ authClient: factory, getUserProfile: async () => null });
   for (const query of [{}, { code: ["a", "b"] }, { code: "" }, { error: "access_denied", error_description: "unsafe message" }]) {
     const { res, result } = response();
-    await handlers.callback({ query } as unknown as Request, res, () => {});
+    await handlers.finishGoogleLogin({ query } as unknown as Request, res, () => {});
     assert.equal(result.location, "http://localhost:3000/login?auth_error=google_failed");
   }
   assert.equal(factory.mock.callCount(), 0);
@@ -70,10 +70,10 @@ test("unprovisioned OAuth accounts are rejected and auth cookies are cleared eve
   t.mock.method(auth, "exchangeCodeForSession", async () => ({ data: { user, session }, error: null }));
   t.mock.method(auth, "getUser", async () => ({ data: { user }, error: null }));
   const revoke = t.mock.method(auth, "signOut", async () => { throw new Error("Auth unavailable"); });
-  const handlers = createGoogleAuthHandlers({ authClient: () => auth, findProfile: async () => null });
+  const handlers = createGoogleController({ authClient: () => auth, getUserProfile: async () => null });
   const req = { query: { code: "test-code" }, cookies: { "sb-local-auth-token.0": "session", "sb-local-auth-token-code-verifier": "verifier", unrelated: "keep" } } as unknown as Request;
   const { res, result } = response();
-  await handlers.callback(req, res, () => {});
+  await handlers.finishGoogleLogin(req, res, () => {});
   assert.equal(result.location, "http://localhost:3000/login?auth_error=account_not_provisioned");
   assert.deepEqual(revoke.mock.calls[0].arguments, [{ scope: "local" }]);
   assert.deepEqual(result.cleared, ["sb-local-auth-token.0", "sb-local-auth-token-code-verifier"]);
@@ -82,9 +82,9 @@ test("unprovisioned OAuth accounts are rejected and auth cookies are cleared eve
 test("disabled Google signup displays the organization access notice without starting a session", async (t) => {
   setOrigin(t, "http://localhost:3000");
   const factory = t.mock.fn(() => createClient("http://localhost:56321", "test-key").auth);
-  const handlers = createGoogleAuthHandlers({ authClient: factory, findProfile: async () => null });
+  const handlers = createGoogleController({ authClient: factory, getUserProfile: async () => null });
   const { res, result } = response();
-  await handlers.callback({ query: { error: "access_denied", error_code: "signup_disabled", error_description: "Signups not allowed" } } as unknown as Request, res, () => {});
+  await handlers.finishGoogleLogin({ query: { error: "access_denied", error_code: "signup_disabled", error_description: "Signups not allowed" } } as unknown as Request, res, () => {});
   assert.equal(result.location, "http://localhost:3000/login?auth_error=account_not_provisioned");
   assert.equal(factory.mock.callCount(), 0);
 });
@@ -94,9 +94,9 @@ test("failed exchanges return a fixed error and clear the browser session", asyn
   const auth = createClient("http://localhost:56321", "test-key").auth;
   t.mock.method(auth, "exchangeCodeForSession", async () => { throw new Error("expired code with sensitive details"); });
   t.mock.method(auth, "signOut", async () => ({ error: null }));
-  const handlers = createGoogleAuthHandlers({ authClient: () => auth, findProfile: async () => null });
+  const handlers = createGoogleController({ authClient: () => auth, getUserProfile: async () => null });
   const { res, result } = response();
-  await handlers.callback({ query: { code: "expired" }, cookies: { "sb-local-auth-token": "token" } } as unknown as Request, res, () => {});
+  await handlers.finishGoogleLogin({ query: { code: "expired" }, cookies: { "sb-local-auth-token": "token" } } as unknown as Request, res, () => {});
   assert.equal(result.location, "http://localhost:3000/login?auth_error=google_failed");
   assert.deepEqual(result.cleared, ["sb-local-auth-token"]);
   await clearAuthSession({ cookies: {} } as Request, res, auth);

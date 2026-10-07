@@ -16,7 +16,7 @@ export type AuthState = {
 };
 const initialState: AuthState = { user: null, status: "idle", operation: null, error: null, message: null, requestId: null };
 
-function failure(error: unknown): AuthFailure {
+function getAuthError(error: unknown): AuthFailure {
   if (error && typeof error === "object" && "status" in error && "message" in error && typeof error.status === "number" && typeof error.message === "string") {
     return { status: error.status, message: error.message };
   }
@@ -30,7 +30,7 @@ function isAuthUser(value: unknown): value is AuthUser {
     && "name" in value && (value.name === null || typeof value.name === "string");
 }
 
-async function post(url: string, body?: LoginInput): Promise<{ data: Record<string, unknown>; status: number }> {
+async function requestAuth(url: string, body?: LoginInput): Promise<{ data: Record<string, unknown>; status: number }> {
   const response = await fetch(url, {
     method: "POST", credentials: "include",
     ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
@@ -68,51 +68,51 @@ export const authReducer = authSlice.reducer;
 export const { resetAuth, clearAuthError } = authSlice.actions;
 export const selectAuth = (state: RootState) => state.auth;
 
-function begin(dispatch: AppDispatch, getState: () => RootState, operation: "password" | "google") {
+function beginAuthRequest(dispatch: AppDispatch, getState: () => RootState, operation: "password" | "google") {
   if (getState().auth.status === "loading") throw { status: 0, message: "Sign-in is already in progress." } satisfies AuthFailure;
   const requestId = nanoid();
   dispatch(authSlice.actions.started({ requestId, operation }));
   return requestId;
 }
-function assertCurrent(getState: () => RootState, requestId: string) {
+function assertCurrentAuthRequest(getState: () => RootState, requestId: string) {
   if (getState().auth.requestId !== requestId) throw { status: 0, message: "Sign-in was canceled." } satisfies AuthFailure;
 }
 
 // Manual thunks prevent passwords entering async-thunk metadata, plain actions or state.
-// Await dispatch(login(input)) directly; these thunks do not use .unwrap().
-export const login = (input: LoginInput) => async (dispatch: AppDispatch, getState: () => RootState): Promise<LoginResponse> => {
-  const requestId = begin(dispatch, getState, "password");
+// Await dispatch(loginUser(input)) directly; these thunks do not use .unwrap().
+export const loginUser = (input: LoginInput) => async (dispatch: AppDispatch, getState: () => RootState): Promise<LoginResponse> => {
+  const requestId = beginAuthRequest(dispatch, getState, "password");
   try {
-    const { data, status } = await post("/api/auth/login", input);
+    const { data, status } = await requestAuth("/api/auth/login", input);
     const user = data.user;
     if (typeof data.message !== "string" || (user !== null && !isAuthUser(user))) {
       throw { status, message: "The API returned an invalid login response." } satisfies AuthFailure;
     }
     const result: LoginResponse = { user: user === null ? null : { id: user.id, name: user.name, email: user.email }, message: data.message };
-    assertCurrent(getState, requestId);
+    assertCurrentAuthRequest(getState, requestId);
     dispatch(authSlice.actions.succeeded({ requestId, ...result }));
     return result;
   } catch (error) {
-    const problem = failure(error);
+    const problem = getAuthError(error);
     dispatch(authSlice.actions.failed({ requestId, error: problem }));
     throw problem;
   }
 };
 
 export const startGoogleLogin = () => async (dispatch: AppDispatch, getState: () => RootState): Promise<GoogleLoginResponse> => {
-  const requestId = begin(dispatch, getState, "google");
+  const requestId = beginAuthRequest(dispatch, getState, "google");
   try {
-    const { data, status } = await post("/api/auth/google");
+    const { data, status } = await requestAuth("/api/auth/google");
     let valid = false;
     if (typeof data.url === "string") {
       try { valid = ["http:", "https:"].includes(new URL(data.url).protocol); } catch { /* Invalid URL. */ }
     }
     if (!valid || typeof data.url !== "string") throw { status, message: "Unable to start Google sign-in." } satisfies AuthFailure;
-    assertCurrent(getState, requestId);
+    assertCurrentAuthRequest(getState, requestId);
     dispatch(authSlice.actions.succeeded({ requestId, user: null, message: null }));
     return { url: data.url };
   } catch (error) {
-    const problem = failure(error);
+    const problem = getAuthError(error);
     dispatch(authSlice.actions.failed({ requestId, error: problem }));
     throw problem;
   }

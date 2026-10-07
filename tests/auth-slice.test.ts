@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { configureStore, type Middleware } from "@reduxjs/toolkit";
 import { makeStore } from "../src/lib/store/store";
-import { authReducer, login, startGoogleLogin, resetAuth } from "../src/lib/store/auth-slice";
+import { authReducer, loginUser, startGoogleLogin, resetAuth } from "../src/lib/store/auth-slice";
 import { usersReducer } from "../src/lib/store/users-slice";
+import { rolesReducer } from "../src/lib/store/roles-slice";
 
 const input = { email: "user@example.com", password: "private-app-password" };
 const user = { id: "approved-user", name: "Juan", email: input.email };
@@ -11,9 +12,9 @@ const user = { id: "approved-user", name: "Juan", email: input.email };
 test("password login uses cookies and retains identity without passwords or tokens in actions/state", async (t) => {
   const actions: unknown[] = [];
   const recorder: Middleware = () => (next) => (action) => { actions.push(action); return next(action); };
-  const store = configureStore({ reducer: { auth: authReducer, users: usersReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
+  const store = configureStore({ reducer: { auth: authReducer, users: usersReducer, roles: rolesReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
   const fetch = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ user, message: "Signed in.", access_token: "must-not-be-stored" })));
-  assert.deepEqual(await store.dispatch(login(input)), { user, message: "Signed in." });
+  assert.deepEqual(await store.dispatch(loginUser(input)), { user, message: "Signed in." });
   const args = fetch.mock.calls[0].arguments as unknown as [string, RequestInit];
   assert.equal(args[0], "/api/auth/login");
   assert.equal(args[1].credentials, "include");
@@ -43,17 +44,17 @@ test("Google initiation returns its URL without storing it and rejects invalid r
 test("auth preserves HTTP errors and recovers after malformed or unavailable responses", async (t) => {
   const store = makeStore();
   const fetch = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ error: "Invalid email or password." }), { status: 401 }));
-  await assert.rejects(store.dispatch(login(input)));
+  await assert.rejects(store.dispatch(loginUser(input)));
   assert.equal(store.getState().auth.error?.status, 401);
   assert.equal(store.getState().auth.error?.message, "Invalid email or password.");
   fetch.mock.mockImplementation(async () => new Response("not-json"));
-  await assert.rejects(store.dispatch(login(input)));
+  await assert.rejects(store.dispatch(loginUser(input)));
   assert.match(store.getState().auth.error!.message, /unreadable/);
   fetch.mock.mockImplementation(async () => { throw new TypeError("network failure"); });
   await assert.rejects(store.dispatch(startGoogleLogin()));
   assert.equal(store.getState().auth.error?.status, 0);
   fetch.mock.mockImplementation(async () => new Response(JSON.stringify({ user, message: "Signed in." })));
-  await store.dispatch(login(input));
+  await store.dispatch(loginUser(input));
   assert.equal(store.getState().auth.error, null);
 });
 
@@ -61,7 +62,7 @@ test("auth prevents concurrent login methods and ignores reset requests' late re
   const store = makeStore();
   let resolve!: (response: Response) => void;
   const fetch = t.mock.method(globalThis, "fetch", async () => new Promise<Response>((done) => { resolve = done; }));
-  const pending = store.dispatch(login(input));
+  const pending = store.dispatch(loginUser(input));
   assert.equal(store.getState().auth.status, "loading");
   await assert.rejects(store.dispatch(startGoogleLogin()));
   assert.equal(fetch.mock.callCount(), 1);

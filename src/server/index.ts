@@ -3,7 +3,9 @@ import { createApp } from "./app";
 
 const port = Number(process.env.API_PORT ?? 4000);
 const host = process.env.API_HOST ?? "127.0.0.1";
-const server = createApp().listen(port, host, () => console.log(`B1G Fuel API listening on http://${host}:${port}`));
+const server = createApp().listen(port, host, () =>
+  console.log(`B1G Fuel API listening on http://${host}:${port}`),
+);
 
 function shutdown() {
   server.close(async () => {

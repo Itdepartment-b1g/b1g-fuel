@@ -41,7 +41,7 @@ The seed creates an email-confirmed Supabase Auth account, a matching Prisma pro
 
 Keep `[auth].enable_signup = false` and `[auth.email].enable_signup = true` in local Supabase configuration: the first blocks registration, while the second keeps the email provider available for sign-in. Restart this project's Supabase stack after changing Auth settings.
 
-Open `/login` and enter the seed credentials. Successful login redirects to `/dashboard`, which intentionally has no content yet. Its Next.js proxy verifies the session through Express before allowing access and forwards refreshed session cookies to the browser. Missing sessions redirect to `/login`; unavailable authentication returns 503. The dashboard has an empty fixed sidebar on desktop and a compact mobile header with a menu button that opens the sidebar. Its content area scrolls independently. The page is available to authenticated users; future administrative actions must separately enforce the global role.
+Open `/login` and enter the seed credentials. Successful login redirects to `/dashboard`, which intentionally has no content yet. Its Next.js proxy verifies the session through Express before allowing access and forwards refreshed session cookies to the browser. Missing sessions redirect to `/login`; unavailable authentication returns 503. The dashboard has a fixed sidebar on desktop; super-admins see all registered pages including Users, Roles and Companies and a compact mobile header with a menu button that opens the sidebar. Its content area scrolls independently. The page is available to authenticated users; future administrative actions must separately enforce the global role.
 
 ## Commands
 
@@ -68,11 +68,15 @@ The reference resource has been removed. If you already applied the initial migr
 
 - [Folder structure](docs/FOLDER_STRUCTURE.md)
 - [Architecture and CRUD playbook](docs/ARCHITECTURE.md)
+- [Backend layers and function naming](docs/CODE_CONVENTIONS.md)
 - [Authentication and access control](docs/SECURITY.md)
 - [Authentication Redux requests](docs/AUTH_REDUX.md)
 - [Users, roles, and company assignments](docs/DATA_MODEL.md)
+- [Roles API and Redux](docs/ROLES.md)
 - [Google login setup and production checklist](docs/GOOGLE_AUTH.md)
 - [Theme colors and component styling](docs/THEME.md)
+- [Reusable Quick Filter and Users integration](docs/QUICK_FILTER.md)
+- [Responsive pagination and array helper](docs/RESPONSIVE_PAGINATION.md)
 
 Root-level guide links point to the implemented documentation. Express replaces the API-route layer from those references at your request. `server-only` is intentionally absent: it is a Next.js bundler marker that cannot run in standalone Express. ESLint prohibits frontend components and Redux slices from importing server or generated database code.
 

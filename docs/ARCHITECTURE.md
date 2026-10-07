@@ -9,7 +9,8 @@ flowchart LR
   Next --> Express[Express resource routes]
   Express --> Auth[Verified Supabase session]
   Auth --> Controller[Controllers]
-  Controller --> Repository[Repositories]
+  Controller --> Service[Services: business conditions]
+  Service --> Repository[Repositories]
   Repository --> Prisma[Prisma and pg adapter]
   Prisma --> DB[(Supabase Postgres)]
 ```
@@ -24,8 +25,9 @@ flowchart LR
 | Client state | `src/lib/store/` | Types, request thunks, reducers, typed hooks |
 | Proxy | `next.config.ts` | Forward `/api/*` to `API_ORIGIN` |
 | API entry | `src/server/index.ts`, `app.ts` | Start Express, middleware, errors |
-| Routes | `src/server/routes/` | Methods, auth middleware, controller dispatch |
+| Routes | `src/server/routes/` | index.ts registers endpoints/resource routers/404; resource files apply auth and dispatch controllers |
 | Controllers | `src/server/controllers/` | Validate inputs, map results to HTTP responses |
+| Services | `src/server/services/` | Business conditions, workflows and transaction orchestration |
 | Repositories | `src/server/repositories/` | Database queries; no HTTP code |
 | Database client | `src/server/prisma/client.ts` | Lazy Prisma singleton with pg adapter |
 | Authentication | `src/server/auth/` | Cookie adapter and verified Supabase user |
@@ -44,8 +46,8 @@ Redux slices own resource types and HTTP requests, using `credentials: "include"
 
 1. Add a snake_case Prisma model with `user_id` when the data is per-user. Run `npm run db:migrate -- --name add_resource` and generate the client.
 2. Create `src/server/repositories/{entity}_repository.ts`; scope every query by the authenticated user.
-3. Create `src/server/controllers/{entity}_controller.ts`; validate fields and return consistent errors.
-4. Create `src/server/routes/{entity}.ts`, apply `requireAuthUser`, and mount the router in `app.ts`.
+3. Create `src/server/services/{entity}_service.ts` for conditions and workflows, then `src/server/controllers/{entity}_controller.ts` for inline validation and consistent HTTP errors. Use matching singular camelCase operation names, such as `listRole`, `createRole`, `editRole`, `updateRole` and `deleteRole`; see [code conventions](CODE_CONVENTIONS.md).
+4. Create `src/server/routes/{entity}.ts`, apply `requireAuthUser`, and mount it in `src/server/routes/index.ts`. `app.ts` mounts that root router after shared middleware and before the error handler.
 5. Extend paths and schemas in `src/lib/openapi.ts`.
 6. Create an entity slice and register its reducer in `store.ts`.
 7. Create the feature's list/table/form/dialogs and create a thin App Router page.
@@ -65,6 +67,6 @@ See [Security](SECURITY.md), [Folder structure](FOLDER_STRUCTURE.md), and [Setup
 
 ## Sidebar catalog
 
-`src/lib/auth/catalog.ts` defines page keys, page entries, and optional menu groups. The catalog is intentionally empty until features are added. `src/lib/auth/dashboard.ts` defines route paths. `src/app/layout/sideBarMenuItems.ts` builds navigation from explicitly allowed page keys, and checks a page's optional `view_permission` against supplied permission keys. Grouped menus include only allowed children and disappear when none remain. Register each new page in the catalog and icon map, then supply allowed pages and permissions to the dashboard shell.
+`src/lib/auth/catalog.ts` registers Dashboard, Users, Roles and Companies. `src/lib/auth/dashboard.ts` defines the dashboard home path. `src/app/layout/sideBarMenuItems.ts` gives the verified global `super_admin` role all catalog pages, including future registered pages. Other users require explicitly allowed page keys and any applicable `view_permission`. Grouped menus include only allowed children and disappear when none remain. Register new pages in the catalog and icon map.
 
-`AppSideBar` renders icons, active links, and expandable nested groups on desktop and mobile. `format_role_label` formats role slugs for future user UI. Role names alone do not grant menu access, and navigation filtering does not enforce API authorization. The current route shell supplies no page permissions and the session endpoint exposes only identity/global role slugs; fetching company-scoped page grants belongs with the future access-control implementation.
+`AppSideBar` reads the verified session's global role and renders icons, active links and nested groups on desktop/mobile. The shared shell supplies dashboard home by default. `super_admin` bypasses navigation grants; fetching company-scoped grants for ordinary users remains future work. Navigation filtering does not enforce API authorization. The page proxy protects Dashboard and requires `super_admin` for Users, Roles and Companies; the users API independently verifies that global assignment. Users, Roles and Companies share `src/app/(app)/layout.tsx`.

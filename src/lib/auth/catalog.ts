@@ -1,5 +1,8 @@
 export const PAGE_KEYS = {
   home: "home",
+  users: "users",
+  roles: "roles",
+  companies: "companies",
 } as const;
 
 export type PageKey = (typeof PAGE_KEYS)[keyof typeof PAGE_KEYS];
@@ -18,5 +21,10 @@ export type PageCatalogGroup = {
 };
 
 // Register pages and groups here when their features are added.
-export const PAGE_CATALOG: readonly PageCatalogItem[] = [];
+export const PAGE_CATALOG: readonly PageCatalogItem[] = [
+  { key: PAGE_KEYS.home, label: "Dashboard", href: "/dashboard" },
+  { key: PAGE_KEYS.users, label: "Users", href: "/users", view_permission: "users.view" },
+  { key: PAGE_KEYS.roles, label: "Roles", href: "/roles", view_permission: "roles.view" },
+  { key: PAGE_KEYS.companies, label: "Companies", href: "/companies", view_permission: "companies.view" },
+];
 export const PAGE_GROUPS: readonly PageCatalogGroup[] = [];

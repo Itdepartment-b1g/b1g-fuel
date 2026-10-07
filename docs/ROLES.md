@@ -1,0 +1,65 @@
+# Roles API and Redux
+
+All roles endpoints require a verified Supabase session, an existing Prisma profile and the global `super_admin` role. Responses are private/no-store. Mutations require the exact application Origin and are rate limited. No role UI is implemented by this change.
+
+| Method | URL | Behavior |
+| --- | --- | --- |
+| GET | `/api/roles` | Paginated list; name/slug search and optional scope filter |
+| GET | `/api/roles?id=UUID` | One role as `{ role }` |
+| GET | `/api/roles/options` | Registered scope, page and permission choices |
+| POST | `/api/roles` | Create a custom role; returns `{ role }` with 201 |
+| PATCH | `/api/roles` | Update editable fields using body `{ id, ...changes }` |
+| DELETE | `/api/roles?id=UUID` | Delete an unassigned custom role; returns `{ id, message }` |
+
+List uses shared pagination: default 10 rows, allowed page sizes 10/20/50/100, `page` starting at 1. `search` is at most 100 characters. `scope` is `company` or `global`. With `id`, list filters are ignored. The list response is `{ roles, total, page, page_size }`.
+
+Each role contains the model's scalar fields, ISO date strings, `pages` and `permissions` as key arrays, and `assignment_count` covering global and company-role assignments.
+
+## Creation
+
+```json
+{
+  "name": "Branch Manager",
+  "slug": "branch_manager",
+  "scope": "company",
+  "is_default_role": false,
+  "pages": ["users"],
+  "permissions": ["users.view"]
+}
+```
+
+Only `name` is required. It is trimmed and limited to 100 characters. Omitted slug is derived from the name; explicit slugs are trimmed/lowercased and must use letters, numbers, underscores or hyphens, start with a letter and fit within 100 characters. Names that cannot produce a valid slug need an explicit one. Scope defaults to company; default-role status defaults to false; mapping arrays default to empty.
+
+Clients cannot set `is_system`, timestamps, IDs or assignment counts. `super_admin` is reserved for the application seed. Register page keys in `src/lib/auth/catalog.ts` and permission choices in `src/lib/auth/permissions.ts`. The current permission catalog contains the registered view permissions. Unknown or duplicate mapping keys are rejected; each array allows at most 200 entries. Options expose the same catalogs for a future form.
+
+## Update and deletion rules
+
+- Editable fields: `name`, `is_default_role`, `pages`, `permissions`. PATCH requires an ID and at least one editable field.
+- Slug and scope stay fixed after creation to preserve stable role identity and assignment scope.
+- Omitted mappings remain unchanged. Empty arrays clear mappings. Updates save the role and mapping replacements in one transaction.
+- System roles and the reserved super-admin role cannot be edited or deleted.
+- Only company roles can be defaults. The existing SQL CHECK and partial unique index permit at most one default. Clear the previous default first; this API does not silently replace it.
+- Assigned roles cannot be deleted because assignment foreign keys restrict deletion. Delete returns 409 until assignments are removed through a separate workflow.
+- Unassigned-role deletion cascades to its page and permission mappings.
+
+400 indicates invalid input; 401 missing authentication; 403 insufficient access or a protected system role; 404 a missing role; 409 a conflicting slug/default or assigned-role deletion; 429 excessive mutations. Unexpected errors return the existing generic 500 response.
+
+These endpoints manage definitions, not user assignments. A default flag does not automatically assign the role to a new membership. Stored pages and permissions do not enable company-scoped authorization; administrative APIs and management pages still require global super-admin access. Company grant resolution and action enforcement remain separate work.
+
+## Redux
+
+`src/lib/store/roles-slice.ts` is registered as `state.roles`. Exports:
+
+- `listRole(query)` and `editRole(id)`
+- `getRoleOption()`
+- `createRole(input)`, `updateRole(input)`, `deleteRole(id)`
+- `selectRole`, `resetRoles()`, `clearRoleMutation()`
+
+All requests send cookies. Thunks support `.unwrap()` and retain HTTP status/message on rejection. Reads support `.abort()` and ignore older results. The slice serializes mutations, invalidates in-flight list/detail responses after mutation, and ignores late responses after reset. Successful mutation updates the selected matching role or clears a deleted selection; refetch the current list to preserve filtering and pagination.
+
+```ts
+const { role } = await dispatch(createRole({ name: "Branch Manager" })).unwrap();
+await dispatch(listRole({ page: 1, page_size: 10 })).unwrap();
+```
+
+No schema migration is needed. Apply existing migrations so the custom default-role constraints and foreign keys are present; Prisma schema generation alone does not reproduce them. Swagger exposes the endpoints and request/response schemas under Roles.

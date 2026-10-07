@@ -27,13 +27,17 @@ test("API boundaries: health, spec, missing session, CSRF, invalid bodies, and 4
     const session = await fetch(`${base}/api/auth/session`);
     assert.equal(session.status, 401);
     assert.equal(session.headers.get("cache-control"), "private, no-store");
-    for (const path of ["/api/users", "/api/users/options"]) {
+    for (const path of ["/api/users", "/api/users/options", "/api/users/filter-options", "/api/roles", "/api/roles/options"]) {
       const response = await fetch(`${base}${path}`);
       assert.equal(response.status, 401);
       assert.equal(response.headers.get("cache-control"), "private, no-store");
     }
     assert.equal((await fetch(`${base}/api/users`, { method: "POST", headers: { Origin: "http://localhost:3000", "Content-Type": "application/json" }, body: "{}" })).status, 401);
     assert.equal((await fetch(`${base}/api/users`, { method: "POST" })).status, 403);
+    for (const method of ["POST", "PATCH", "DELETE"]) {
+      assert.equal((await fetch(`${base}/api/roles`, { method, headers: { Origin: "http://localhost:3000" } })).status, 401);
+      assert.equal((await fetch(`${base}/api/roles`, { method })).status, 403);
+    }
     assert.equal((await (await fetch(`${base}/api/openapi`)).json()).openapi, "3.0.3");
     for (const origin of [undefined, "https://other.example"]) {
       assert.equal((await fetch(`${base}/api/auth/login`, { method: "POST", headers: origin ? { Origin: origin } : {} })).status, 403);
@@ -62,7 +66,7 @@ test("API boundaries: health, spec, missing session, CSRF, invalid bodies, and 4
 test("password login and protected requests require an existing profile and clear rejected sessions", async (t) => {
   const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   t.after(() => { if (originalUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl; });
-  const profile = t.mock.method(authRepository, "findProfile", async (): Promise<{ id: string; name: string; email: string | null } | null> => null);
+  const profile = t.mock.method(authRepository, "getUserProfile", async (): Promise<{ id: string; name: string; email: string | null } | null> => null);
   const authUser = { id: "11111111-1111-4111-8111-111111111111", aud: "authenticated", role: "authenticated", email: "approved@example.com", created_at: "2026-10-07T00:00:00Z", app_metadata: {}, user_metadata: {} };
   const jwt = `${Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ sub: authUser.id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.test-signature`;
   const auth = express();

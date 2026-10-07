@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import localFont from "next/font/local";
 import { usePathname } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -10,7 +9,7 @@ import { ChevronRight, LogOut, X, FlameIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { APP_PATHS } from "@/lib/auth/dashboard";
-import { format_role_label, get_side_bar_menu_items, sideBarMenuItems, type SideBarAccess } from "./sideBarMenuItems";
+import { formatRoleLabel, listSidebarMenu, sideBarMenuItems, type SideBarAccess } from "./sideBarMenuItems";
 
 type AppSideBarProps = SideBarAccess & {
   open?: boolean;
@@ -75,9 +74,10 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
       setLoading(false);
     }
   }
-  const items = pages === undefined
+  const sessionRole = role ?? user?.role;
+  const items = pages === undefined && !sessionRole
     ? sideBarMenuItems
-    : get_side_bar_menu_items(pages, { pages, permissions, role });
+    : listSidebarMenu(pages ?? [], { pages, permissions, role: sessionRole });
   const isActive = (href: string) => pathname === href || (href !== APP_PATHS.home && pathname.startsWith(`${href}/`));
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 1024px)");
@@ -98,8 +98,8 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
       </span>
       <span className="min-w-0 ">
         <span className={cn(designer.className, "block truncate text-xl font-bold tracking-tight text-black")}>B1G <span className="text-[#02066F]">Fuel</span></span>
-        <span className="block truncate text-[12px] text-gray-700 font-bold" title={format_role_label(role ?? user?.role)}>
-          {format_role_label(role ?? user?.role)}
+        <span className="block truncate text-[12px] text-gray-700 font-bold" title={formatRoleLabel(role ?? user?.role)}>
+          {formatRoleLabel(role ?? user?.role)}
         </span>
       </span>
     </Link>
@@ -147,7 +147,7 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
       {(user?.name || user?.email) && (
         <div aria-label="Signed-in user" className="mb-2 min-w-0 pb-3">
           {user.name && <p title={user.name} className="truncate px-3 text-sm font-medium">{user.name}</p>}
-          {user.email && <p title={user.email} className="truncate px-3 text-xs text-[#0F52BA]">{user.email}</p>}
+          {user.email && <p title={user.email} className="truncate px-3 text-xs text-primary">{user.email}</p>}
         </div>
       )}
       {error && <p role="alert" className="mb-2 text-sm text-destructive">{error}</p>}

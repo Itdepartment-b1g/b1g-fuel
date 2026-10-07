@@ -13,16 +13,21 @@ import type {
   UsersPage,
 } from "@/lib/users";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { USER_ADDITIONAL_FILTERS, USER_FILTER_FIELDS, USER_STATUS_OPTIONS, type UserFilterOptions, type UserFilters } from "@/lib/users-filters";
 
 export type ApiFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type UsersQuery = { page?: number; page_size?: number; search?: string };
+export type UsersQuery = { page?: number; page_size?: number; search?: string; filters?: UserFilters };
 export type UsersState = {
   users: UserSummary[];
   total: number;
   page: number;
   page_size: number;
   options: UserOptions;
+  filterOptions: UserFilterOptions;
+  filterOptionsStatus: Status;
+  filterOptionsError: ApiFailure | null;
+  filterOptionsRequestId: string | null;
   listStatus: Status;
   optionsStatus: Status;
   createStatus: Status;
@@ -40,6 +45,8 @@ const initialState: UsersState = {
   page: 1,
   page_size: DEFAULT_PAGE_SIZE,
   options: { companies: [], roles: [] },
+  filterOptions: { fields: USER_FILTER_FIELDS, statusOptions: USER_STATUS_OPTIONS, additionalFilters: USER_ADDITIONAL_FILTERS },
+  filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null,
   listStatus: "idle",
   optionsStatus: "idle",
   createStatus: "idle",
@@ -52,7 +59,7 @@ const initialState: UsersState = {
   lastCreated: null,
 };
 
-async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+async function requestUser<T>(url: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, { ...init, credentials: "include" });
@@ -80,7 +87,7 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
     } satisfies ApiFailure;
   return data as T;
 }
-function failure(error: unknown): ApiFailure {
+function getUserError(error: unknown): ApiFailure {
   if (
     error &&
     typeof error === "object" &&
@@ -93,7 +100,7 @@ function failure(error: unknown): ApiFailure {
   return { status: 0, message: "The request failed. Please try again." };
 }
 
-export const fetchUsers = createAsyncThunk<
+export const listUser = createAsyncThunk<
   UsersPage,
   UsersQuery | undefined,
   { rejectValue: ApiFailure }
@@ -103,21 +110,26 @@ export const fetchUsers = createAsyncThunk<
   if (query?.page_size !== undefined)
     params.set("page_size", String(query.page_size));
   if (query?.search) params.set("search", query.search);
+  if (query?.filters) params.set("filters", JSON.stringify(query.filters));
   try {
-    return await request<UsersPage>(`/api/users?${params}`, { signal });
+    return await requestUser<UsersPage>(`/api/users?${params}`, { signal });
   } catch (error) {
-    return rejectWithValue(failure(error));
+    return rejectWithValue(getUserError(error));
   }
 });
-export const fetchUserOptions = createAsyncThunk<
+export const getUserFilterOption = createAsyncThunk<UserFilterOptions, void, { rejectValue: ApiFailure }>("users/filterOptions", async (_, { signal, rejectWithValue }) => {
+  try { return await requestUser<UserFilterOptions>("/api/users/filter-options", { signal }); }
+  catch (error) { return rejectWithValue(getUserError(error)); }
+});
+export const getUserOption = createAsyncThunk<
   UserOptions,
   void,
   { rejectValue: ApiFailure }
 >("users/options", async (_, { rejectWithValue, signal }) => {
   try {
-    return await request<UserOptions>("/api/users/options", { signal });
+    return await requestUser<UserOptions>("/api/users/options", { signal });
   } catch (error) {
-    return rejectWithValue(failure(error));
+    return rejectWithValue(getUserError(error));
   }
 });
 
@@ -162,49 +174,59 @@ const usersSlice = createSlice({
   },
   extraReducers(builder) {
     builder
-      .addCase(fetchUsers.pending, (state, action) => {
+      .addCase(getUserFilterOption.pending, (state, action) => { state.filterOptionsStatus = "loading"; state.filterOptionsError = null; state.filterOptionsRequestId = action.meta.requestId; })
+      .addCase(getUserFilterOption.fulfilled, (state, action) => {
+        if (state.filterOptionsRequestId !== action.meta.requestId) return;
+        state.filterOptions = action.payload; state.filterOptionsStatus = "succeeded"; state.filterOptionsRequestId = null;
+      })
+      .addCase(getUserFilterOption.rejected, (state, action) => {
+        if (state.filterOptionsRequestId !== action.meta.requestId) return;
+        state.filterOptionsRequestId = null; state.filterOptionsStatus = action.meta.aborted ? "idle" : "failed";
+        state.filterOptionsError = action.meta.aborted ? null : action.payload ?? getUserError(action.error);
+      })
+      .addCase(listUser.pending, (state, action) => {
         state.listStatus = "loading";
         state.listError = null;
         state.listRequestId = action.meta.requestId;
       })
-      .addCase(fetchUsers.fulfilled, (state, action) => {
+      .addCase(listUser.fulfilled, (state, action) => {
         if (state.listRequestId !== action.meta.requestId) return;
         Object.assign(state, action.payload);
         state.listStatus = "succeeded";
         state.listRequestId = null;
       })
-      .addCase(fetchUsers.rejected, (state, action) => {
+      .addCase(listUser.rejected, (state, action) => {
         if (state.listRequestId !== action.meta.requestId) return;
         state.listRequestId = null;
         state.listStatus = action.meta.aborted ? "idle" : "failed";
         state.listError = action.meta.aborted
           ? null
-          : (action.payload ?? failure(action.error));
+          : (action.payload ?? getUserError(action.error));
       })
-      .addCase(fetchUserOptions.pending, (state, action) => {
+      .addCase(getUserOption.pending, (state, action) => {
         state.optionsStatus = "loading";
         state.optionsError = null;
         state.optionsRequestId = action.meta.requestId;
       })
-      .addCase(fetchUserOptions.fulfilled, (state, action) => {
+      .addCase(getUserOption.fulfilled, (state, action) => {
         if (state.optionsRequestId !== action.meta.requestId) return;
         state.options = action.payload;
         state.optionsStatus = "succeeded";
         state.optionsRequestId = null;
       })
-      .addCase(fetchUserOptions.rejected, (state, action) => {
+      .addCase(getUserOption.rejected, (state, action) => {
         if (state.optionsRequestId !== action.meta.requestId) return;
         state.optionsRequestId = null;
         state.optionsStatus = action.meta.aborted ? "idle" : "failed";
         state.optionsError = action.meta.aborted
           ? null
-          : (action.payload ?? failure(action.error));
+          : (action.payload ?? getUserError(action.error));
       });
   },
 });
 export const { resetUsers, clearCreateStatus } = usersSlice.actions;
 export const usersReducer = usersSlice.reducer;
-export const selectUsers = (state: RootState) => state.users;
+export const selectUser = (state: RootState) => state.users;
 
 // A manual thunk keeps passwords out of Redux actions, async-thunk metadata and state.
 // Await dispatch(createUser(input)); failures reject with { status, message }.
@@ -222,7 +244,7 @@ export const createUser =
     const requestId = nanoid();
     dispatch(usersSlice.actions.creationStarted(requestId));
     try {
-      const { user } = await request<CreateUserResponse>("/api/users", {
+      const { user } = await requestUser<CreateUserResponse>("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
@@ -230,7 +252,7 @@ export const createUser =
       dispatch(usersSlice.actions.creationSucceeded({ requestId, user }));
       return user;
     } catch (error) {
-      const problem = failure(error);
+      const problem = getUserError(error);
       dispatch(
         usersSlice.actions.creationFailed({ requestId, error: problem }),
       );

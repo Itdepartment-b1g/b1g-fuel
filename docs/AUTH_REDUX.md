@@ -4,7 +4,7 @@
 
 | Export | Usage |
 | --- | --- |
-| `login({ email, password })` | POST `/api/auth/login`; returns `{ user, message }` |
+| `loginUser({ email, password })` | POST `/api/auth/login`; returns `{ user, message }` |
 | `startGoogleLogin()` | POST `/api/auth/google`; returns `{ url }` for browser navigation |
 | `selectAuth` | Read user, request status, operation, error and message |
 | `clearAuthError()` | Clear request feedback |
@@ -15,7 +15,7 @@ Both requests include cookies. Failures reject with `{ status, message }` and po
 These are manual thunks: await their dispatch directly, without `.unwrap()`:
 
 ```ts
-const result = await dispatch(login({ email, password }));
+const result = await dispatch(loginUser({ email, password }));
 const { url } = await dispatch(startGoogleLogin());
 ```
 

@@ -3,6 +3,17 @@ import { test } from "node:test";
 import { NextRequest } from "next/server";
 import { proxy } from "../src/proxy";
 
+test("management pages permit super_admin and reject ordinary or missing sessions", async (context) => {
+  const session = context.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ global_roles: ["super_admin"] }), { status: 200 }));
+  for (const path of ["/users", "/roles", "/companies"]) {
+    assert.equal((await proxy(new NextRequest(`http://localhost:3000${path}`))).headers.get("x-middleware-next"), "1");
+  }
+  session.mock.mockImplementation(async () => new Response(JSON.stringify({ global_roles: [] }), { status: 200 }));
+  assert.equal((await proxy(new NextRequest("http://localhost:3000/users"))).headers.get("location"), "http://localhost:3000/dashboard");
+  session.mock.mockImplementation(async () => new Response(null, { status: 401 }));
+  assert.equal((await proxy(new NextRequest("http://localhost:3000/users"))).headers.get("location"), "http://localhost:3000/login");
+});
+
 test("dashboard rejects unprovisioned accounts and forwards cleared cookies", async (context) => {
   context.mock.method(globalThis, "fetch", async () => new Response(null, { status: 403, headers: { "Set-Cookie": "session=; Path=/; Max-Age=0" } }));
   const response = await proxy(new NextRequest("http://localhost:3000/dashboard"));

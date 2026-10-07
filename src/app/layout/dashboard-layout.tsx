@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AppSideBar from "./AppSideBar";
 import type { SideBarAccess } from "./sideBarMenuItems";
+import { PAGE_KEYS } from "@/lib/auth/catalog";
 
 type DashboardLayoutProps = SideBarAccess & { children: ReactNode };
 
@@ -14,7 +15,7 @@ const designer = localFont({
   display: "swap",
 });
 
-export default function DashboardLayout({ children, pages = [], permissions, role }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, pages = [PAGE_KEYS.home], permissions, role }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
@@ -37,7 +38,7 @@ export default function DashboardLayout({ children, pages = [], permissions, rol
           </button>
           <div className="flex min-w-0 items-center justify-center">
             <span className={cn(designer.className, "block truncate text-xl font-bold tracking-tight text-black")}>
-              B1G <span className="text-[#0F52BA]">Fuel</span>
+              B1G <span className="text-primary">Fuel</span>
             </span>
           </div>
         </header>

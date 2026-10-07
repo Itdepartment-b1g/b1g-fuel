@@ -1,44 +1,21 @@
-import type { RequestHandler } from "express";
 import { createAuthClient } from "@/server/auth/supabase";
-import { authRepository } from "@/server/repositories/auth_repository";
 import { clearAuthSession } from "@/server/auth/clear-session";
+import { authService } from "@/server/services/auth_service";
+import { UserError } from "@/server/utils/errors";
+import { handleController } from "./error_handler";
 
-export const getSession: RequestHandler = async (_req, res) => {
-  const user = res.locals.user;
-  const [roles, profile] = await Promise.all([
-    authRepository.findGlobalRoles(user.id),
-    res.locals.profile ?? authRepository.findProfile(user.id),
-  ]);
-  const name = [user.user_metadata?.full_name, user.user_metadata?.name]
-    .find((value) => typeof value === "string" && value.trim());
-  res.json({ user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null }, global_roles: roles.map(({ role }) => role.slug) });
-};
+export const getUserSession = handleController(async (_req, res) => { res.json(await authService.getUserSession(res.locals.user, res.locals.profile)); });
+export const loginUser = handleController(async (req, res) => {
+  const input = validateLoginUser(req.body);
+  const auth = createAuthClient(req, res).auth;
+  try { res.json(await authService.loginUser(auth, input)); }
+  catch (error) { if (!(error instanceof UserError && error.status === 401)) await clearAuthSession(req, res, auth); throw error; }
+});
+export const logoutUser = handleController(async (req, res) => { res.json(await authService.logoutUser(createAuthClient(req, res).auth)); });
 
-export const authenticate: RequestHandler = async (req, res) => {
-  const { action } = req.params;
-  if (action !== "login" && action !== "logout") { res.status(404).json({ error: "Unknown authentication action." }); return; }
-  if (action === "logout") {
-    const { error } = await createAuthClient(req, res).auth.signOut();
-    if (error) { res.status(400).json({ error: "Unable to sign out." }); return; }
-    res.json({ message: "Signed out." }); return;
-  }
-  const { email, password } = req.body ?? {};
-  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof password !== "string" || password.length < 8) {
-    res.status(400).json({ error: "Provide a valid email and a password of at least 8 characters." }); return;
-  }
-  const client = createAuthClient(req, res);
-  const credentials = { email: email.trim(), password };
-  const { data, error } = await client.auth.signInWithPassword(credentials);
-  if (error || !data.user || !data.session) { res.status(401).json({ error: "Invalid email or password." }); return; }
-  let profile;
-  try { profile = await authRepository.findProfile(data.user.id); }
-  catch (failure) { await clearAuthSession(req, res, client.auth); throw failure; }
-  if (!profile) {
-    await clearAuthSession(req, res, client.auth);
-    res.status(403).json({ error: "Your account has not been provisioned. Contact your administrator." }); return;
-  }
-  res.json({
-    user: data.session && data.user ? { id: data.user.id, email: data.user.email ?? null, name: profile?.name ?? null } : null,
-    message: "Signed in.",
-  });
-};
+export function validateLoginUser(body: unknown) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new UserError(400, "Provide a valid email and a password of at least 8 characters.");
+  const { email, password } = body as Record<string, unknown>;
+  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || typeof password !== "string" || password.length < 8) throw new UserError(400, "Provide a valid email and a password of at least 8 characters.");
+  return { email: email.trim(), password };
+}
