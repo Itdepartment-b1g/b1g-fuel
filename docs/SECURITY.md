@@ -2,7 +2,7 @@
 
 Supabase Auth handles passwords and verifies users. Express uses `@supabase/ssr` to read/write session cookies and `auth.getUser()` to validate every protected request. Sessions are refreshed via response cookies. Cookies are HttpOnly, SameSite=Lax, and Secure in production. The browser talks to the frontend host through the `/api` proxy.
 
-Apply `requireAuthUser` to future protected resource routers. For per-user data, constrain every repository query by the verified session owner. Profiles are created only after verified authentication.
+Apply `requireAuthUser` to future protected resource routers. It verifies the Auth user and requires an existing Prisma profile matching the Auth UUID; missing profiles are rejected with 403 and the browser session is cleared. For per-user data, constrain every repository query by the verified session owner. Profiles are provisioned by the seed or protected user-creation API. Password and Google login never create missing profiles. See [Google login](GOOGLE_AUTH.md) for the OAuth flow.
 
 Prisma uses a trusted Postgres connection; **application authorization must be enforced regardless of Supabase RLS**. The initial migration enables RLS with no public policies to prevent unintentional access via Supabase's browser Data API. Use a trusted backend database role for Prisma. If you intentionally expose data through PostgREST later, add explicit policies rather than disabling RLS.
 

@@ -11,7 +11,7 @@ npm install
 cp .env.example .env
 ```
 
-Set `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to your Supabase project values. The public key variable accepts an anon/publishable key. `SUPABASE_SECRET_KEY` is backend-only and used by the super-admin seed, not by browser code or normal login. Express reads `.env` via dotenv and Next.js reads it automatically.
+Set `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to your Supabase project values. The public key variable accepts an anon/publishable key. `SUPABASE_SECRET_KEY` is backend-only and used by the super-admin seed and protected user creation, never by browser code. Express reads `.env` via dotenv and Next.js reads it automatically.
 
 For local Supabase, install Docker and the Supabase CLI, then run `supabase start` from this directory. The local ports are configured in `supabase/config.toml`; copy the displayed connection URL and anon key into `.env`. Local auth emails appear at http://127.0.0.1:56324. You can also use Supabase Cloud instead.
 
@@ -25,7 +25,7 @@ Open http://localhost:3000. Express listens on http://127.0.0.1:4000. `/api/*` r
 
 For local development, `API_ORIGIN`, `API_HOST`, `API_PORT`, and `APP_ORIGIN` are optional: the code defaults to `http://127.0.0.1:4000`, `127.0.0.1`, `4000`, and `http://localhost:3000` respectively. Business API routers belong in `src/server/routes/`; no `src/app/api` folder is needed for this Express setup.
 
-Sign in with an existing Supabase account. Public registration is disabled locally; provision accounts through Supabase administration. For a hosted Supabase project, disable new user signups in its authentication settings as well. `/docs` serves Swagger UI and `/api/openapi` serves the spec. `/api/health` reports API liveness; it does not verify database connectivity.
+Sign in with an admin-provisioned account using its app password or Continue with Google. Public registration is disabled locally; provision matching Auth accounts and Prisma profiles through the seed or protected users API. Restart local Supabase after configuring Google credentials; see the Google login guide below. For a hosted Supabase project, disable new user signups in its authentication settings as well. `/docs` serves Swagger UI and `/api/openapi` serves the spec. `/api/health` reports API liveness; it does not verify database connectivity.
 
 ## Seed the first super-admin
 
@@ -37,7 +37,7 @@ npm run db:seed
 npm run dev
 ```
 
-The seed creates an email-confirmed Supabase Auth account, a matching Prisma profile, the global/system `super_admin` role, and its `user_role` assignment. It does not require a company membership or expose public registration. Reruns reuse an existing confirmed account without resetting its password and upsert the database records without duplicate assignments. Set the optional `SEED_SUPER_ADMIN_FULL_NAME` to save `user_metadata.full_name` for a new or existing account; leaving it blank preserves the existing name. The sidebar displays this name above the email and Logout button. If an account already exists, use its existing password to log in. A database failure after Auth creation is recoverable by rerunning the seed; Auth creation is outside the Prisma transaction.
+The seed creates an email-confirmed Supabase Auth account, a matching Prisma profile, the global/system `super_admin` role, and its `user_role` assignment. It does not require a company membership or expose public registration. Reruns reuse an existing confirmed account without resetting its password and upsert the database records without duplicate assignments. Set `SEED_SUPER_ADMIN_FULL_NAME` to save the name in both the Prisma profile and Auth metadata; leaving it blank uses `Super Admin`. The sidebar displays this name above the email and Logout button. If an account already exists, use its existing password to log in. A database failure after Auth creation is recoverable by rerunning the seed; Auth creation is outside the Prisma transaction.
 
 Keep `[auth].enable_signup = false` and `[auth.email].enable_signup = true` in local Supabase configuration: the first blocks registration, while the second keeps the email provider available for sign-in. Restart this project's Supabase stack after changing Auth settings.
 

@@ -1,12 +1,13 @@
 import type { RequestHandler } from "express";
 import { createAuthClient } from "@/server/auth/supabase";
 import { authRepository } from "@/server/repositories/auth_repository";
+import { clearAuthSession } from "@/server/auth/clear-session";
 
 export const getSession: RequestHandler = async (_req, res) => {
   const user = res.locals.user;
   const [roles, profile] = await Promise.all([
     authRepository.findGlobalRoles(user.id),
-    authRepository.findProfile(user.id),
+    res.locals.profile ?? authRepository.findProfile(user.id),
   ]);
   const name = [user.user_metadata?.full_name, user.user_metadata?.name]
     .find((value) => typeof value === "string" && value.trim());
@@ -28,12 +29,13 @@ export const authenticate: RequestHandler = async (req, res) => {
   const client = createAuthClient(req, res);
   const credentials = { email: email.trim(), password };
   const { data, error } = await client.auth.signInWithPassword(credentials);
-  if (error) { res.status(401).json({ error: "Invalid email or password." }); return; }
+  if (error || !data.user || !data.session) { res.status(401).json({ error: "Invalid email or password." }); return; }
   let profile;
-  if (data.user && data.session) {
-    const name = [data.user.user_metadata?.full_name, data.user.user_metadata?.name]
-      .find((value): value is string => typeof value === "string" && Boolean(value.trim()));
-    profile = await authRepository.upsertFromAuth(data.user.id, data.user.email, name);
+  try { profile = await authRepository.findProfile(data.user.id); }
+  catch (failure) { await clearAuthSession(req, res, client.auth); throw failure; }
+  if (!profile) {
+    await clearAuthSession(req, res, client.auth);
+    res.status(403).json({ error: "Your account has not been provisioned. Contact your administrator." }); return;
   }
   res.json({
     user: data.session && data.user ? { id: data.user.id, email: data.user.email ?? null, name: profile?.name ?? null } : null,

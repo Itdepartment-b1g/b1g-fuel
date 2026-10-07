@@ -11,6 +11,8 @@ export async function proxy(request: NextRequest) {
     let response: NextResponse;
     if (session.status === 401) {
       response = NextResponse.redirect(new URL("/login", request.url));
+    } else if (session.status === 403) {
+      response = NextResponse.redirect(new URL("/login?auth_error=account_not_provisioned", request.url));
     } else if (session.ok) {
       response = NextResponse.next();
     } else {

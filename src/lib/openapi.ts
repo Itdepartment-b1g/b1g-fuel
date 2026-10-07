@@ -42,9 +42,17 @@ export const openapi = {
         user: { allOf: [{ $ref: "#/components/schemas/SessionUser" }], nullable: true }, message: { type: "string" },
       } },
       CreateUserResponse: { type: "object", required: ["user"], properties: { user: { $ref: "#/components/schemas/User" } } },
+      GoogleLoginResponse: { type: "object", required: ["url"], properties: { url: { type: "string", format: "uri", description: "Navigate the browser to this URL to continue sign-in." } } },
     },
   },
   paths: {
+    "/api/auth/google": { post: { tags: ["Auth"], summary: "Start Google login", description: "Requires APP_ORIGIN in the Origin header. Sets the HttpOnly PKCE verifier cookie and returns a URL for browser navigation. No credentials or bearer token are required.", responses: {
+      "200": { description: "OAuth URL and verifier cookie", content: { "application/json": { schema: { $ref: "#/components/schemas/GoogleLoginResponse" } } } }, "403": errorResponse, "429": errorResponse, "502": errorResponse,
+    } } },
+    "/api/auth/google/callback": { get: { tags: ["Auth"], summary: "Finish Google login", description: "Browser callback from Supabase. Requires the verifier cookie from initiation and a valid PKCE code. Only existing admin-provisioned profiles can enter the app. Do not call this manually to start login.", parameters: [
+      { name: "code", in: "query", schema: { type: "string" }, description: "Single-use code supplied by Supabase." },
+      { name: "error", in: "query", schema: { type: "string" }, description: "Provider failure or cancellation." },
+    ], responses: { "303": { description: "Redirect to /dashboard on success, or /login with a fixed auth_error code on failure", headers: { Location: { schema: { type: "string", format: "uri" } } } }, "429": errorResponse } } },
     "/api/users": {
       get: { tags: ["Users"], summary: "List users (global super_admin only)", security: [{ session: [] }], parameters: [
         { name: "page", in: "query", schema: { type: "integer", minimum: 1, maximum: 1000000, default: 1 } },
@@ -60,7 +68,7 @@ export const openapi = {
       "200": { description: "Creation options", content: { "application/json": { schema: { $ref: "#/components/schemas/UserOptions" } } } }, "401": errorResponse, "403": errorResponse, "500": errorResponse,
     } } },
     "/api/health": { get: { tags: ["Health"], summary: "API liveness", responses: { "200": { description: "API is running" } } } },
-    "/api/auth/session": { get: { tags: ["Auth"], summary: "Get verified user and global roles", security: [{ session: [] }], responses: { "200": { description: "Verified user with display name and global role slugs", content: { "application/json": { schema: { $ref: "#/components/schemas/Session" } } } }, "401": errorResponse } } },
+    "/api/auth/session": { get: { tags: ["Auth"], summary: "Get verified user and global roles", security: [{ session: [] }], responses: { "200": { description: "Verified user with display name and global role slugs", content: { "application/json": { schema: { $ref: "#/components/schemas/Session" } } } }, "401": errorResponse, "403": errorResponse } } },
     "/api/auth/login": { post: { tags: ["Auth"], summary: "Sign in", requestBody: jsonBody({ $ref: "#/components/schemas/Credentials" }), responses: { "200": { description: "Session cookies set; user includes profile name", content: { "application/json": { schema: { $ref: "#/components/schemas/LoginResponse" } } } }, "400": errorResponse, "401": errorResponse, "403": errorResponse, "429": errorResponse } } },
     "/api/auth/logout": { post: { tags: ["Auth"], summary: "Sign out", responses: { "200": { description: "Session cleared" }, "400": errorResponse, "403": errorResponse, "429": errorResponse } } },
   },

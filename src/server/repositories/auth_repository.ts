@@ -10,11 +10,4 @@ export const authRepository = {
       select: { role: { select: { slug: true } } },
     });
   },
-  upsertFromAuth(id: string, email?: string, name?: string) {
-    return getPrisma().user.upsert({
-      where: { id },
-      create: { id, email, name: name?.trim().slice(0, 250) || email?.slice(0, 250) || "User" },
-      update: { email },
-    });
-  },
 };

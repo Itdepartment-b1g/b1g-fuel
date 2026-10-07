@@ -36,7 +36,7 @@ Do not add Next.js API handlers for business resources. Do not import backend mo
 
 One Express router per resource; identity uses `GET/DELETE ?id=uuid` and PATCH body `{ id, title }`. Errors use `{ "error": "Human-readable message" }`. Malformed JSON and invalid inputs return 400, unauthenticated calls 401, disallowed origins 403, missing/unowned resources 404, and unexpected failures a generic 500.
 
-For future per-user resources, derive ownership from the verified session and constrain every repository query by that owner. Profiles are synchronized after verified login.
+For future per-user resources, derive ownership from the verified session and constrain every repository query by that owner. Profiles are provisioned by the seed or super-admin users API. Both password and Google login require an existing profile; protected-request middleware enforces this too.
 
 Redux slices own resource types and HTTP requests, using `credentials: "include"`. List components dispatch fetches, show loading/errors, redirect on 401, and wire table actions to dialogs. Dialogs keep local open/pending state and close only after successful mutations.
 

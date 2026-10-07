@@ -1,6 +1,6 @@
-# Google login: local setup and production readiness
+## Production deployment checklist Google login: local setup and production readiness
 
-Reviewed on 2026-10-07. This is a setup guide and implementation checklist. Google login is not implemented yet; the URLs for our application's Google endpoints below are proposed routes.
+Reviewed on 2026-10-07. This is a setup guide and implementation checklist. Google login is implemented in the application. The local stack has been restarted and reports Google enabled. The login page, PKCE initiation and redirect to Google passed a live smoke check; real Google consent and production setup still need verification.
 
 ## Current project status
 
@@ -13,10 +13,10 @@ Reviewed on 2026-10-07. This is a setup guide and implementation checklist. Goog
 | Local Supabase Studio | `http://127.0.0.1:56323` |
 | Authentication | Email/password with HttpOnly session cookies |
 | Account provisioning | Super-admin seed and protected `POST /api/users` |
-| Google provider | No `[auth.external.google]` configuration in the repository |
-| App OAuth endpoints | Not implemented |
-| Google button | Not implemented |
-| App callback allowlist | Currently includes `/login`, not the proposed Google callback |
+| Google provider | Enabled in configuration and verified on the running local stack |
+| App OAuth endpoints | `POST /api/auth/google` and `GET /api/auth/google/callback` |
+| Google button | Continue with Google on `/login` |
+| App callback allowlist | Includes `/login` and `/api/auth/google/callback` |
 
 These values come from `supabase/config.toml` and the current API/frontend configuration. This project uses Supabase port **56321**, not the CLI's usual example port 54321.
 
@@ -43,7 +43,7 @@ Browser → Google → Supabase Auth callback → App callback → Dashboard
 
 The hosted Supabase callback normally has the form `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`. A custom Auth domain changes it; copy the provider's actual value.
 
-Our proposed app callback is served by Express through the Next.js proxy. Use the public frontend URL, not the private API host or port 4000, so the callback receives the browser's cookies.
+Our app callback is served by Express through the Next.js proxy. Use the public frontend URL, not the private API host or port 4000, so the callback receives the browser's cookies.
 
 Google origins contain scheme, host and optional port, without a path. Redirect URIs must match exactly. Production uses HTTPS; Google permits HTTP for localhost. [Google OAuth client settings](https://support.google.com/cloud/answer/15549257)
 
@@ -59,14 +59,15 @@ Supabase must allow the app's `redirectTo` URL. Use explicit production callback
 ```toml
 [auth.external.google]
 enabled = true
-client_id = "YOUR_CLIENT_ID.apps.googleusercontent.com"
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
 skip_nonce_check = false
 ```
 
-Provide this secret through the environment used to start the Supabase CLI, for example in the ignored root `.env`:
+Provide both credentials through the environment used to start the Supabase CLI, for example in the ignored root `.env`. `.env.example` includes placeholders:
 
 ```dotenv
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID="YOUR_CLIENT_ID.apps.googleusercontent.com"
 SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
 ```
 
@@ -94,18 +95,18 @@ supabase stop
 supabase start
 ```
 
-Do not reset the database to enable Google login. These snippets are instructions; this documentation change does not apply them or restart services.
+Do not reset the database to enable Google login. These snippets match the implemented configuration. Restarting the local stack applies them; Google Console settings are configured separately.
 
-## Application work still missing
+## Implemented application work
 
 - [ ] Add a Continue with Google button to `src/components/auth/auth-form.tsx`.
-- [ ] Add a Google start endpoint, proposed as `POST /api/auth/google`, in the Express auth router/controller. Return the provider URL for a full browser redirect and preserve the PKCE verifier cookie.
+- [ ] Add a Google start endpoint, `POST /api/auth/google`, in the Express auth router/controller. Return the provider URL for a full browser redirect and preserve the PKCE verifier cookie.
 - [ ] Add `GET /api/auth/google/callback` to exchange the code with the existing cookie-aware Supabase client. Handle cancellation, missing/expired codes and exchange errors.
 - [ ] Register explicit Google routes before the generic `POST /api/auth/:action` route.
 - [ ] Construct redirects from trusted `APP_ORIGIN`; redirect successful logins to `/dashboard`. Do not accept arbitrary redirect destinations.
 - [ ] Require an existing admin-created Prisma profile matching the verified Auth UUID. Reject an unprovisioned Google user and clear its app session.
-- [ ] Apply that profile requirement in protected-request middleware, not only the OAuth callback. The current `requireAuthUser` verifies Auth but does not require a Prisma profile.
-- [ ] Review password login's `upsertFromAuth`: it currently creates missing profiles after authentication. Keep the access policy consistent so login cannot silently provision an unapproved account.
+- [ ] Apply that profile requirement in protected-request middleware, not only the OAuth callback. The current `requireAuthUser` requires a matching Prisma profile.
+- [ ] Password login requires an existing profile and clears rejected sessions; login does not provision accounts.
 - [ ] Keep `super_admin` and company permissions in database assignments. Google metadata must not grant roles.
 - [ ] Add loading/error behavior for the Google button and readable callback failures. OAuth codes and tokens must not enter Redux state or logs.
 - [ ] Document the start/callback endpoints in Swagger and add automated callback/access tests.
@@ -137,6 +138,7 @@ The existing origin check covers POST initiation. The GET callback must remain r
 | Same user signs in with the app password afterward | Login still works |
 | Provisioned user without company/roles | Can log in; cannot use super-admin operations |
 | Unknown Google email | No application access and no automatic approved profile |
+| Unknown account rejected because signup is disabled | Login shows Account not registered with instructions to contact the administrator or choose a registered account; handles provider query and fragment errors |
 | Google login canceled or callback code missing/expired | Clear failure and return to login |
 | Browser session refreshed or logged out | Cookies refresh/clear correctly through the proxy |
 | Ordinary user calls `POST /api/users` | 403 while authenticated |
@@ -154,4 +156,4 @@ The existing origin check covers POST initiation. The GET callback must remain r
 | PKCE exchange fails or returns to login | Start/callback use the same browser/frontend host and verifier/session cookies survive the proxy |
 | Password login says invalid credentials | Exact account email and app password; Gmail password is not the app password |
 
-Keep this document updated when the missing routes and provider configuration are implemented. Completing Google Console settings alone does not make Google login available in the app.
+Keep this document updated after live Google consent testing and production deployment. Automated tests cover PKCE initiation, callback success/failures, profile rejection and cookies; real Google consent remains a manual verification step.

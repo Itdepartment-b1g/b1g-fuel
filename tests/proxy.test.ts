@@ -3,6 +3,13 @@ import { test } from "node:test";
 import { NextRequest } from "next/server";
 import { proxy } from "../src/proxy";
 
+test("dashboard rejects unprovisioned accounts and forwards cleared cookies", async (context) => {
+  context.mock.method(globalThis, "fetch", async () => new Response(null, { status: 403, headers: { "Set-Cookie": "session=; Path=/; Max-Age=0" } }));
+  const response = await proxy(new NextRequest("http://localhost:3000/dashboard"));
+  assert.equal(response.headers.get("location"), "http://localhost:3000/login?auth_error=account_not_provisioned");
+  assert.match(response.headers.get("set-cookie")!, /Max-Age=0/);
+});
+
 test("dashboard rejects missing sessions and forwards cleared cookies", async (context) => {
   context.mock.method(globalThis, "fetch", async () => new Response(null, { status: 401, headers: { "Set-Cookie": "session=; Path=/; Max-Age=0" } }));
   const response = await proxy(new NextRequest("http://localhost:3000/dashboard"));
