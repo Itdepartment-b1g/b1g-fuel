@@ -14,6 +14,7 @@ import { createUser, fetchUsers, fetchUserOptions, resetUsers } from "../src/lib
 import type { UserSummary } from "../src/lib/users";
 import { configureStore, type Middleware } from "@reduxjs/toolkit";
 import { usersReducer } from "../src/lib/store/users-slice";
+import { authReducer } from "../src/lib/store/auth-slice";
 
 const company = "11111111-1111-4111-8111-111111111111";
 const role = "22222222-2222-4222-8222-222222222222";
@@ -192,7 +193,7 @@ test("Redux handles API errors, stale reads and resets", async (t) => {
 test("Redux creation keeps passwords out of actions/state, prevents parallel creation and invalidates old reads", async (t) => {
   const actions: unknown[] = [];
   const recorder: Middleware = () => (next) => (action) => { actions.push(action); return next(action); };
-  const store = configureStore({ reducer: { users: usersReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
+  const store = configureStore({ reducer: { users: usersReducer, auth: authReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
   let resolve!: (response: Response) => void;
   const fetch = t.mock.method(globalThis, "fetch", async () => new Promise<Response>((done) => { resolve = done; }));
   store.dispatch(fetchUsers.pending("old", undefined));
