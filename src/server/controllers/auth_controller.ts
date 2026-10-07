@@ -1,8 +1,8 @@
 import { createAuthClient } from "@/server/auth/supabase";
 import { clearAuthSession } from "@/server/auth/clear-session";
 import { authService } from "@/server/services/auth_service";
-import { UserError } from "@/server/utils/errors";
-import { handleController } from "./error_handler";
+import { UserError, handleController } from "@/server/utils/errors";
+
 
 export const getUserSession = handleController(async (_req, res) => { res.json(await authService.getUserSession(res.locals.user, res.locals.profile)); });
 export const loginUser = handleController(async (req, res) => {

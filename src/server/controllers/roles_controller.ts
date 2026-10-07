@@ -4,8 +4,8 @@ import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import { rateLimit } from "express-rate-limit";
 import { roleService } from "@/server/services/roles_service";
 import { parsePagination } from "@/server/utils/pagination";
-import { RoleError } from "@/server/utils/errors";
-import { handleController } from "./error_handler";
+import { RoleError, handleController } from "@/server/utils/errors";
+
 
 export const roleMutationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

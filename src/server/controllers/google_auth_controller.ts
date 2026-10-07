@@ -6,8 +6,8 @@ import {
   createGoogleService,
   type GoogleAuth,
 } from "@/server/services/google_auth_service";
-import { UserError } from "@/server/utils/errors";
-import { handleController } from "./error_handler";
+import { UserError, handleController } from "@/server/utils/errors";
+
 
 type Dependencies = {
   authClient: (

@@ -30,7 +30,7 @@ Pure server helpers belong in `src/server/utils`. For example, `buildUserFilter`
 
 Services receive validated values and dependencies, return data, or raise safe `ApplicationError` subclasses (`UserError`, `RoleError`). They never accept Express request/response objects, write response bodies, or redirect the browser. These exceptions carry response status metadata; controllers decide how to send it. Validation helpers may use the same typed errors for consistent responses.
 
-`handleController` in `src/server/controllers/error_handler.ts` sends known application/validation errors as `{ error }`, translates configured persistence error codes and forwards unexpected errors to the Express error boundary. Database-error mappings are controller-owned. The user service completes Auth cleanup before rethrowing a persistence failure to the controller.
+`handleController` in `src/server/utils/errors.ts` sends known application/validation errors as `{ error }`, translates configured persistence error codes and forwards unexpected errors to the Express error boundary. Database-error mappings are controller-owned. The user service completes Auth cleanup before rethrowing a persistence failure to the controller.
 
 Authentication middleware delegates access conditions to `authService` and rejects disallowed requests before resource controllers. Middleware still owns the HTTP/session-cookie response for that rejection.
 

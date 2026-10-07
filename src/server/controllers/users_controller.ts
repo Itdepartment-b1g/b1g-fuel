@@ -13,8 +13,8 @@ import type { RequestHandler } from "express";
 import { rateLimit } from "express-rate-limit";
 import { userService } from "@/server/services/users_service";
 import { parsePagination } from "@/server/utils/pagination";
-import { UserError } from "@/server/utils/errors";
-import { handleController } from "./error_handler";
+import { UserError, handleController } from "@/server/utils/errors";
+
 
 export const createUserLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
