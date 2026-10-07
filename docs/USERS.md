@@ -1,0 +1,17 @@
+# User management API and Redux
+
+Express exposes `GET /api/users`, `GET /api/users/options` and `POST /api/users`. All require a verified session and the global `super_admin` assignment from Postgres. Responses use private, no-store caching. Creation requires the application's Origin and is rate limited.
+
+List query parameters: `page` (default 1), `page_size` (default 10; allowed values 10, 20, 50, 100), `search` (case-insensitive name or email search). Response: `{ users, total, page, page_size }`; every user includes the required `name`. Options return `{ companies, roles }`; roles have company scope only.
+
+Creation requires `{ name, email, password }`; `company_id` and `role_ids` are optional. A name must contain 1–250 characters. Omit both assignment fields to create an account without a company or roles. Providing a company alone creates a membership without roles. `role_ids` can be omitted or empty; nonempty roles require `company_id` and must be distinct company-scoped roles (maximum 50). Omit unused fields rather than sending null or an empty company ID. The backend trims the name, normalizes email, validates supplied assignments, creates an email-confirmed Supabase account with display-name metadata, and saves the Prisma profile and optional membership with roles in a transaction. No global roles, invitation email or forced password-change flow. Configure backend-only `SUPABASE_SECRET_KEY` on the API service. The seed saves `SEED_SUPER_ADMIN_FULL_NAME` in the profile and metadata, defaulting to `Super Admin`. Login sync supplies a name for new profiles and preserves the names of existing profiles.
+
+Auth and Postgres cannot share a transaction. Failed persistence triggers deletion of only the newly created Auth account. Failed cleanup logs its account UUID for operator reconciliation without credentials. A process interruption between the two systems can also leave an account requiring reconciliation. Duplicate accounts return 409; existing accounts are never modified or adopted.
+
+Redux exports `fetchUsers(query)`, `fetchUserOptions()`, `createUser(input)`, `resetUsers()`, `clearCreateStatus()` and `selectUsers` from `src/lib/store/users-slice.ts`. List, options and creation have separate statuses/errors. Errors retain HTTP status for redirecting on 401 or showing access denied on 403. List/options ignore older responses and support cancellation.
+
+`CreateUserInput`, `CreateUserResponse` and `UserSummary` share the required name through the backend and Redux. Login returns the saved profile name. The session endpoint uses the database profile name when present and falls back to Auth display-name metadata for an account without a profile. Swagger documents these request and response fields.
+
+Keep form values local. `createUser` uses a manual thunk to keep passwords absent from dispatched plain actions and Redux state. Await `dispatch(createUser(input))` directly; it returns the created user or rejects with `{ status, message }`. Fetch thunks support `.unwrap()`. After successful creation, dispatch `fetchUsers(currentQuery)` to refresh the current filter/page. Creation invalidates in-flight list results. Reset users on sign-out and abort pending reads when leaving the page.
+
+No schema migration required. Configure Supabase/Postgres, apply existing migrations, seed a super-admin, and ensure companies and company roles exist for real creation. Live database/Auth integration must be verified separately. Components, `/users` page protection and navigation wiring remain for the UI implementation.

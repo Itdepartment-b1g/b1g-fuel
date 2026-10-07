@@ -11,12 +11,13 @@ async function main() {
   const secretKey = process.env.SUPABASE_SECRET_KEY;
   const email = process.env.SEED_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.SEED_SUPER_ADMIN_PASSWORD;
-  const fullName = process.env.SEED_SUPER_ADMIN_FULL_NAME?.trim();
+  const fullName = process.env.SEED_SUPER_ADMIN_FULL_NAME?.trim() || "Super Admin";
   for (const [name, value] of Object.entries({ DATABASE_URL: databaseUrl, NEXT_PUBLIC_SUPABASE_URL: supabaseUrl, SUPABASE_SECRET_KEY: secretKey, SEED_SUPER_ADMIN_EMAIL: email, SEED_SUPER_ADMIN_PASSWORD: password })) {
     if (!value || value.startsWith("replace-with-")) throw new SeedError(`Missing environment variable: ${name}`);
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email!)) throw new SeedError("SEED_SUPER_ADMIN_EMAIL must be a valid email.");
   if (password!.length < 8) throw new SeedError("SEED_SUPER_ADMIN_PASSWORD must contain at least 8 characters.");
+  if (fullName.length > 250) throw new SeedError("SEED_SUPER_ADMIN_FULL_NAME must contain at most 250 characters.");
   if (secretKey!.startsWith("sb_publishable_")) throw new SeedError("SUPABASE_SECRET_KEY must be a privileged secret key, not a publishable key.");
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl! }) });
@@ -55,7 +56,7 @@ async function main() {
         create: { name: "Super Admin", slug: "super_admin", scope: "global", is_system: true },
         update: { is_system: true, is_default_role: false },
       });
-      await tx.user.upsert({ where: { id: authId }, create: { id: authId, email }, update: { email } });
+      await tx.user.upsert({ where: { id: authId }, create: { id: authId, name: fullName, email }, update: { name: fullName, email } });
       await tx.user_role.upsert({
         where: { user_id_role_id: { user_id: authId, role_id: role.id } },
         create: { user_id: authId, role_id: role.id, scope: "global" },

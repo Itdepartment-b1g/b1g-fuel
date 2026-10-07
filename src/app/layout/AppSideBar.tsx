@@ -6,7 +6,7 @@ import Image from "next/image";
 import localFont from "next/font/local";
 import { usePathname } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronRight, LogOut, X } from "lucide-react";
+import { ChevronRight, LogOut, X, FlameIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { APP_PATHS } from "@/lib/auth/dashboard";
@@ -93,12 +93,12 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
       aria-label="B1G Fuel home"
       className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-[#0F52BA] lg:flex">
-        <img src="/butane-logo1.png" alt="B1G Fuel logo" width={50} height={35} className="size-8" />
+      <span className="hidden size-11 shrink-0 items-center justify-center rounded-xl bg-[#02066F] lg:flex">
+       <FlameIcon className="size-6 text-white" aria-hidden="true" />
       </span>
       <span className="min-w-0 ">
-        <span className={cn(designer.className, "block truncate text-xl font-bold tracking-tight text-black")}>B1G <span className="text-[#0F52BA]">Fuel</span></span>
-        <span className="block truncate text-[12px] text-black font-bold" title={format_role_label(role ?? user?.role)}>
+        <span className={cn(designer.className, "block truncate text-xl font-bold tracking-tight text-black")}>B1G <span className="text-[#02066F]">Fuel</span></span>
+        <span className="block truncate text-[12px] text-gray-700 font-bold" title={format_role_label(role ?? user?.role)}>
           {format_role_label(role ?? user?.role)}
         </span>
       </span>
@@ -151,8 +151,8 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
         </div>
       )}
       {error && <p role="alert" className="mb-2 text-sm text-destructive">{error}</p>}
-      <Button type="button" className="w-full justify-center bg-[#0F52BA] text-white hover:bg-[#0F52BA]/90" onClick={signOut} disabled={loading} aria-busy={loading}>
-        <LogOut aria-hidden="true" className="size-4 text-white-500" />
+      <Button type="button" className="w-full justify-center font-medium bg-white border border-gray-300 text-gray-700 hover:bg-red-700 hover:text-white" onClick={signOut} disabled={loading} aria-busy={loading}>
+        <LogOut aria-hidden="true" className="size-4" />
         {loading ? "Logging out..." : "Logout"}
       </Button>
     </div>

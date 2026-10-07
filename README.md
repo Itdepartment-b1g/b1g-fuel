@@ -70,6 +70,7 @@ The reference resource has been removed. If you already applied the initial migr
 - [Architecture and CRUD playbook](docs/ARCHITECTURE.md)
 - [Authentication and access control](docs/SECURITY.md)
 - [Users, roles, and company assignments](docs/DATA_MODEL.md)
+- [Google login setup and production checklist](docs/GOOGLE_AUTH.md)
 
 Root-level guide links point to the implemented documentation. Express replaces the API-route layer from those references at your request. `server-only` is intentionally absent: it is a Next.js bundler marker that cannot run in standalone Express. ESLint prohibits frontend components and Redux slices from importing server or generated database code.
 

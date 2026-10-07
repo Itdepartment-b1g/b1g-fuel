@@ -2,6 +2,8 @@ import express, { type ErrorRequestHandler } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { authRouter } from "@/server/routes/auth";
+import { usersRouter } from "@/server/routes/users";
+import { PaginationError } from "@/server/utils/pagination";
 import { openapi } from "@/lib/openapi";
 
 export function createApp() {
@@ -20,8 +22,10 @@ export function createApp() {
   app.get("/api/health", (_req, res) => res.json({ status: "ok", service: "b1g-fuel-api" }));
   app.get("/api/openapi", (_req, res) => res.json(openapi));
   app.use("/api/auth", authRouter);
+  app.use("/api/users", usersRouter);
   app.use((_req, res) => res.status(404).json({ error: "Endpoint not found." }));
   const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
+    if (error instanceof PaginationError) { res.status(error.status).json({ error: error.message }); return; }
     if (error?.type === "entity.parse.failed") { res.status(400).json({ error: "Request body must be valid JSON." }); return; }
     if (error?.type === "entity.too.large") { res.status(413).json({ error: "Request body is too large." }); return; }
     console.error("API request failed:", error);
