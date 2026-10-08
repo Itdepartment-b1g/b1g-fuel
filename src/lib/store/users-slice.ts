@@ -11,7 +11,7 @@ import type {
   UserOptions,
   UserSummary,
   UsersPage,
-} from "@/lib/users";
+} from "@/server/schema/users_schema";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { USER_ADDITIONAL_FILTERS, USER_FILTER_FIELDS, USER_STATUS_OPTIONS, type UserFilterOptions, type UserFilters } from "@/lib/users-filters";
 

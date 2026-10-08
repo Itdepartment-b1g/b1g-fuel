@@ -1,8 +1,3 @@
-'use client'
-export default function CompaniesPage() {
-  return (
-    <div>
+import CompaniesList from "@/components/companies/list";
 
-    </div>
-  )
-}
+export default function CompaniesPage() { return <CompaniesList />; }

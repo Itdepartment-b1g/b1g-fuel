@@ -74,7 +74,7 @@ The badge counts each active condition, one nondefault date preset, one nondefau
 - `GET /api/users?filters=...` accepts JSON-encoded state; the server validates it and combines it with search before pagination/counting. The Users example allows at most 50 conditions and 12,000 JSON characters. Swagger documents the format.
 - Filter choices reload after user creation or refresh. Filter state survives closing the panel and switching views; a full page reload returns to defaults.
 
-`validateUserFilter` lives directly in `src/server/controllers/users_controller.ts`. `buildUserFilter` in `src/server/utils/user_filter.ts` translates validated filters into a Prisma query without database calls. The user service applies that query through the repository. `src/lib/store/users-slice.ts` handles filter-option loading and serializes filters into GET requests. Neither component nor Redux imports backend/database code.
+`validate_user_filter` lives directly in `src/server/controllers/users_controller.ts`. `buildUserFilter` in `src/server/utils/user_filter.ts` translates validated filters into parameterized Drizzle SQL without database calls. The user service applies that expression through the repository. `src/lib/store/users-slice.ts` handles filter-option loading and serializes filters into GET requests. Neither component nor Redux imports backend/database code.
 
 ## Keyboard and layering
 

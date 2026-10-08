@@ -1,25 +1,25 @@
-import type { CreateUserInput } from "@/lib/users";
+import type { CreateUserInput } from "@/server/schema/users_schema";
 import type { UserFilters, UserFilterOptions } from "@/lib/users-filters";
 import { USER_FILTER_FIELDS, USER_STATUS_OPTIONS, USER_ADDITIONAL_FILTERS } from "@/lib/users-filters";
 import { createAdminClient } from "@/server/auth/admin";
-import { usersRepository } from "@/server/repositories/users_repository";
+import * as usersRepository from "@/server/repositories/users_repository";
 import type { Pagination } from "@/server/utils/pagination";
 import { UserError } from "@/server/utils/errors";
-import { buildUserFilter } from "@/server/utils/user_filter";
+import { and } from "drizzle-orm";
+import { buildUserFilter, buildUserSearch } from "@/server/utils/user_filter";
 
-export function createUserService(repository = usersRepository, admin = () => createAdminClient().auth.admin) {
+export function create_user_service(repository = usersRepository, admin = () => createAdminClient().auth.admin) {
   return {
-    listUser(pagination: Pagination, search: string, filters?: UserFilters) {
-      const searchWhere = search ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { email: { contains: search, mode: "insensitive" as const } }] } : {};
-      return repository.listUser(pagination, { AND: [searchWhere, buildUserFilter(filters)] });
+    list_user(pagination: Pagination, search: string, filters?: UserFilters) {
+      return repository.list_user(pagination, and(buildUserSearch(search), buildUserFilter(filters)));
     },
-    getUserOption() { return repository.getUserOption(); },
-    async getUserFilterOption(): Promise<UserFilterOptions> {
-      const { names, emails, companies, roles, total, assigned, members } = await repository.getUserFilterData();
+    get_user_option() { return repository.get_user_option(); },
+    async get_user_filter_option(): Promise<UserFilterOptions> {
+      const { names, emails, companies, roles, total, assigned, members } = await repository.get_user_filter_data();
       const values = {
-        name: names.map(row => ({ value: row.name, label: row.name, count: row._count._all })),
-        email: emails.flatMap(row => row.email === null ? [] : [{ value: row.email, label: row.email, count: row._count._all }]),
-        company: companies.map(row => ({ value: row.id, label: row.name, count: row._count.user_companies })),
+        name: names.map(row => ({ value: row.name, label: row.name, count: row.count })),
+        email: emails.flatMap(row => row.email === null ? [] : [{ value: row.email, label: row.email, count: row.count }]),
+        company: companies.map(row => ({ value: row.id, label: row.name, count: row.count })),
         role: roles.map(row => ({ value: row.id, label: `${row.name} (${row.scope})` })),
       };
       return {
@@ -28,21 +28,21 @@ export function createUserService(repository = usersRepository, admin = () => cr
         additionalFilters: USER_ADDITIONAL_FILTERS.map(filter => ({ ...filter, options: filter.options.map(option => ({ ...option, count: option.value === "all" ? total : option.value === "assigned" ? members : total - members })) })),
       };
     },
-    async createUser(input: CreateUserInput) {
+    async create_user(input: CreateUserInput) {
       const roleIds = input.role_ids ?? [];
-      if (roleIds.length && input.company_id === undefined) throw new UserError(400, "Select a company when assigning company roles.");
-      const assignments = await repository.getUserAssignment(input);
-      if (assignments.existingUser) throw new UserError(409, "An account with that email already exists.");
-      if (input.company_id !== undefined && (!assignments.company || assignments.roleCount !== roleIds.length)) throw new UserError(400, "Company or company roles are no longer available.");
+      if (roleIds.length && input.company_id === undefined) throw new UserError("company_required", "Select a company when assigning company roles.");
+      const assignments = await repository.assignable_user(input);
+      if (assignments.existingUser) throw new UserError("email_exists", "An account with that email already exists.");
+      if (input.company_id !== undefined && (!assignments.company || assignments.roleCount !== roleIds.length)) throw new UserError("assignments_unavailable", "Company or company roles are no longer available.");
       const client = admin();
       const { data, error } = await client.createUser({ email: input.email, password: input.password, email_confirm: true, user_metadata: { full_name: input.name } });
       if (error) {
-        if (["email_exists", "user_already_exists"].includes(error.code ?? "")) throw new UserError(409, "An account with that email already exists.");
-        if (["weak_password", "validation_failed"].includes(error.code ?? "")) throw new UserError(400, "The account details do not meet the authentication requirements.");
-        throw new UserError(502, "Unable to create the authentication account.");
+        if (["email_exists", "user_already_exists"].includes(error.code ?? "")) throw new UserError("email_exists", "An account with that email already exists.");
+        if (["weak_password", "validation_failed"].includes(error.code ?? "")) throw new UserError("invalid_account_details", "The account details do not meet the authentication requirements.");
+        throw new UserError("auth_creation_failed", "Unable to create the authentication account.");
       }
-      if (!data.user) throw new UserError(502, "Unable to create the authentication account.");
-      try { return await repository.createUser(data.user.id, input); }
+      if (!data.user) throw new UserError("auth_creation_failed", "Unable to create the authentication account.");
+      try { return await repository.create_user(data.user.id, input); }
       catch (error) {
         try { const cleanup = await client.deleteUser(data.user.id); if (cleanup.error) console.error("User creation cleanup failed", { user_id: data.user.id }); }
         catch { console.error("User creation cleanup failed", { user_id: data.user.id }); }
@@ -52,4 +52,4 @@ export function createUserService(repository = usersRepository, admin = () => cr
     },
   };
 }
-export const userService = createUserService();
+export const userService = create_user_service();

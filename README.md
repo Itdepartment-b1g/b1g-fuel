@@ -1,6 +1,6 @@
 # B1G Fuel
 
-Next.js App Router frontend with a separate Express 5 API on Node.js. TypeScript, Redux Toolkit, Tailwind CSS, shadcn/ui components, Lucide React, Prisma 7, and Supabase Auth/Postgres are configured.
+Next.js App Router frontend with a separate Express 5 API on Node.js. TypeScript, Redux Toolkit, Tailwind CSS, shadcn/ui components, Lucide React, Drizzle ORM for API queries, Prisma 7 for migrations/seeding, and Supabase Auth/Postgres are configured.
 
 ## Setup
 
@@ -55,6 +55,7 @@ Open `/login` and enter the seed credentials. Successful login redirects to `/da
 | `npm run lint` | Check source and layer boundaries |
 | `npm run typecheck` | Generate Prisma and check frontend/backend TypeScript |
 | `npm test` | Run API boundary and authorization tests |
+| `npm run test:db` | Verify Drizzle repositories against the configured database with temporary fixtures |
 | `npm run db:migrate -- --name add_resource` | Create a migration during development |
 | `npm run db:deploy` | Apply committed migrations |
 | `npm run db:seed` | Generate Prisma and create/reuse the seeded super-admin |
@@ -69,10 +70,12 @@ The reference resource has been removed. If you already applied the initial migr
 - [Folder structure](docs/FOLDER_STRUCTURE.md)
 - [Architecture and CRUD playbook](docs/ARCHITECTURE.md)
 - [Backend layers and function naming](docs/CODE_CONVENTIONS.md)
+- [Drizzle repository queries and Prisma migrations](docs/DRIZZLE.md)
 - [Authentication and access control](docs/SECURITY.md)
 - [Authentication Redux requests](docs/AUTH_REDUX.md)
 - [Users, roles, and company assignments](docs/DATA_MODEL.md)
-- [Roles API and Redux](docs/ROLES.md)
+- [Roles UI, API and Redux](docs/ROLES.md)
+- [Companies UI, API and Redux](docs/COMPANIES.md)
 - [Google login setup and production checklist](docs/GOOGLE_AUTH.md)
 - [Theme colors and component styling](docs/THEME.md)
 - [Reusable Quick Filter and Users integration](docs/QUICK_FILTER.md)

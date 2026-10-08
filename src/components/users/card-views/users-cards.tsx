@@ -1,4 +1,4 @@
-import type { UserSummary } from "@/lib/users";
+import type { UserSummary } from "@/server/schema/users_schema";
 import { UserCard } from "./user-card";
 
 export function UsersCards({ users }: { users: UserSummary[] }) {

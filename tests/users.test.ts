@@ -1,19 +1,21 @@
+import { mockDatabase } from "./database-fixture";
+import { companiesReducer } from "../src/lib/store/companies-slice";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 import type { Request, Response as ExpressResponse } from "express";
-import { createUserService } from "../src/server/services/users_service";
-import { validateCreateUser } from "../src/server/controllers/users_controller";
+import { create_user_service, userService } from "../src/server/services/users_service";
+import { validate_create_user } from "../src/server/controllers/users_controller";
 import { UserError } from "../src/server/utils/errors";
-import { usersRepository } from "../src/server/repositories/users_repository";
+import * as usersRepository from "../src/server/repositories/users_repository";
 import { authRepository } from "../src/server/repositories/auth_repository";
 import { requireSuperAdmin } from "../src/server/auth/authorization";
-import { listUser as listUserController } from "../src/server/controllers/users_controller";
-import { getUserSession } from "../src/server/controllers/auth_controller";
+import { list_user as listUserController } from "../src/server/controllers/users_controller";
+import { get_user_session } from "../src/server/controllers/auth_controller";
 import { makeStore } from "../src/lib/store/store";
 import { createUser, listUser, getUserOption, resetUsers } from "../src/lib/store/users-slice";
-import type { UserSummary } from "../src/lib/users";
+import type { UserSummary } from "../src/server/schema/users_schema";
 import { configureStore, type Middleware } from "@reduxjs/toolkit";
 import { usersReducer } from "../src/lib/store/users-slice";
 import { authReducer } from "../src/lib/store/auth-slice";
@@ -28,14 +30,14 @@ const authUser = { id } as User;
 const page = { users: [user], total: 1, page: 1, page_size: 10 };
 
 test("session uses the database name and falls back to Auth metadata for a missing profile", async (t) => {
-  t.mock.method(authRepository, "listUserGlobalRole", async () => [{ role: { slug: "super_admin" } }]);
-  const profile = t.mock.method(authRepository, "getUserProfile", async (): Promise<{ id: string; name: string; email: string | null } | null> => ({ id, name: "Database Name", email: input.email }));
+  t.mock.method(authRepository, "list_user_global_role", async () => [{ role: { slug: "super_admin" } }]);
+  const profile = t.mock.method(authRepository, "get_user_profile", async (): Promise<{ id: string; name: string; email: string | null } | null> => ({ id, name: "Database Name", email: input.email }));
   let result: unknown;
-  const res = { locals: { user: { id, email: input.email, user_metadata: { full_name: " Metadata Name " } } }, json(body: unknown) { result = body; } } as unknown as ExpressResponse;
-  await getUserSession({} as Request, res, (error) => { throw error; });
+  const res = { locals: { user: { id, email: input.email, user_metadata: { full_name: " Metadata Name " } } }, status() { return this; }, json(body: unknown) { result = body; } } as unknown as ExpressResponse;
+  await get_user_session({} as Request, res, (error) => { throw error; });
   assert.deepEqual(result, { user: { id, email: input.email, name: "Database Name" }, global_roles: ["super_admin"] });
   profile.mock.mockImplementation(async () => null);
-  await getUserSession({} as Request, res, (error) => { throw error; });
+  await get_user_session({} as Request, res, (error) => { throw error; });
   assert.deepEqual(result, { user: { id, email: input.email, name: "Metadata Name" }, global_roles: ["super_admin"] });
 });
 
@@ -53,51 +55,47 @@ test("Redux sends the required name on creation and retains it in creation and l
 });
 
 test("creation validates and normalizes input; rejects privilege fields and malformed assignments", () => {
-  assert.equal(validateCreateUser({ ...input, email: " USER@EXAMPLE.COM " }).email, input.email);
-  assert.equal(validateCreateUser({ ...input, name: " Test User " }).name, input.name);
+  assert.equal(validate_create_user({ ...input, email: " USER@EXAMPLE.COM " }).email, input.email);
+  assert.equal(validate_create_user({ ...input, name: " Test User " }).name, input.name);
   for (const name of [undefined, null, "", "   ", "x".repeat(251)]) {
-    assert.throws(() => validateCreateUser({ ...input, name }), (error) => error instanceof UserError && error.status === 400);
+    assert.throws(() => validate_create_user({ ...input, name }), (error) => error instanceof UserError && error.code === 'invalid_input');
   }
   for (const body of [null, [], { ...input, password: "short" }, { ...input, role_ids: [role, role] }, { ...input, role_ids: null }, { ...input, company_id: null }, { ...input, company_id: "bad" }, { ...input, global_roles: ["super_admin"] }, { ...input, id }]) {
-    assert.throws(() => validateCreateUser(body), (error) => error instanceof UserError && error.status === 400);
+    assert.throws(() => validate_create_user(body), (error) => error instanceof UserError && error.code === 'invalid_input');
   }
 });
 
 test("creation accepts omitted assignments and company-only memberships; roles require a company", async () => {
   const minimal = { name: input.name, email: input.email, password: input.password };
-  assert.deepEqual(validateCreateUser(minimal), { ...minimal, company_id: undefined, role_ids: [] });
-  assert.deepEqual(validateCreateUser({ ...minimal, role_ids: [] }).role_ids, []);
-  assert.deepEqual(validateCreateUser({ ...minimal, company_id: company }).role_ids, []);
-  await assert.rejects(createUserService().createUser(validateCreateUser({ ...minimal, role_ids: [role] })), (error) => error instanceof UserError && error.status === 400);
+  assert.deepEqual(validate_create_user(minimal), { ...minimal, company_id: undefined, role_ids: [] });
+  assert.deepEqual(validate_create_user({ ...minimal, role_ids: [] }).role_ids, []);
+  assert.deepEqual(validate_create_user({ ...minimal, company_id: company }).role_ids, []);
+  await assert.rejects(create_user_service().create_user(validate_create_user({ ...minimal, role_ids: [role] })), (error) => error instanceof UserError && error.code === 'company_required');
 });
 
 test("repository omits optional lookups and membership writes, but persists company-only memberships", async (t) => {
-  const holder = globalThis as typeof globalThis & { prisma?: unknown };
-  const previous = holder.prisma;
-  t.after(() => { if (previous === undefined) delete holder.prisma; else holder.prisma = previous; });
-  const raw = { id, name: input.name, email: input.email, created_at: new Date(user.created_at), user_roles: [], user_companies: [] };
-  const create = t.mock.fn(async () => raw);
-  const companyLookup = t.mock.fn(async () => ({ id: company }));
-  const roleLookup = t.mock.fn(async () => 1);
-  const tx = { user: { create } };
-  holder.prisma = {
-    user: { findFirst: t.mock.fn(async () => null) },
-    company: { findUnique: companyLookup }, roles: { count: roleLookup },
-    $transaction: async (run: (transaction: typeof tx) => Promise<unknown>) => run(tx),
-  };
+  let membershipCreated = false;
+  const membershipId = "44444444-4444-4444-8444-444444444444";
+  const queries = mockDatabase(t, ({ sql }) => {
+    if (sql.startsWith('insert into "user"')) return [[id, input.name, input.email, user.created_at]];
+    if (sql.startsWith('insert into "user_company"')) { membershipCreated = true; return [[membershipId]]; }
+    if (sql.includes('from "user_company" inner join')) return membershipCreated ? [[membershipId, id, company, "Company"]] : [];
+    if (sql.startsWith('select "id" from "company"')) return [[company]];
+    return [];
+  });
   const minimal = { name: input.name, email: input.email, password: input.password };
-  assert.deepEqual(await usersRepository.getUserAssignment(minimal), { existingUser: null, company: null, roleCount: 0 });
-  assert.equal(companyLookup.mock.callCount(), 0); assert.equal(roleLookup.mock.callCount(), 0);
-  const created = await usersRepository.createUser(id, minimal);
+  assert.deepEqual(await usersRepository.assignable_user(minimal), { existingUser: null, company: null, roleCount: 0 });
+  assert.equal(queries.some(query => query.sql.includes('from "company"')), false);
+  assert.equal(queries.some(query => query.sql.includes('from "roles"')), false);
+  const created = await usersRepository.create_user(id, minimal);
   assert.deepEqual(created.companies, []);
-  const noMembership = create.mock.calls[0].arguments as unknown as [{ data: Record<string, unknown> }];
-  assert.equal("user_companies" in noMembership[0].data, false);
-  assert.deepEqual(await usersRepository.getUserAssignment({ ...minimal, company_id: company }), { existingUser: null, company: { id: company }, roleCount: 0 });
-  assert.equal(companyLookup.mock.callCount(), 1); assert.equal(roleLookup.mock.callCount(), 0);
-  await usersRepository.createUser(id, { ...minimal, company_id: company });
-  const membership = create.mock.calls[1].arguments as unknown as [{ data: { user_companies: { create: { company_id: string; roles: { create: unknown[] } } } } }];
-  assert.equal(membership[0].data.user_companies.create.company_id, company);
-  assert.deepEqual(membership[0].data.user_companies.create.roles.create, []);
+  assert.equal(queries.some(query => query.sql.startsWith('insert into "user_company"')), false);
+  assert.deepEqual(await usersRepository.assignable_user({ ...minimal, company_id: company }), { existingUser: null, company: { id: company }, roleCount: 0 });
+  assert.equal(queries.filter(query => query.sql.startsWith('select "id" from "company"')).length, 1);
+  const member = await usersRepository.create_user(id, { ...minimal, company_id: company });
+  assert.deepEqual(member.companies, [{ id: company, name: "Company", roles: [] }]);
+  assert.equal(queries.some(query => query.sql.startsWith('insert into "user_company_role"')), false);
+  assert.equal(queries.filter(query => query.sql === "commit").length, 2);
 });
 
 test("Redux creates a user without company or role fields", async (t) => {
@@ -112,7 +110,7 @@ test("Redux creates a user without company or role fields", async (t) => {
 });
 
 test("global role check denies ordinary users and permits super_admin", async (t) => {
-  const lookup = t.mock.method(authRepository, "listUserGlobalRole", async (): Promise<{ role: { slug: string } }[]> => []);
+  const lookup = t.mock.method(authRepository, "list_user_global_role", async (): Promise<{ role: { slug: string } }[]> => []);
   let status = 0; let allowed = false;
   const res = { locals: { user: { id } }, status(code: number) { status = code; return this; }, json() {} } as unknown as ExpressResponse;
   await requireSuperAdmin({} as Request, res, () => { allowed = true; });
@@ -123,46 +121,48 @@ test("global role check denies ordinary users and permits super_admin", async (t
 });
 
 test("creation validates assignments before Auth; saves matching UUID and cleans up only newly created account on failure", async (t) => {
-  const validate = t.mock.method(usersRepository, "getUserAssignment", async (): Promise<Awaited<ReturnType<typeof usersRepository.getUserAssignment>>> => ({ existingUser: null, company: null, roleCount: 0 }));
-  const save = t.mock.method(usersRepository, "createUser", async () => user);
+  const repository = { ...usersRepository };
+  const validate = t.mock.method(repository, "assignable_user", async (): Promise<Awaited<ReturnType<typeof usersRepository.assignable_user>>> => ({ existingUser: null, company: null, roleCount: 0 }));
+  const save = t.mock.method(repository, "create_user", async () => user);
   const admin = createClient("http://localhost:56321", "test-key").auth.admin;
   const create = t.mock.method(admin, "createUser", async () => ({ data: { user: authUser }, error: null }));
   const remove = t.mock.method(admin, "deleteUser", async () => ({ data: { user: authUser }, error: null }));
-  const service = createUserService(usersRepository, () => admin);
-  await assert.rejects(service.createUser(input), (error) => error instanceof UserError && error.status === 400);
+  const service = create_user_service(repository, () => admin);
+  await assert.rejects(service.create_user(input), (error) => error instanceof UserError && error.code === 'assignments_unavailable');
   assert.equal(create.mock.callCount(), 0);
   validate.mock.mockImplementation(async () => ({ existingUser: { id }, company: { id: company }, roleCount: 1 }));
-  await assert.rejects(service.createUser(input), (error) => error instanceof UserError && error.status === 409);
+  await assert.rejects(service.create_user(input), (error) => error instanceof UserError && error.code === "email_exists");
   assert.equal(create.mock.callCount(), 0);
   validate.mock.mockImplementation(async () => ({ existingUser: null, company: { id: company }, roleCount: 1 }));
-  assert.deepEqual(await service.createUser(input), user);
+  assert.deepEqual(await service.create_user(input), user);
   assert.equal(save.mock.calls[0].arguments[0], id);
   assert.equal(save.mock.calls[0].arguments[1]?.name, input.name);
   assert.deepEqual(create.mock.calls[0].arguments[0]?.user_metadata, { full_name: input.name });
   assert.equal(remove.mock.callCount(), 0);
-  save.mock.mockImplementation(async () => { throw { code: "P2002" }; });
-  await assert.rejects(service.createUser(input), (error) => Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002"));
+  save.mock.mockImplementation(async () => { throw { code: "23505" }; });
+  await assert.rejects(service.create_user(input), (error) => Boolean(error && typeof error === "object" && "code" in error && error.code === "23505"));
   assert.equal(remove.mock.calls[0].arguments[0], id);
   save.mock.mockImplementation(async () => { throw new Error("database failure"); });
   remove.mock.mockImplementation(async () => { throw new Error("cleanup failed"); });
   const log = t.mock.method(console, "error", () => {});
-  await assert.rejects(service.createUser(input), /database failure/);
+  await assert.rejects(service.create_user(input), /database failure/);
   assert.equal(log.mock.callCount(), 1);
   assert.equal(JSON.stringify(log.mock.calls).includes(input.password), false);
 });
 
 test("Auth duplicates do not write profiles or delete existing accounts", async (t) => {
-  t.mock.method(usersRepository, "getUserAssignment", async () => ({ existingUser: null, company: { id: company }, roleCount: 1 }));
-  const save = t.mock.method(usersRepository, "createUser", async () => user);
+  const repository = { ...usersRepository };
+  t.mock.method(repository, "assignable_user", async () => ({ existingUser: null, company: { id: company }, roleCount: 1 }));
+  const save = t.mock.method(repository, "create_user", async () => user);
   const admin = createClient("http://localhost:56321", "test-key").auth.admin;
   t.mock.method(admin, "createUser", async () => ({ data: { user: null }, error: { code: "email_exists" } }));
   const remove = t.mock.method(admin, "deleteUser", async () => ({ data: { user: authUser }, error: null }));
-  await assert.rejects(createUserService(usersRepository, () => admin).createUser(input), (error) => error instanceof UserError && error.status === 409);
+  await assert.rejects(create_user_service(repository, () => admin).create_user(input), (error) => error instanceof UserError && error.code === "email_exists");
   assert.equal(save.mock.callCount(), 0); assert.equal(remove.mock.callCount(), 0);
 });
 
 test("listing validates pagination before repository access", async (t) => {
-  const list = t.mock.method(usersRepository, "listUser", async () => page);
+  const list = t.mock.method(userService, "list_user", async () => page);
   let status = 200; let result: unknown;
   const res = { status(code: number) { status = code; return this; }, json(body: unknown) { result = body; } } as unknown as ExpressResponse;
   for (const query of [{ page: "0" }, { page_size: "101" }, { page: ["1", "2"] }, { search: {} }]) {
@@ -171,7 +171,10 @@ test("listing validates pagination before repository access", async (t) => {
   }
   assert.equal(list.mock.callCount(), 0);
   await listUserController({ query: { page: "2", page_size: "10", search: " user " } } as unknown as Request, res, (error) => { throw error; });
-  assert.deepEqual(list.mock.calls[0].arguments, [{ page: 2, page_size: 10, skip: 10, take: 10 }, { AND: [{ OR: [{ name: { contains: "user", mode: "insensitive" } }, { email: { contains: "user", mode: "insensitive" } }] }, {}] }]); assert.deepEqual(result, page);
+  const args = list.mock.calls[0].arguments as unknown as [unknown, string];
+  assert.deepEqual(args[0], { page: 2, page_size: 10, skip: 10, take: 10 });
+  assert.equal(args[1], "user");
+  assert.deepEqual(result, page);
 });
 
 test("Redux handles API errors, stale reads and resets", async (t) => {
@@ -196,7 +199,7 @@ test("Redux handles API errors, stale reads and resets", async (t) => {
 test("Redux creation keeps passwords out of actions/state, prevents parallel creation and invalidates old reads", async (t) => {
   const actions: unknown[] = [];
   const recorder: Middleware = () => (next) => (action) => { actions.push(action); return next(action); };
-  const store = configureStore({ reducer: { users: usersReducer, auth: authReducer, roles: rolesReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
+  const store = configureStore({ reducer: { users: usersReducer, auth: authReducer, roles: rolesReducer, companies: companiesReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
   let resolve!: (response: Response) => void;
   const fetch = t.mock.method(globalThis, "fetch", async () => new Promise<Response>((done) => { resolve = done; }));
   store.dispatch(listUser.pending("old", undefined));

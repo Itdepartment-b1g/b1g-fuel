@@ -9,8 +9,8 @@ const server = createApp().listen(port, host, () =>
 
 function shutdown() {
   server.close(async () => {
-    const { getPrisma } = await import("./prisma/client");
-    if (process.env.DATABASE_URL) await getPrisma().$disconnect();
+    const { closeDatabase } = await import("./utils/database");
+    await closeDatabase();
     process.exit(0);
   });
 }

@@ -15,7 +15,7 @@ export function createApp() {
   app.use(routesRouter);
   const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof PaginationError) {
-      res.status(error.status).json({ error: error.message });
+      res.status(400).json({ error: error.message });
       return;
     }
     if (error?.type === "entity.parse.failed") {

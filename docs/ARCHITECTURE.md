@@ -11,8 +11,8 @@ flowchart LR
   Auth --> Controller[Controllers]
   Controller --> Service[Services: business conditions]
   Service --> Repository[Repositories]
-  Repository --> Prisma[Prisma and pg adapter]
-  Prisma --> DB[(Supabase Postgres)]
+  Repository --> Drizzle[Drizzle ORM and pg pool]
+  Drizzle --> DB[(Supabase Postgres)]
 ```
 
 ## Layers
@@ -26,10 +26,12 @@ flowchart LR
 | Proxy | `next.config.ts` | Forward `/api/*` to `API_ORIGIN` |
 | API entry | `src/server/index.ts`, `app.ts` | Start Express, middleware, errors |
 | Routes | `src/server/routes/` | index.ts registers endpoints/resource routers/404; resource files apply auth and dispatch controllers |
-| Controllers | `src/server/controllers/` | Validate inputs, map results to HTTP responses |
-| Services | `src/server/services/` | Business conditions, workflows and transaction orchestration |
+| Controllers | `src/server/controllers/` | Inline validation, explicit success/error HTTP statuses and local try/catch |
+| Services | `src/server/services/` | Business conditions/reasons, workflows and transactions; no HTTP statuses |
 | Repositories | `src/server/repositories/` | Database queries; no HTTP code |
-| Database client | `src/server/prisma/client.ts` | Lazy Prisma singleton with pg adapter |
+| Database client | `src/server/utils/database.ts` | Lazy Drizzle singleton with pg pool |
+| Query mappings | `src/server/utils/database_schema.ts` | Typed mappings for the existing tables |
+| Migrations / seed | `prisma/` | Prisma schema, SQL migrations, and the seed's own Prisma client |
 | Authentication | `src/server/auth/` | Cookie adapter and verified Supabase user |
 
 Do not add Next.js API handlers for business resources. Do not import backend modules into React components or Redux. Express files cannot use Next.js `server-only`; ESLint checks the frontend boundary. Redux providers create a store per mounted application, rather than sharing a singleton across server requests.
@@ -44,9 +46,9 @@ Redux slices own resource types and HTTP requests, using `credentials: "include"
 
 ## Add a CRUD resource
 
-1. Add a snake_case Prisma model with `user_id` when the data is per-user. Run `npm run db:migrate -- --name add_resource` and generate the client.
-2. Create `src/server/repositories/{entity}_repository.ts`; scope every query by the authenticated user.
-3. Create `src/server/services/{entity}_service.ts` for conditions and workflows, then `src/server/controllers/{entity}_controller.ts` for inline validation and consistent HTTP errors. Use matching singular camelCase operation names, such as `listRole`, `createRole`, `editRole`, `updateRole` and `deleteRole`; see [code conventions](CODE_CONVENTIONS.md).
+1. Add a snake_case Prisma model with `user_id` when the data is per-user. Run `npm run db:migrate -- --name add_resource` and generate the client. Add matching Drizzle query columns to `src/server/utils/database_schema.ts`.
+2. Create `src/server/repositories/{entity}_repository.ts` with Drizzle queries; scope every per-user query by the authenticated user.
+3. Create `src/server/services/{entity}_service.ts` for conditions and workflows, then `src/server/controllers/{entity}_controller.ts` for inline validation and consistent HTTP errors. Use matching singular snake_case function names, such as `list_role`, `create_role`, `edit_role`, `update_role` and `delete_role`; see [code conventions](CODE_CONVENTIONS.md).
 4. Create `src/server/routes/{entity}.ts`, apply `requireAuthUser`, and mount it in `src/server/routes/index.ts`. `app.ts` mounts that root router after shared middleware and before the error handler.
 5. Extend paths and schemas in `src/lib/openapi.ts`.
 6. Create an entity slice and register its reducer in `store.ts`.

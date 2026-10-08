@@ -1,8 +1,3 @@
-'use client'
-export default function RolesPage() {
-  return (
-    <div>
+import RolesList from "@/components/roles/list";
 
-    </div>
-  )
-}
+export default function RolesPage() { return <RolesList />; }

@@ -1,5 +1,7 @@
 # User management API and Redux
 
+User request and response types live in `src/server/schema/users_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
+
 Express exposes `GET /api/users`, `GET /api/users/options` and `POST /api/users`. All require a verified session and the global `super_admin` assignment from Postgres. Responses use private, no-store caching. Creation requires the application's Origin and is rate limited.
 
 List query parameters: `page` (default 1), `page_size` (default 10; allowed values 10, 20, 50, 100), `search` (case-insensitive name or email search). Response: `{ users, total, page, page_size }`; every user includes the required `name`. Options return `{ companies, roles }`; roles have company scope only.
@@ -15,3 +17,5 @@ Redux exports `listUser(query)`, `getUserOption()`, `createUser(input)`, `resetU
 Keep form values local. `createUser` uses a manual thunk to keep passwords absent from dispatched plain actions and Redux state. Await `dispatch(createUser(input))` directly; it returns the created user or rejects with `{ status, message }`. Fetch thunks support `.unwrap()`. After successful creation, dispatch `listUser(currentQuery)` to refresh the current filter/page. Creation invalidates in-flight list results. Reset users on sign-out and abort pending reads when leaving the page.
 
 No schema migration required. Configure Supabase/Postgres, apply existing migrations, seed a super-admin, and ensure companies and company roles exist for real creation. Live database/Auth integration must be verified separately. The Users UI includes search, table/card views, shared pagination and a creation dialog. The dialog requires name/email/password, confirms the password and permits optional company/role assignments. Success closes the dialog and refreshes the first page; errors keep form values for retry. `/users`, `/roles` and `/companies` require the verified global `super_admin` role at the page proxy, and the users API independently enforces that role. Super-admin sidebar navigation includes all registered dashboard pages without explicit page/permission grants. Ordinary users retain grant-based navigation and the authenticated dashboard home.
+
+The Users repository exports named async functions: `list_user`, `get_user_filter_data`, `get_user_option`, `assignable_user`, and `create_user`. List snapshots and user creation retain their database transactions.

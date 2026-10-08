@@ -1,14 +1,15 @@
+import { mockDatabase } from "./database-fixture";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Request, Response as ExpressResponse } from "express";
-import { validateCreateRole, validateUpdateRole } from "../src/server/controllers/roles_controller";
+import { validate_create_role, validate_update_role } from "../src/server/controllers/roles_controller";
 import { RoleError } from "../src/server/utils/errors";
-import { roleService } from "../src/server/services/roles_service";
-import { rolesRepository } from "../src/server/repositories/roles_repository";
-import { createRole as createController, listRole as listRoleController, editRole as editRoleController, deleteRole as deleteController } from "../src/server/controllers/roles_controller";
+import { roleService, create_role_service } from "../src/server/services/roles_service";
+import * as rolesRepository from "../src/server/repositories/roles_repository";
+import { create_role as createController, list_role as listRoleController, edit_role as editRoleController, delete_role as deleteController } from "../src/server/controllers/roles_controller";
 import { makeStore } from "../src/lib/store/store";
 import { listRole, editRole, getRoleOption, createRole, updateRole, deleteRole, resetRoles } from "../src/lib/store/roles-slice";
-import type { RoleSummary } from "../src/lib/roles";
+import type { RoleSummary } from "../src/server/schema/roles_schema";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const role: RoleSummary = { id, name: "Manager", slug: "manager", scope: "company", is_system: false, is_default_role: false, created_at: "2026-10-07T00:00:00.000Z", updated_at: "2026-10-07T00:00:00.000Z", pages: ["users"], permissions: ["users.view"], assignment_count: 0 };
@@ -20,66 +21,63 @@ function response() {
 }
 
 test("role input supports defaults and rejects system fields, unknown mappings and invalid defaults", () => {
-  assert.deepEqual(validateCreateRole({ name: " Branch Manager " }), { name: "Branch Manager", slug: "branch_manager", scope: "company", is_default_role: false, pages: [], permissions: [] });
-  assert.equal(validateCreateRole({ name: "Manager", slug: " MANAGER " }).slug, "manager");
+  assert.deepEqual(validate_create_role({ name: " Branch Manager " }), { name: "Branch Manager", slug: "branch_manager", scope: "company", is_default_role: false, pages: [], permissions: [] });
+  assert.equal(validate_create_role({ name: "Manager", slug: " MANAGER " }).slug, "manager");
   for (const body of [null, [], { name: "" }, { name: "x".repeat(101) }, { name: "Manager", is_system: true }, { name: "Manager", slug: "bad slug" }, { name: "Manager", scope: "bad" }, { name: "Manager", is_default_role: "true" }, { name: "Manager", pages: ["not_registered"] }, { name: "Manager", pages: ["users", "users"] }, { name: "Manager", permissions: ["unregistered.delete"] }]) {
-    assert.throws(() => validateCreateRole(body), RoleError);
+    assert.throws(() => validate_create_role(body), RoleError);
   }
-  assert.deepEqual(validateUpdateRole({ id, pages: [], permissions: [] }), { id, pages: [], permissions: [] });
-  for (const body of [{ id }, { id, slug: "new_slug" }, { id, scope: "global" }, { id, is_system: false }, { id: "bad", name: "Manager" }]) assert.throws(() => validateUpdateRole(body), RoleError);
+  assert.deepEqual(validate_update_role({ id, pages: [], permissions: [] }), { id, pages: [], permissions: [] });
+  for (const body of [{ id }, { id, slug: "new_slug" }, { id, scope: "global" }, { id, is_system: false }, { id: "bad", name: "Manager" }]) assert.throws(() => validate_update_role(body), RoleError);
 });
 
 test("controllers validate list filters and translate conflicts without exposing database errors", async (t) => {
-  const list = t.mock.method(rolesRepository, "listRole", async () => page);
-  const find = t.mock.method(rolesRepository, "getRole", async () => role);
+  const list = t.mock.method(roleService, "list_role", async () => page);
+  const find = t.mock.method(roleService, "edit_role", async () => role);
   const { res, result } = response();
-  await listRoleController({ query: { page: "2", page_size: "20", search: " manager ", scope: "company" } } as unknown as Request, res, () => {});
+  await listRoleController({ query: { page: "2", page_size: "20", search: " manager ", scope: "company" } } as unknown as Request, res);
   assert.deepEqual(list.mock.calls[0].arguments, [{ page: 2, page_size: 20, skip: 20, take: 20 }, "manager", "company"]);
-  await editRoleController({ query: { id } } as unknown as Request, res, () => {});
+  await editRoleController({ query: { id } } as unknown as Request, res);
   assert.deepEqual(find.mock.calls[0].arguments, [id]);
   for (const query of [{ page_size: "15" }, { scope: "bad" }, { search: ["a", "b"] }]) {
-    await listRoleController({ query } as unknown as Request, res, () => {}); assert.equal(result().status, 400);
+    await listRoleController({ query } as unknown as Request, res); assert.equal(result().status, 400);
   }
-  t.mock.method(rolesRepository, "createRole", async () => { throw { code: "P2002", secret: "database details" }; });
-  await createController({ body: { name: "Manager" } } as Request, res, () => {});
+  t.mock.method(roleService, "create_role", async () => { throw { cause: { code: "23505", detail: "database details" } }; });
+  await createController({ body: { name: "Manager" } } as Request, res);
   assert.equal(result().status, 409); assert.equal(JSON.stringify(result()).includes("database details"), false);
-  t.mock.method(roleService, "deleteRole", async () => { throw { code: "P2003" }; });
-  await deleteController({ query: { id } } as unknown as Request, res, () => {});
+  t.mock.method(roleService, "delete_role", async () => { throw { cause: { code: "23503" } }; });
+  await deleteController({ query: { id } } as unknown as Request, res);
   assert.equal(result().status, 409);
 });
 
 test("service guards system roles and global defaults before writing; mappings can be cleared atomically", async (t) => {
-  const holder = globalThis as typeof globalThis & { prisma?: unknown }; const previous = holder.prisma;
-  t.after(() => { if (previous === undefined) delete holder.prisma; else holder.prisma = previous; });
-  let system = true; let scope = "company";
-  const update = t.mock.fn(async () => ({ count: 1 })); const remove = t.mock.fn(async () => ({ count: 1 }));
-  const deletePages = t.mock.fn(async () => ({ count: 1 })); const deletePermissions = t.mock.fn(async () => ({ count: 1 }));
-  const createPages = t.mock.fn(async () => ({ count: 1 })); const createPermissions = t.mock.fn(async () => ({ count: 1 }));
-  const raw = { ...role, created_at: new Date(role.created_at), updated_at: new Date(role.updated_at), pages: [], permissions: [], _count: { user_roles: 0, company_roles: 0 } };
-  const tx = {
-    roles: { findUnique: async () => ({ ...raw, is_system: system, scope }), updateMany: update, deleteMany: remove, findUniqueOrThrow: async () => raw },
-    role_pages: { deleteMany: deletePages, createMany: createPages }, role_permissions: { deleteMany: deletePermissions, createMany: createPermissions },
-  };
-  holder.prisma = { $transaction: async (run: (transaction: typeof tx) => Promise<unknown>) => run(tx) };
-  await assert.rejects(roleService.updateRole({ id, name: "New" }), (error) => error instanceof RoleError && error.status === 403);
-  await assert.rejects(roleService.deleteRole(id), (error) => error instanceof RoleError && error.status === 403);
-  assert.equal(update.mock.callCount(), 0); assert.equal(remove.mock.callCount(), 0);
+  let system = true; let scope = "company"; let assignments = 0;
+  const queries = mockDatabase(t, ({ sql }) => {
+    if (sql.startsWith("select")) return [[id, role.name, role.slug, scope, system, false, role.created_at, role.updated_at, [], [], assignments]];
+    if (sql.startsWith('update "roles"')) return [[id]];
+    return [];
+  });
+  await assert.rejects(roleService.update_role({ id, name: "New" }), (error) => error instanceof RoleError && error.code === "system_role");
+  await assert.rejects(roleService.delete_role(id), (error) => error instanceof RoleError && error.code === "system_role");
+  assert.equal(queries.filter(query => /^(update|delete)/.test(query.sql)).length, 0);
   system = false; scope = "global";
-  await assert.rejects(roleService.updateRole({ id, is_default_role: true }), (error) => error instanceof RoleError && error.status === 400);
+  await assert.rejects(roleService.update_role({ id, is_default_role: true }), (error) => error instanceof RoleError && error.code === "company_default_required");
   scope = "company";
-  const changed = await roleService.updateRole({ id, pages: [], permissions: [] });
+  const changed = await roleService.update_role({ id, pages: [], permissions: [] });
   assert.deepEqual(changed.pages, []); assert.deepEqual(changed.permissions, []);
-  assert.equal(deletePages.mock.callCount(), 1); assert.equal(deletePermissions.mock.callCount(), 1);
-  assert.equal(createPages.mock.callCount(), 0); assert.equal(createPermissions.mock.callCount(), 0);
-  raw._count.company_roles = 1;
-  await assert.rejects(roleService.deleteRole(id), (error) => error instanceof RoleError && error.status === 409);
-  assert.equal(remove.mock.callCount(), 0);
+  assert.equal(queries.filter(query => query.sql.startsWith('delete from "role_pages"')).length, 1);
+  assert.equal(queries.filter(query => query.sql.startsWith('delete from "role_permissions"')).length, 1);
+  assert.equal(queries.filter(query => query.sql.startsWith("insert")).length, 0);
+  assignments = 1;
+  await assert.rejects(roleService.delete_role(id), (error) => error instanceof RoleError && error.code === "role_assigned");
+  assert.equal(queries.filter(query => query.sql.startsWith('delete from "roles"')).length, 0);
 });
 
 test("service rejects reserved slugs and global defaults before creating records", (t) => {
-  const create = t.mock.method(rolesRepository, "createRole", async () => role);
-  assert.throws(() => roleService.createRole(validateCreateRole({ name: "Super Admin", slug: "super_admin" })), (error) => error instanceof RoleError && error.status === 403);
-  assert.throws(() => roleService.createRole(validateCreateRole({ name: "Global", scope: "global", is_default_role: true })), (error) => error instanceof RoleError && error.status === 400);
+  const repository = { ...rolesRepository };
+  const service = create_role_service(repository);
+  const create = t.mock.method(repository, "create_role", async () => role);
+  assert.throws(() => service.create_role(validate_create_role({ name: "Super Admin", slug: "super_admin" })), (error) => error instanceof RoleError && error.code === "system_role");
+  assert.throws(() => service.create_role(validate_create_role({ name: "Global", scope: "global", is_default_role: true })), (error) => error instanceof RoleError && error.code === "company_default_required");
   assert.equal(create.mock.callCount(), 0);
 });
 

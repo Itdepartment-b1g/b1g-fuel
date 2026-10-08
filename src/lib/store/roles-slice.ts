@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { CreateRoleInput, UpdateRoleInput, RoleResponse, RoleScope, RoleSummary, RolesPage, RoleOptions, DeleteRoleResponse } from "@/lib/roles";
+import type { CreateRoleInput, UpdateRoleInput, RoleResponse, RoleScope, RoleSummary, RolesPage, RoleOptions, DeleteRoleResponse } from "@/server/schema/roles_schema";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type RoleFailure = { status: number; message: string };

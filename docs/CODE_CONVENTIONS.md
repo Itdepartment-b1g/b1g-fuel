@@ -1,26 +1,26 @@
 # Backend layers and operation naming
 
-This project uses controllers for request validation and HTTP errors, services for business conditions, and repositories for database access. Apply the same operation names throughout the backend and Redux.
+This project uses controllers for request validation and HTTP errors, services for business conditions, and repositories for database access. Functions declared in these three backend layers use snake_case. Use the same operation name across those layers.
 
 ```text
-Component → Redux → Express route → Controller → Service → Repository → Prisma
+Component → Redux → Express route → Controller → Service → Repository → Drizzle → Postgres
 ```
 
 ## Layer responsibilities
 
 | Layer | Responsibility | Examples |
 | --- | --- | --- |
-| Routes | Match URL/method, apply authentication/authorization and rate limiting, dispatch controller | GET roles with an ID routes to editRole; without an ID to listRole |
+| Routes | Match URL/method, apply authentication/authorization and rate limiting, dispatch controller | GET roles with an ID routes to `edit_role`; without an ID to `list_role` |
 | Controllers | Validate body/query/IDs, normalize input, call services, write JSON/redirects and translate errors into HTTP statuses | Reject malformed UUIDs or missing names; map duplicate database keys to 409 |
-| Controller validation functions | Input checks live directly in the resource's existing controller file | `validateCreateRole` in `roles_controller.ts`; `validateCreateUser` and `validateUserFilter` in `users_controller.ts` |
+| Controller validation functions | Input checks live directly in the resource's existing controller file | `validate_create_role` in `roles_controller.ts`; `validate_create_user` and `validate_user_filter` in `users_controller.ts` |
 | Services | Evaluate business conditions and orchestrate operations | Protect system roles, reject assigned-role deletion, verify company-role membership, require an admin-provisioned login profile |
-| Repositories | Execute Prisma queries, serialize records, expose transaction-bound queries | `getRole`, `listUser`, `createUser`, `runRoleTransaction` |
+| Repositories | Execute Drizzle queries, serialize records, expose transaction-bound queries | `list_by_id_role`, `list_user`, `create_user` |
 | Redux | Make HTTP requests and manage client loading/error/data state | `listRole`, `editRole`, `createRole`, `updateRole`, `deleteRole` |
 | Components | Render controls, manage local form values and browser interaction, dispatch Redux | Open a dialog, remember an email, navigate after login |
 
 Controllers and services must not import directly into client components or slices. Redux accesses the Express API through `/api` with cookies.
 
-Pure server helpers belong in `src/server/utils`. For example, `buildUserFilter` in `utils/user_filter.ts` constructs a Prisma filter without executing queries or coordinating a workflow. Services use these helpers while evaluating business conditions; repositories execute the resulting queries.
+Pure server helpers belong in `src/server/utils`. For example, `buildUserFilter` in `utils/user_filter.ts` constructs a parameterized Drizzle SQL expression without executing queries or coordinating a workflow. Services use these helpers while evaluating business conditions; repositories execute the resulting queries.
 
 ## Validation versus conditions
 
@@ -28,11 +28,13 @@ Pure server helpers belong in `src/server/utils`. For example, `buildUserFilter`
 
 **Business conditions belong in services:** whether a role is system-managed, whether a global role can be the default, whether a role is assigned and deletable, whether an email already belongs to an account, whether selected roles are available for a company membership, and whether a login account has an organization profile.
 
-Services receive validated values and dependencies, return data, or raise safe `ApplicationError` subclasses (`UserError`, `RoleError`). They never accept Express request/response objects, write response bodies, or redirect the browser. These exceptions carry response status metadata; controllers decide how to send it. Validation helpers may use the same typed errors for consistent responses.
+Services receive validated values and dependencies, return data, or raise safe `ApplicationError` subclasses (`UserError`, `RoleError`, `CompanyError`). They never accept Express request/response objects, write response bodies, or redirect the browser. Errors contain a business reason, such as `role_not_found`, and a safe message. They contain no HTTP status. Validation helpers inside controllers use the `invalid_input` reason.
 
-`handleController` in `src/server/utils/errors.ts` sends known application/validation errors as `{ error }`, translates configured persistence error codes and forwards unexpected errors to the Express error boundary. Database-error mappings are controller-owned. The user service completes Auth cleanup before rethrowing a persistence failure to the controller.
+Each existing controller file implements its own `try/catch`, success statuses, business-error status mapping, PostgreSQL error mapping, and safe unexpected-error response. `respond_role_error`, `respond_user_error`, and `respond_company_error` live in their resource controller files. `respond_auth_error` in `auth_controller.ts` also translates authentication-guard and Google initiation errors. `src/server/utils/errors.ts` contains only error classes/reason types and `getDatabaseErrorCode`, which unwraps Drizzle causes without sending HTTP responses. The user service completes Auth cleanup before rethrowing a persistence failure to its controller.
 
-Authentication middleware delegates access conditions to `authService` and rejects disallowed requests before resource controllers. Middleware still owns the HTTP/session-cookie response for that rejection.
+Controllers explicitly send `200` for reads/options/updates/deletion and password login/logout, and `201` for resource creation. Missing records return `404`; invalid inputs/pagination return `400`; denied access returns `401`/`403`; conflicts return `409`; provider failures use the existing `502` responses. Unexpected resource failures return a generic `500` without SQL or internal error details. Google callback navigation uses `303 See Other` redirects. `300 Multiple Choices` is not used for ordinary navigation. The application error boundary still handles parser errors and failures outside resource controllers.
+
+Authentication middleware delegates access conditions to `authService`, manages session cookies, and calls `respond_auth_error` from the auth controller to send disallowed-request errors. Origin/CORS middleware retains its protocol-specific responses.
 
 Origin/CORS middleware lives in the existing `src/server/security/middleware.ts`. `getAppOrigin` validates the shared browser origin; `createOriginMiddleware` handles CORS, preflights and mutation-origin checks. The Google controller imports that same helper for redirects. Server binding (`API_HOST`, `API_PORT`, `listen`) stays in `index.ts` because it is startup configuration rather than request middleware.
 
@@ -42,36 +44,42 @@ Endpoint registration belongs in `src/server/routes/index.ts`: health, OpenAPI, 
 
 ## Naming format
 
-Use **camelCase, action + singular entity** for named resource operations. List results and database model/JSON collection names can remain plural. Files continue to use the project's existing snake_case backend names.
+Use **snake_case, action + singular entity** for every named function declared in `src/server/repositories`, `src/server/controllers`, and `src/server/services`. This includes operations, factories, validation, serialization, transaction wrappers, function-valued dependency callbacks, and local helpers. List results and database model/JSON collection names can remain plural. Files keep their existing names.
 
 | Operation | Role naming | User naming | Meaning |
 | --- | --- | --- | --- |
-| List | `listRole` | `listUser` | Fetch a collection, with filters/pagination |
-| Create | `createRole` | `createUser` | Save a new record |
-| Load for editing | `editRole` | `editUser` | Read the existing record for an edit form; does not save changes |
-| Update | `updateRole` | `updateUser` | Persist changes to an existing record |
-| Delete | `deleteRole` | `deleteUser` | Remove a record after checking conditions |
-| Form choices | `getRoleOption` | `getUserOption` | Load available values |
+| List | `list_role` | `list_user` | Fetch a collection, with filters/pagination |
+| Create | `create_role` | `create_user` | Save a new record |
+| Load for editing | `edit_role` | `edit_user` | Read the existing record for an edit form; does not save changes |
+| Update | `update_role` | `update_user` | Persist changes to an existing record |
+| Delete | `delete_role` | `delete_user` | Remove a record after checking conditions |
+| Form choices | `get_role_option` | `get_user_option` | Load available values |
 
-`editUser`, `updateUser` and `deleteUser` are future naming examples; the current Users API implements listing, creation and options. Do not add placeholder operations just to fill this table.
+`edit_user`, `update_user` and `delete_user` are future naming examples; the current Users API implements listing, creation and options. Do not add placeholder operations just to fill this table.
 
-Use the same operation name across controller, service and Redux exports. Repository reads can use `getRole` because a database read has no edit-form intent. Transaction-bound update/delete queries use the same operation names as their service.
+Use the same operation name across controller and service exports. The Roles repository exports named async functions: `list_role`, `list_by_id_role`, `create_role`, `update_role`, and `delete_role`. Transaction-bound update/delete queries use the same operation names as their service. Company operations follow the same format: `list_company`, `create_company`, `edit_company`, `update_company`, and `delete_company`.
 
-Supporting functions use descriptive camelCase: `validateRoleId`, `serializeRole`, `buildUserFilter`, `runRoleTransaction`, `getUserProfile`, `listUserGlobalRole`, `handleController`, `startGoogleLogin`, `finishGoogleLogin`. Avoid ambiguous bare resource functions such as `list`, `find`, `create`, `update` or `delete` on application repository/service objects. Avoid snake_case function names such as the former sidebar helpers; those are now `listSidebarMenu` and `formatRoleLabel`.
+Supporting functions use descriptive snake_case: `validate_role_id`, `validate_create_user`, `serialize_role`, `create_role_service`, `get_user_profile`, `list_user_global_role`, `start_google_login`, and `finish_google_login`. Avoid ambiguous bare resource functions such as `list`, `find`, `create`, `update`, or `delete` on application repository/service objects.
 
-React component names remain PascalCase, custom hooks use `use...`, and external APIs retain their prescribed names: Prisma `findMany`, Supabase `signInWithOAuth`, React state setters and Radix callbacks are not renamed.
+`usersRepository.assignable_user(input)` reads the existing email account, selected company, and available company-role count before creation. It performs eligibility lookups and does not write assignments. The user service checks those results before provisioning the account.
+
+Types and classes use PascalCase. Repository/service object names remain `usersRepository`, `roleService`, etc. Frontend Redux exports use camelCase, such as `createUser`; components access the backend through HTTP. React components use PascalCase and hooks use `use...`. Imported infrastructure helpers and external APIs retain their prescribed names, including Drizzle `select`/`insert` and Supabase `createUser`/`signInWithOAuth`.
+
+ESLint enforces snake_case for named functions and object methods in the three backend directories, with additional checks for arrow-function handlers.
 
 ## Current operation exports
 
-- Users controllers/services/Redux: `listUser`, `createUser`, `getUserOption`, `getUserFilterOption`; Redux selector `selectUser` reads the complete Users slice.
-- Roles controllers/services/Redux: `listRole`, `createRole`, `editRole`, `updateRole`, `deleteRole`, `getRoleOption`; `selectRole` reads the Roles slice.
-- Authentication: `loginUser`, `logoutUser`, `getUserSession`, `startGoogleLogin`, `finishGoogleLogin`. Redux currently exports password login and Google initiation; the other operations run on the backend.
+- Users controllers/services: `list_user`, `create_user`, `get_user_option`, `get_user_filter_option`; repository eligibility lookup: `assignable_user`.
+- Roles controllers/services: `list_role`, `create_role`, `edit_role`, `update_role`, `delete_role`, `get_role_option`.
+- Companies controllers/services: `list_company`, `create_company`, `edit_company`, `update_company`, `delete_company`.
+- Authentication: `login_user`, `logout_user`, `get_user_session`, `start_google_login`, `finish_google_login`; service access checks: `require_user_access`, `require_super_admin`.
+- Redux keeps `listUser`, `createUser`, `listRole`, `createRole`, `listCompany`, `createCompany`, and its existing selectors.
 
 Redux async thunks for roles support `.unwrap()`. `createUser` and `loginUser` are manual thunks that keep passwords out of plain actions, async-thunk metadata and state; await their dispatch directly. Naming changes do not change this behavior.
 
 ## Transactions and concurrency
 
-Role update/delete services run their conditions inside `runRoleTransaction`. The repository supplies queries bound to that same transaction. Update/delete statements include the role attributes observed by the service, so a concurrent change cannot silently bypass the decision. A zero-row write is returned to the service, which raises a conflict.
+Role update/delete services open a database transaction, check business conditions, and pass that transaction to the named repository functions. Role creation and list snapshot transactions remain inside their repository functions. Update/delete statements include the role attributes observed by the service, so a concurrent change cannot silently bypass the decision. A zero-row write is returned to the service, which raises a conflict.
 
 Database constraints remain the final protection against races: unique slugs, the single company-default index, scope CHECK constraints and assignment foreign keys. Repository query predicates and database constraints are persistence safeguards, not duplicated controller validation.
 

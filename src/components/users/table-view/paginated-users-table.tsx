@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/common/pagination";
 import { paginateItems } from "@/lib/pagination";
-import type { UserSummary } from "@/lib/users";
+import type { UserSummary } from "@/server/schema/users_schema";
 import { UsersTable } from "./users-table";
 
 /** Client-side integration example: pass a complete dataset, not one server page. */

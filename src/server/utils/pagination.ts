@@ -14,7 +14,6 @@ export type PaginationOptions = {
 };
 
 export class PaginationError extends Error {
-  readonly status = 400;
   constructor() { super("Invalid pagination parameters."); }
 }
 

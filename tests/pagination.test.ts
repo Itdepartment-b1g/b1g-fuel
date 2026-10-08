@@ -48,7 +48,7 @@ test("filter/sort precede slicing and reduced API totals clamp the current page"
   assert.deepEqual(paginationFromApi({ page: 3, page_size: 10, total: 11 }), { page: 2, limit: 10, total: 11, total_pages: 2, has_next_page: false, has_prev_page: true });
 });
 
-test("pagination provides defaults, Prisma offsets and compatible response metadata", () => {
+test("pagination provides defaults, database offsets and compatible response metadata", () => {
   assert.deepEqual(parsePagination({}), { page: 1, page_size: 10, skip: 0, take: 10 });
   const pagination = parsePagination({ page: "3", page_size: "10" });
   assert.deepEqual(pagination, { page: 3, page_size: 10, skip: 20, take: 10 });
@@ -61,7 +61,7 @@ test("pagination provides defaults, Prisma offsets and compatible response metad
 test("pagination rejects malformed, repeated, nested and out-of-range query values", () => {
   for (const value of ["", "0", "-1", "1.5", "1e2", " 1", "1 ", "01", "Infinity", "9007199254740992", ["1", "2"], {}, null, 1]) {
     for (const key of ["page", "page_size"]) {
-      assert.throws(() => parsePagination({ [key]: value }), (error) => error instanceof PaginationError && error.status === 400);
+      assert.throws(() => parsePagination({ [key]: value }), (error) => error instanceof PaginationError);
     }
   }
   assert.throws(() => parsePagination({ page_size: "101" }), PaginationError);

@@ -1,3 +1,4 @@
+import { companiesReducer } from "../src/lib/store/companies-slice";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { configureStore, type Middleware } from "@reduxjs/toolkit";
@@ -12,7 +13,7 @@ const user = { id: "approved-user", name: "Juan", email: input.email };
 test("password login uses cookies and retains identity without passwords or tokens in actions/state", async (t) => {
   const actions: unknown[] = [];
   const recorder: Middleware = () => (next) => (action) => { actions.push(action); return next(action); };
-  const store = configureStore({ reducer: { auth: authReducer, users: usersReducer, roles: rolesReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
+  const store = configureStore({ reducer: { auth: authReducer, users: usersReducer, roles: rolesReducer, companies: companiesReducer }, middleware: (getDefault) => getDefault().concat(recorder) });
   const fetch = t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ user, message: "Signed in.", access_token: "must-not-be-stored" })));
   assert.deepEqual(await store.dispatch(loginUser(input)), { user, message: "Signed in." });
   const args = fetch.mock.calls[0].arguments as unknown as [string, RequestInit];

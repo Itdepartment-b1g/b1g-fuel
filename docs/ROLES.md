@@ -1,6 +1,16 @@
-# Roles API and Redux
+# Roles UI, API and Redux
 
-All roles endpoints require a verified Supabase session, an existing Prisma profile and the global `super_admin` role. Responses are private/no-store. Mutations require the exact application Origin and are rate limited. No role UI is implemented by this change.
+Role request and response types live in `src/server/schema/roles_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
+
+All roles endpoints require a verified Supabase session, an existing Prisma profile and the global `super_admin` role. Responses are private/no-store. Mutations require the exact application Origin and are rate limited.
+
+## Management screen
+
+Open `/roles` as a super-admin. The screen provides table/card views, name/slug search, scope filtering, refresh, and responsive pagination with 10/20/50/100 rows per page. Search, scope and page-size changes reset to page 1; shrinking results clamp the page to a valid value.
+
+Create and edit dialogs use the Redux operations below. The form loads registered page and permission options. Editing fetches the current role, keeps slug/scope fixed, and preserves unchanged mappings. System roles cannot be edited or deleted; assigned roles cannot be deleted. The server independently enforces these rules. Delete requires confirmation, and failed mutations keep the dialog open with an error. Pending mutations disable controls and prevent accidental dismissal.
+
+Components live directly in `src/components/roles`: `list.tsx`, `table.tsx`, `form.tsx`, and `dialog.tsx`. Shared list controls and deletion confirmation live in the existing `src/components/common` folder.
 
 | Method | URL | Behavior |
 | --- | --- | --- |
@@ -30,7 +40,7 @@ Each role contains the model's scalar fields, ISO date strings, `pages` and `per
 
 Only `name` is required. It is trimmed and limited to 100 characters. Omitted slug is derived from the name; explicit slugs are trimmed/lowercased and must use letters, numbers, underscores or hyphens, start with a letter and fit within 100 characters. Names that cannot produce a valid slug need an explicit one. Scope defaults to company; default-role status defaults to false; mapping arrays default to empty.
 
-Clients cannot set `is_system`, timestamps, IDs or assignment counts. `super_admin` is reserved for the application seed. Register page keys in `src/lib/auth/catalog.ts` and permission choices in `src/lib/auth/permissions.ts`. The current permission catalog contains the registered view permissions. Unknown or duplicate mapping keys are rejected; each array allows at most 200 entries. Options expose the same catalogs for a future form.
+Clients cannot set `is_system`, timestamps, IDs or assignment counts. `super_admin` is reserved for the application seed. Register page keys in `src/lib/auth/catalog.ts` and permission choices in `src/lib/auth/permissions.ts`. The current permission catalog contains the registered view permissions. Unknown or duplicate mapping keys are rejected; each array allows at most 200 entries. The form uses these catalogs through the options endpoint.
 
 ## Update and deletion rules
 

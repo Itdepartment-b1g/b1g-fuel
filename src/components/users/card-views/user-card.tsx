@@ -1,5 +1,5 @@
 import { Building2, Mail } from "lucide-react";
-import type { UserSummary } from "@/lib/users";
+import type { UserSummary } from "@/server/schema/users_schema";
 import { UserAssignments, UserAvatar } from "../user-details";
 
 export function UserCard({ user }: { user: UserSummary }) {

@@ -3,18 +3,18 @@ import { createAuthClient } from "./supabase";
 import { clearAuthSession } from "./clear-session";
 import { authService } from "@/server/services/auth_service";
 import { UserError } from "@/server/utils/errors";
+import { respond_auth_error } from "@/server/controllers/auth_controller";
 
 export const requireAuthUser: RequestHandler = async (req, res, next) => {
   const auth = createAuthClient(req, res).auth;
   try {
-    const { user, profile } = await authService.requireUserAccess(auth);
+    const { user, profile } = await authService.require_user_access(auth);
     res.locals.user = user; res.locals.profile = profile;
   } catch (error) {
-    if (error instanceof UserError) {
-      if (error.status === 403) await clearAuthSession(req, res, auth);
-      res.status(error.status).json({ error: error.message }); return;
-    }
-    throw error;
+    if (error instanceof UserError && error.code === "account_not_provisioned")
+      await clearAuthSession(req, res, auth);
+    respond_auth_error(error, res);
+    return;
   }
   next();
 };

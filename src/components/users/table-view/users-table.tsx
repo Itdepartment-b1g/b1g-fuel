@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { UserSummary } from "@/lib/users";
+import type { UserSummary } from "@/server/schema/users_schema";
 import { UserAssignments, UserAvatar } from "../user-details";
 
 export function UsersTable({ users }: { users: UserSummary[] }) {

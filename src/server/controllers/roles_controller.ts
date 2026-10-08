@@ -1,13 +1,13 @@
-import type { CreateRoleInput, UpdateRoleInput, RoleScope } from "@/lib/roles";
+import type { Request, Response } from "express";
+import type { CreateRoleInput, UpdateRoleInput, RoleScope } from "@/server/schema/roles_schema";
 import { PAGE_CATALOG } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import { rateLimit } from "express-rate-limit";
 import { roleService } from "@/server/services/roles_service";
-import { parsePagination } from "@/server/utils/pagination";
-import { RoleError, handleController } from "@/server/utils/errors";
+import { parsePagination, PaginationError } from "@/server/utils/pagination";
+import { RoleError, getDatabaseErrorCode, type ApplicationErrorCode } from "@/server/utils/errors";
 
-
-export const roleMutationLimiter = rateLimit({
+export const role_mutation_limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 60,
   standardHeaders: "draft-8",
@@ -17,116 +17,136 @@ export const roleMutationLimiter = rateLimit({
   },
 });
 const roleDatabaseErrors = {
-  P2002: {
-    status: 409,
-    message:
-      "The slug is already in use or a company role is already marked as default. Clear the existing default before choosing another.",
-  },
-  P2003: {
-    status: 409,
-    message: "This role is assigned to users and cannot be deleted.",
-  },
-  P2025: { status: 404, message: "Role not found." },
+  "23505": { status: 409, message: "The slug is already in use or a company role is already marked as default. Clear the existing default before choosing another." },
+  "23503": { status: 409, message: "This role is assigned to users and cannot be deleted." },
+  "23514": { status: 400, message: "Role details do not meet the database requirements." },
 };
-export const listRole = handleController(async (req, res) => {
-  const pagination = parsePagination(req.query);
-  const search = req.query.search ?? "";
-  if (typeof search !== "string" || search.length > 100)
-    throw new RoleError(400, "Search must contain at most 100 characters.");
-  const scope =
-    req.query.scope === undefined
-      ? undefined
-      : validateRoleScope(req.query.scope);
-  res.json(await roleService.listRole(pagination, search.trim(), scope));
-});
-export const editRole = handleController(async (req, res) => {
-  res.json({ role: await roleService.editRole(validateRoleId(req.query.id)) });
-});
-export const getRoleOption = handleController(async (_req, res) => {
-  res.json(roleService.getRoleOption());
-});
-export const createRole = handleController(async (req, res) => {
-  res
-    .status(201)
-    .json({ role: await roleService.createRole(validateCreateRole(req.body)) });
-}, roleDatabaseErrors);
-export const updateRole = handleController(async (req, res) => {
-  res.json({
-    role: await roleService.updateRole(validateUpdateRole(req.body)),
-  });
-}, roleDatabaseErrors);
-export const deleteRole = handleController(async (req, res) => {
-  res.json(await roleService.deleteRole(validateRoleId(req.query.id)));
-}, roleDatabaseErrors);
+const roleErrorStatus: Partial<Record<ApplicationErrorCode, number>> = {
+  invalid_input: 400, role_not_found: 404, system_role: 403,
+  company_default_required: 400, role_changed: 409, role_assigned: 409,
+};
+function respond_role_error(error: unknown, res: Response) {
+  if (error instanceof PaginationError) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  if (error instanceof RoleError && roleErrorStatus[error.code]) {
+    res.status(roleErrorStatus[error.code]!).json({ error: error.message });
+    return;
+  }
+  const code = getDatabaseErrorCode(error);
+  const databaseError = Object.hasOwn(roleDatabaseErrors, code)
+    ? roleDatabaseErrors[code as keyof typeof roleDatabaseErrors] : undefined;
+  if (databaseError) {
+    res.status(databaseError.status).json({ error: databaseError.message });
+    return;
+  }
+  console.error("Roles request failed:", error);
+  res.status(500).json({ error: "The request could not be completed." });
+}
 
-export function validateRoleId(value: unknown): string {
+export async function list_role(req: Request, res: Response) {
+  try {
+    const pagination = parsePagination(req.query);
+    const search = req.query.search ?? "";
+    if (typeof search !== "string" || search.length > 100)
+      throw new RoleError("invalid_input", "Search must contain at most 100 characters.");
+    const scope = req.query.scope === undefined ? undefined : validate_role_scope(req.query.scope);
+    res.status(200).json(await roleService.list_role(pagination, search.trim(), scope));
+  } catch (error) { respond_role_error(error, res); }
+}
+
+export async function edit_role(req: Request, res: Response) {
+  try { res.status(200).json({ role: await roleService.edit_role(validate_role_id(req.query.id)) }); }
+  catch (error) { respond_role_error(error, res); }
+}
+
+export async function get_role_option(_req: Request, res: Response) {
+  try { res.status(200).json(roleService.get_role_option()); }
+  catch (error) { respond_role_error(error, res); }
+}
+
+export async function create_role(req: Request, res: Response) {
+  try { res.status(201).json({ role: await roleService.create_role(validate_create_role(req.body)) }); }
+  catch (error) { respond_role_error(error, res); }
+}
+
+export async function update_role(req: Request, res: Response) {
+  try { res.status(200).json({ role: await roleService.update_role(validate_update_role(req.body)) }); }
+  catch (error) { respond_role_error(error, res); }
+}
+
+export async function delete_role(req: Request, res: Response) {
+  try { res.status(200).json(await roleService.delete_role(validate_role_id(req.query.id))); }
+  catch (error) { respond_role_error(error, res); }
+}
+
+export function validate_role_id(value: unknown): string {
   if (
     typeof value !== "string" ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       value,
     )
   )
-    throw new RoleError(400, "Provide a valid role ID.");
+    throw new RoleError("invalid_input", "Provide a valid role ID.");
   return value.toLowerCase();
 }
-export function validateRoleScope(value: unknown): RoleScope {
+export function validate_role_scope(value: unknown): RoleScope {
   if (value !== "company" && value !== "global")
-    throw new RoleError(400, "Role scope must be company or global.");
+    throw new RoleError("invalid_input", "Role scope must be company or global.");
   return value;
 }
-function validateRoleBody(
+function validate_role_body(
   value: unknown,
   allowed: string[],
 ): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new RoleError(400, "Provide role details.");
+    throw new RoleError("invalid_input", "Provide role details.");
   if (Object.keys(value).some((key) => !allowed.includes(key)))
-    throw new RoleError(400, "Unknown or read-only role field.");
+    throw new RoleError("invalid_input", "Unknown or read-only role field.");
   return value as Record<string, unknown>;
 }
-function validateRoleName(value: unknown) {
+function validate_role_name(value: unknown) {
   if (typeof value !== "string" || !value.trim() || value.trim().length > 100)
-    throw new RoleError(
-      400,
+    throw new RoleError("invalid_input",
       "Provide a role name between 1 and 100 characters.",
     );
   return value.trim();
 }
-function validateDefaultRole(value: unknown) {
+function validate_default_role(value: unknown) {
   if (typeof value !== "boolean")
-    throw new RoleError(400, "is_default_role must be a boolean.");
+    throw new RoleError("invalid_input", "is_default_role must be a boolean.");
   return value;
 }
-function validateRoleKeys(value: unknown, allowed: string[], label: string) {
+function validate_role_keys(value: unknown, allowed: string[], label: string) {
   if (
     !Array.isArray(value) ||
     value.length > 200 ||
     value.some((key) => typeof key !== "string" || !allowed.includes(key)) ||
     new Set(value).size !== value.length
   )
-    throw new RoleError(
-      400,
+    throw new RoleError("invalid_input",
       `Provide distinct, registered ${label} keys (maximum 200).`,
     );
   return value as string[];
 }
-function validateRolePage(value: unknown) {
-  return validateRoleKeys(
+function validate_role_page(value: unknown) {
+  return validate_role_keys(
     value,
     PAGE_CATALOG.map((page) => page.key),
     "page",
   );
 }
-function validateRolePermission(value: unknown) {
-  return validateRoleKeys(
+function validate_role_permission(value: unknown) {
+  return validate_role_keys(
     value,
     PERMISSION_CATALOG.map((permission) => permission.key),
     "permission",
   );
 }
 
-export function validateCreateRole(value: unknown): Required<CreateRoleInput> {
-  const body = validateRoleBody(value, [
+export function validate_create_role(value: unknown): Required<CreateRoleInput> {
+  const body = validate_role_body(value, [
     "name",
     "slug",
     "scope",
@@ -134,7 +154,7 @@ export function validateCreateRole(value: unknown): Required<CreateRoleInput> {
     "pages",
     "permissions",
   ]);
-  const roleName = validateRoleName(body.name);
+  const roleName = validate_role_name(body.name);
   const derived = roleName
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -152,30 +172,29 @@ export function validateCreateRole(value: unknown): Required<CreateRoleInput> {
     slug.length > 100 ||
     !/^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/.test(slug)
   )
-    throw new RoleError(
-      400,
+    throw new RoleError("invalid_input",
       "Provide a slug of at most 100 characters using lowercase letters, numbers, underscores or hyphens, starting with a letter.",
     );
   const scope =
-    body.scope === undefined ? "company" : validateRoleScope(body.scope);
+    body.scope === undefined ? "company" : validate_role_scope(body.scope);
   const isDefault =
     body.is_default_role === undefined
       ? false
-      : validateDefaultRole(body.is_default_role);
+      : validate_default_role(body.is_default_role);
   return {
     name: roleName,
     slug,
     scope,
     is_default_role: isDefault,
-    pages: body.pages === undefined ? [] : validateRolePage(body.pages),
+    pages: body.pages === undefined ? [] : validate_role_page(body.pages),
     permissions:
       body.permissions === undefined
         ? []
-        : validateRolePermission(body.permissions),
+        : validate_role_permission(body.permissions),
   };
 }
-export function validateUpdateRole(value: unknown): UpdateRoleInput {
-  const body = validateRoleBody(value, [
+export function validate_update_role(value: unknown): UpdateRoleInput {
+  const body = validate_role_body(value, [
     "id",
     "name",
     "is_default_role",
@@ -183,18 +202,18 @@ export function validateUpdateRole(value: unknown): UpdateRoleInput {
     "permissions",
   ]);
   if (!Object.keys(body).some((key) => key !== "id"))
-    throw new RoleError(400, "Provide at least one editable role field.");
+    throw new RoleError("invalid_input", "Provide at least one editable role field.");
   return {
-    id: validateRoleId(body.id),
-    ...(body.name !== undefined ? { name: validateRoleName(body.name) } : {}),
+    id: validate_role_id(body.id),
+    ...(body.name !== undefined ? { name: validate_role_name(body.name) } : {}),
     ...(body.is_default_role !== undefined
-      ? { is_default_role: validateDefaultRole(body.is_default_role) }
+      ? { is_default_role: validate_default_role(body.is_default_role) }
       : {}),
     ...(body.pages !== undefined
-      ? { pages: validateRolePage(body.pages) }
+      ? { pages: validate_role_page(body.pages) }
       : {}),
     ...(body.permissions !== undefined
-      ? { permissions: validateRolePermission(body.permissions) }
+      ? { permissions: validate_role_permission(body.permissions) }
       : {}),
   };
 }

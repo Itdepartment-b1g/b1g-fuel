@@ -1,8 +1,9 @@
+import { compileSql, mockDatabase } from "./database-fixture";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addCondition, changeConditionField, countActiveFilters, createQuickFilterState, filterRecords, groupActiveConditions, matchesColumnConditions, matchesDate, removeCondition, resolveDateRange, searchFilterOptions, type QuickFilterState } from "../src/lib/quick-filter";
 import { USER_FILTER_DEFAULTS } from "../src/lib/users-filters";
-import { validateUserFilter } from "../src/server/controllers/users_controller";
+import { validate_user_filter } from "../src/server/controllers/users_controller";
 import { buildUserFilter } from "../src/server/utils/user_filter";
 import { userService } from "../src/server/services/users_service";
 import { UserError } from "../src/server/utils/errors";
@@ -63,24 +64,26 @@ test("Manila dates are inclusive calendar days with open-ended custom ranges and
 test("users filtering validates input and translates groups before database pagination", () => {
   const state = createQuickFilterState(USER_FILTER_DEFAULTS);
   state.conditions = [{ id: "a", field: "name", value: " Juan " }, { id: "b", field: "email", value: "juan@example.com" }, { id: "c", field: "name", value: "Aaron" }];
-  assert.deepEqual(buildUserFilter(validateUserFilter(JSON.stringify(state))), { AND: [{ name: { in: ["Juan", "Aaron"], mode: "insensitive" } }, { email: { in: ["juan@example.com"], mode: "insensitive" } }] });
-  for (const invalid of [{ ...state, status: "invalid" }, { ...state, conditions: [] }, { ...state, conditions: [{ id: "a", field: "sql", value: "x" }] }, { ...state, conditions: [state.conditions[0], state.conditions[0]] }, { ...state, additional: { unknown: "yes" } }]) assert.throws(() => validateUserFilter(JSON.stringify(invalid)), UserError);
-  const cleared: QuickFilterState = createQuickFilterState(USER_FILTER_DEFAULTS); assert.deepEqual(buildUserFilter(cleared), {});
+  const query = compileSql(buildUserFilter(validate_user_filter(JSON.stringify(state))));
+  assert.deepEqual(query?.params, ["juan", "aaron", "juan@example.com"]);
+  assert.ok(query?.sql.includes('lower("user"."name") in'));
+  assert.ok(query?.sql.includes('and lower("user"."email") in'));
+  for (const invalid of [{ ...state, status: "invalid" }, { ...state, conditions: [] }, { ...state, conditions: [{ id: "a", field: "sql", value: "x" }] }, { ...state, conditions: [state.conditions[0], state.conditions[0]] }, { ...state, additional: { unknown: "yes" } }]) assert.throws(() => validate_user_filter(JSON.stringify(invalid)), UserError);
+  const cleared: QuickFilterState = createQuickFilterState(USER_FILTER_DEFAULTS); assert.equal(buildUserFilter(cleared), undefined);
 });
 
 test("user rows and total share the same database filter before skip/take", async (t) => {
-  const holder = globalThis as typeof globalThis & { prisma?: unknown }; const previous = holder.prisma;
-  t.after(() => { if (previous === undefined) delete holder.prisma; else holder.prisma = previous; });
-  const find = t.mock.fn(async () => []); const count = t.mock.fn(async () => 12);
-  holder.prisma = { user: { findMany: find, count }, $transaction: async (queries: Promise<unknown>[]) => Promise.all(queries) };
+  const queries = mockDatabase(t, ({ sql }) => sql.startsWith('select count(*)') ? [[12]] : []);
   const filters = createQuickFilterState(USER_FILTER_DEFAULTS);
   filters.conditions[0] = { id: "a", field: "name", value: "Juan" };
-  const result = await userService.listUser({ page: 2, page_size: 10, skip: 10, take: 10 }, "juan", filters);
-  const findArgs = find.mock.calls[0].arguments as unknown as [{ where: unknown; skip: number; take: number }];
-  const countArgs = count.mock.calls[0].arguments as unknown as [{ where: unknown }];
-  assert.deepEqual(findArgs[0].where, countArgs[0].where);
-  assert.equal(findArgs[0].skip, 10); assert.equal(findArgs[0].take, 10);
-  assert.ok(JSON.stringify(findArgs[0].where).includes('"in":["Juan"]'));
+  const result = await userService.list_user({ page: 2, page_size: 10, skip: 10, take: 10 }, "juan", filters);
+  const selects = queries.filter(query => query.sql.startsWith("select"));
+  const rowQuery = selects[0], countQuery = selects[1];
+  assert.equal(rowQuery.sql.split(" where ")[1].split(" order by ")[0], countQuery.sql.split(" where ")[1]);
+  assert.deepEqual(rowQuery.params.slice(0, -2), countQuery.params);
+  assert.deepEqual(rowQuery.params.slice(-2), [10, 10]);
+  assert.equal(queries[0].sql, "begin isolation level repeatable read");
+  assert.equal(queries.at(-1)?.sql, "commit");
   assert.equal(result.total, 12); assert.equal(result.page, 2);
 });
 

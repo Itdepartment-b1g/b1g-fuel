@@ -1,4 +1,4 @@
-import type { UserSummary } from "@/lib/users";
+import type { UserSummary } from "@/server/schema/users_schema";
 
 export function UserAssignments({ user }: { user: UserSummary }) {
   return <div className="flex flex-wrap gap-1.5">
