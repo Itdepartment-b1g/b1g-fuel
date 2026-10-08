@@ -2,21 +2,39 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Request, RequestHandler, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
-import { roleService, create_role_service } from "../src/server/services/roles_service";
-import { companyService, create_company_service } from "../src/server/services/companies_service";
-import { userService } from "../src/server/services/users_service";
+import * as rolesService from "../src/server/services/roles_service";
+import * as companiesService from "../src/server/services/companies_service";
+import * as usersService from "../src/server/services/users_service";
 import { authService } from "../src/server/services/auth_service";
 import * as rolesRepository from "../src/server/repositories/roles_repository";
 import * as companiesRepository from "../src/server/repositories/companies_repository";
-import { list_role, create_role, edit_role, update_role, delete_role } from "../src/server/controllers/roles_controller";
-import { list_company, create_company, edit_company, update_company, delete_company } from "../src/server/controllers/companies_controller";
-import { list_user, create_user } from "../src/server/controllers/users_controller";
+import { list_role as listRoleController, create_role as createRoleController, edit_role as editRoleController, update_role as updateRoleController, delete_role as deleteRoleController } from "../src/server/controllers/roles_controller";
+import { list_company as listCompanyController, create_company as createCompanyController, edit_company as editCompanyController, update_company as updateCompanyController, delete_company as deleteCompanyController } from "../src/server/controllers/companies_controller";
+import { list_user as listUserController, create_user as createUserController } from "../src/server/controllers/users_controller";
 import { get_user_session } from "../src/server/controllers/auth_controller";
 import { create_google_controller } from "../src/server/controllers/google_auth_controller";
 import { RoleError, CompanyError, UserError } from "../src/server/utils/errors";
 import type { RoleSummary } from "../src/server/schema/roles_schema";
 import type { CompanySummary } from "../src/server/schema/companies_schema";
 import type { UserSummary } from "../src/server/schema/users_schema";
+
+const roleService = { ...rolesService };
+const list_role: RequestHandler = (req, res, next) => listRoleController(req, res, next, roleService);
+const create_role: RequestHandler = (req, res, next) => createRoleController(req, res, next, roleService);
+const edit_role: RequestHandler = (req, res, next) => editRoleController(req, res, next, roleService);
+const update_role: RequestHandler = (req, res, next) => updateRoleController(req, res, next, roleService);
+const delete_role: RequestHandler = (req, res, next) => deleteRoleController(req, res, next, roleService);
+
+const companyService = { ...companiesService };
+const list_company: RequestHandler = (req, res, next) => listCompanyController(req, res, next, companyService);
+const create_company: RequestHandler = (req, res, next) => createCompanyController(req, res, next, companyService);
+const edit_company: RequestHandler = (req, res, next) => editCompanyController(req, res, next, companyService);
+const update_company: RequestHandler = (req, res, next) => updateCompanyController(req, res, next, companyService);
+const delete_company: RequestHandler = (req, res, next) => deleteCompanyController(req, res, next, companyService);
+
+const userService = { ...usersService };
+const list_user: RequestHandler = (req, res, next) => listUserController(req, res, next, userService);
+const create_user: RequestHandler = (req, res, next) => createUserController(req, res, next, userService);
 
 const id = "11111111-1111-4111-8111-111111111111";
 const role: RoleSummary = { id, name: "Manager", slug: "manager", scope: "company", is_system: false, is_default_role: false, pages: [], permissions: [], assignment_count: 0, created_at: "2026-10-07T00:00:00Z", updated_at: "2026-10-07T00:00:00Z" };
@@ -53,10 +71,10 @@ test("controllers explicitly return 200 for reads/updates/deletion and 201 for c
 });
 
 test("services report business reasons and controllers translate missing/protected/conflicting records", async t => {
-  const service = create_role_service({ ...rolesRepository, list_by_id_role: async () => null });
-  t.mock.method(roleService, "edit_role", (roleId: string) => service.edit_role(roleId));
-  const company = create_company_service({ ...companiesRepository, list_by_id_company: async () => null });
-  t.mock.method(companyService, "edit_company", (companyId: string) => company.edit_company(companyId));
+  const repository = { ...rolesRepository, list_by_id_role: async () => null };
+  t.mock.method(roleService, "edit_role", (roleId: string) => rolesService.edit_role(roleId, repository));
+  const companyRepository = { ...companiesRepository, list_by_id_company: async () => null };
+  t.mock.method(companyService, "edit_company", (companyId: string) => companiesService.edit_company(companyId, companyRepository));
   await assert.rejects(roleService.edit_role(id), error => error instanceof RoleError && error.code === "role_not_found" && !("status" in error));
   assert.deepEqual(await invoke(edit_role), { status: 404, body: { error: "Role not found." } });
   assert.deepEqual(await invoke(edit_company), { status: 404, body: { error: "Company not found." } });

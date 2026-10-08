@@ -5,8 +5,8 @@ import { test } from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 import type { Request, Response as ExpressResponse } from "express";
-import { create_user_service, userService } from "../src/server/services/users_service";
-import { validate_create_user } from "../src/server/controllers/users_controller";
+import * as usersService from "../src/server/services/users_service";
+import { validate_create_user } from "../src/server/utils/users_request";
 import { UserError } from "../src/server/utils/errors";
 import * as usersRepository from "../src/server/repositories/users_repository";
 import { authRepository } from "../src/server/repositories/auth_repository";
@@ -70,7 +70,7 @@ test("creation accepts omitted assignments and company-only memberships; roles r
   assert.deepEqual(validate_create_user(minimal), { ...minimal, company_id: undefined, role_ids: [] });
   assert.deepEqual(validate_create_user({ ...minimal, role_ids: [] }).role_ids, []);
   assert.deepEqual(validate_create_user({ ...minimal, company_id: company }).role_ids, []);
-  await assert.rejects(create_user_service().create_user(validate_create_user({ ...minimal, role_ids: [role] })), (error) => error instanceof UserError && error.code === 'company_required');
+  await assert.rejects(usersService.create_user(validate_create_user({ ...minimal, role_ids: [role] })), (error) => error instanceof UserError && error.code === 'company_required');
 });
 
 test("repository omits optional lookups and membership writes, but persists company-only memberships", async (t) => {
@@ -127,7 +127,7 @@ test("creation validates assignments before Auth; saves matching UUID and cleans
   const admin = createClient("http://localhost:56321", "test-key").auth.admin;
   const create = t.mock.method(admin, "createUser", async () => ({ data: { user: authUser }, error: null }));
   const remove = t.mock.method(admin, "deleteUser", async () => ({ data: { user: authUser }, error: null }));
-  const service = create_user_service(repository, () => admin);
+  const service = { create_user: (input: Parameters<typeof usersService.create_user>[0]) => usersService.create_user(input, repository, () => admin) };
   await assert.rejects(service.create_user(input), (error) => error instanceof UserError && error.code === 'assignments_unavailable');
   assert.equal(create.mock.callCount(), 0);
   validate.mock.mockImplementation(async () => ({ existingUser: { id }, company: { id: company }, roleCount: 1 }));
@@ -157,20 +157,21 @@ test("Auth duplicates do not write profiles or delete existing accounts", async 
   const admin = createClient("http://localhost:56321", "test-key").auth.admin;
   t.mock.method(admin, "createUser", async () => ({ data: { user: null }, error: { code: "email_exists" } }));
   const remove = t.mock.method(admin, "deleteUser", async () => ({ data: { user: authUser }, error: null }));
-  await assert.rejects(create_user_service(repository, () => admin).create_user(input), (error) => error instanceof UserError && error.code === "email_exists");
+  await assert.rejects(usersService.create_user(input, repository, () => admin), (error) => error instanceof UserError && error.code === "email_exists");
   assert.equal(save.mock.callCount(), 0); assert.equal(remove.mock.callCount(), 0);
 });
 
 test("listing validates pagination before repository access", async (t) => {
+  const userService = { ...usersService };
   const list = t.mock.method(userService, "list_user", async () => page);
   let status = 200; let result: unknown;
   const res = { status(code: number) { status = code; return this; }, json(body: unknown) { result = body; } } as unknown as ExpressResponse;
   for (const query of [{ page: "0" }, { page_size: "101" }, { page: ["1", "2"] }, { search: {} }]) {
-    await listUserController({ query } as unknown as Request, res, (error) => { throw error; });
+    await listUserController({ query } as unknown as Request, res, (error) => { throw error; }, userService);
     assert.equal(status, 400);
   }
   assert.equal(list.mock.callCount(), 0);
-  await listUserController({ query: { page: "2", page_size: "10", search: " user " } } as unknown as Request, res, (error) => { throw error; });
+  await listUserController({ query: { page: "2", page_size: "10", search: " user " } } as unknown as Request, res, (error) => { throw error; }, userService);
   const args = list.mock.calls[0].arguments as unknown as [unknown, string];
   assert.deepEqual(args[0], { page: 2, page_size: 10, skip: 10, take: 10 });
   assert.equal(args[1], "user");

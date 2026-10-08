@@ -12,7 +12,7 @@ Component → Redux → Express route → Controller → Service → Repository 
 | --- | --- | --- |
 | Routes | Match URL/method, apply authentication/authorization and rate limiting, dispatch controller | GET roles with an ID routes to `edit_role`; without an ID to `list_role` |
 | Controllers | Validate body/query/IDs, normalize input, call services, write JSON/redirects and translate errors into HTTP statuses | Reject malformed UUIDs or missing names; map duplicate database keys to 409 |
-| Controller validation functions | Input checks live directly in the resource's existing controller file | `validate_create_role` in `roles_controller.ts`; `validate_create_user` and `validate_user_filter` in `users_controller.ts` |
+| Request utilities | Validate and normalize input, translate resource errors into HTTP responses | `validate_create_user` and `validate_user_filter` in `utils/users_request.ts` |
 | Services | Evaluate business conditions and orchestrate operations | Protect system roles, reject assigned-role deletion, verify company-role membership, require an admin-provisioned login profile |
 | Repositories | Execute Drizzle queries, serialize records, expose transaction-bound queries | `list_by_id_role`, `list_user`, `create_user` |
 | Redux | Make HTTP requests and manage client loading/error/data state | `listRole`, `editRole`, `createRole`, `updateRole`, `deleteRole` |
@@ -24,13 +24,13 @@ Pure server helpers belong in `src/server/utils`. For example, `buildUserFilter`
 
 ## Validation versus conditions
 
-**Input validation belongs inside the current controller file:** whether a field exists, whether it has the right type/length/format, whether a UUID is valid, whether a mapping key is registered, whether arrays contain duplicates, and whether the request attempts to change read-only fields. A valid input becomes a typed object before the controller calls the service. Keep validation functions in that file; do not introduce a validation subfolder for this architecture.
+**Input validation belongs in resource request utilities:** whether a field exists, whether it has the right type/length/format, whether a UUID is valid, whether a mapping key is registered, whether arrays contain duplicates, and whether the request attempts to change read-only fields. A valid input becomes a typed object before the controller calls the service. Keep these helpers in `src/server/utils/{resource}_request.ts`. Controllers declare only async operation handlers corresponding to their service operations; do not declare `validate_*`, `respond_*`, or rate limiters in resource controllers. Routes own rate limiters.
 
 **Business conditions belong in services:** whether a role is system-managed, whether a global role can be the default, whether a role is assigned and deletable, whether an email already belongs to an account, whether selected roles are available for a company membership, and whether a login account has an organization profile.
 
-Services receive validated values and dependencies, return data, or raise safe `ApplicationError` subclasses (`UserError`, `RoleError`, `CompanyError`). They never accept Express request/response objects, write response bodies, or redirect the browser. Errors contain a business reason, such as `role_not_found`, and a safe message. They contain no HTTP status. Validation helpers inside controllers use the `invalid_input` reason.
+Services receive validated values and dependencies, return data, or raise safe `ApplicationError` subclasses (`UserError`, `RoleError`, `CompanyError`). They never accept Express request/response objects, write response bodies, or redirect the browser. Errors contain a business reason, such as `role_not_found`, and a safe message. They contain no HTTP status. Request validation helpers use the `invalid_input` reason.
 
-Each existing controller file implements its own `try/catch`, success statuses, business-error status mapping, PostgreSQL error mapping, and safe unexpected-error response. `respond_role_error`, `respond_user_error`, and `respond_company_error` live in their resource controller files. `respond_auth_error` in `auth_controller.ts` also translates authentication-guard and Google initiation errors. `src/server/utils/errors.ts` contains only error classes/reason types and `getDatabaseErrorCode`, which unwraps Drizzle causes without sending HTTP responses. The user service completes Auth cleanup before rethrowing a persistence failure to its controller.
+Each resource controller implements its own `try/catch` and success statuses. It calls its resource request utility for business-error status mapping, PostgreSQL error mapping, and safe unexpected-error responses. `respond_role_error`, `respond_user_error`, and `respond_company_error` live in `utils/roles_request.ts`, `utils/users_request.ts`, and `utils/companies_request.ts`. `respond_auth_error` in `auth_controller.ts` also translates authentication-guard and Google initiation errors. `src/server/utils/errors.ts` contains only error classes/reason types and `getDatabaseErrorCode`, which unwraps Drizzle causes without sending HTTP responses. The user service completes Auth cleanup before rethrowing a persistence failure to its controller.
 
 Controllers explicitly send `200` for reads/options/updates/deletion and password login/logout, and `201` for resource creation. Missing records return `404`; invalid inputs/pagination return `400`; denied access returns `401`/`403`; conflicts return `409`; provider failures use the existing `502` responses. Unexpected resource failures return a generic `500` without SQL or internal error details. Google callback navigation uses `303 See Other` redirects. `300 Multiple Choices` is not used for ordinary navigation. The application error boundary still handles parser errors and failures outside resource controllers.
 
@@ -59,11 +59,11 @@ Use **snake_case, action + singular entity** for every named function declared i
 
 Use the same operation name across controller and service exports. The Roles repository exports named async functions: `list_role`, `list_by_id_role`, `create_role`, `update_role`, and `delete_role`. Transaction-bound update/delete queries use the same operation names as their service. Company operations follow the same format: `list_company`, `create_company`, `edit_company`, `update_company`, and `delete_company`.
 
-Supporting functions use descriptive snake_case: `validate_role_id`, `validate_create_user`, `serialize_role`, `create_role_service`, `get_user_profile`, `list_user_global_role`, `start_google_login`, and `finish_google_login`. Avoid ambiguous bare resource functions such as `list`, `find`, `create`, `update`, or `delete` on application repository/service objects.
+Supporting functions use descriptive snake_case: `validate_role_id`, `validate_create_user`, `serialize_role`, `get_user_profile`, `list_user_global_role`, `start_google_login`, and `finish_google_login`. Avoid ambiguous bare resource functions such as `list`, `find`, `create`, `update`, or `delete` on application repository/service objects.
 
 `usersRepository.assignable_user(input)` reads the existing email account, selected company, and available company-role count before creation. It performs eligibility lookups and does not write assignments. The user service checks those results before provisioning the account.
 
-Types and classes use PascalCase. Repository/service object names remain `usersRepository`, `roleService`, etc. Frontend Redux exports use camelCase, such as `createUser`; components access the backend through HTTP. React components use PascalCase and hooks use `use...`. Imported infrastructure helpers and external APIs retain their prescribed names, including Drizzle `select`/`insert` and Supabase `createUser`/`signInWithOAuth`.
+Types and classes use PascalCase. Resource repositories and the Users/Roles services expose named async functions. Namespace imports may use names such as `usersRepository` or `roleService`. Frontend Redux exports use camelCase, such as `createUser`; components access the backend through HTTP. React components use PascalCase and hooks use `use...`. Imported infrastructure helpers and external APIs retain their prescribed names, including Drizzle `select`/`insert` and Supabase `createUser`/`signInWithOAuth`.
 
 ESLint enforces snake_case for named functions and object methods in the three backend directories, with additional checks for arrow-function handlers.
 
@@ -86,10 +86,10 @@ Database constraints remain the final protection against races: unique slugs, th
 ## Adding a resource
 
 1. Define shared request/response types without backend imports.
-2. Add validation functions for the raw input inside the resource's current controller file.
+2. Add raw-input validation and HTTP error helpers in `src/server/utils/{resource}_request.ts`.
 3. Add database-only repository operations with singular entity names.
 4. Add services that decide conditions and coordinate transactions/external operations.
-5. Add controllers that validate, call services and map response/error status.
+5. Add only async operation handlers to controllers, with the same names as their service operations. Call request utilities for validation/error responses and send explicit success statuses.
 6. Mount protected routes and document them in Swagger.
 7. Add matching Redux actions and update component imports.
 8. Test validation, business conditions, authorization, transaction behavior and failures; run lint/typecheck/tests/build.

@@ -2,14 +2,16 @@ import { mockDatabase } from "./database-fixture";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Request, Response as ExpressResponse } from "express";
-import { validate_create_role, validate_update_role } from "../src/server/controllers/roles_controller";
+import { validate_create_role, validate_update_role } from "../src/server/utils/roles_request";
 import { RoleError } from "../src/server/utils/errors";
-import { roleService, create_role_service } from "../src/server/services/roles_service";
+import * as rolesService from "../src/server/services/roles_service";
 import * as rolesRepository from "../src/server/repositories/roles_repository";
 import { create_role as createController, list_role as listRoleController, edit_role as editRoleController, delete_role as deleteController } from "../src/server/controllers/roles_controller";
 import { makeStore } from "../src/lib/store/store";
 import { listRole, editRole, getRoleOption, createRole, updateRole, deleteRole, resetRoles } from "../src/lib/store/roles-slice";
 import type { RoleSummary } from "../src/server/schema/roles_schema";
+
+const roleService = { ...rolesService };
 
 const id = "11111111-1111-4111-8111-111111111111";
 const role: RoleSummary = { id, name: "Manager", slug: "manager", scope: "company", is_system: false, is_default_role: false, created_at: "2026-10-07T00:00:00.000Z", updated_at: "2026-10-07T00:00:00.000Z", pages: ["users"], permissions: ["users.view"], assignment_count: 0 };
@@ -34,18 +36,18 @@ test("controllers validate list filters and translate conflicts without exposing
   const list = t.mock.method(roleService, "list_role", async () => page);
   const find = t.mock.method(roleService, "edit_role", async () => role);
   const { res, result } = response();
-  await listRoleController({ query: { page: "2", page_size: "20", search: " manager ", scope: "company" } } as unknown as Request, res);
+  await listRoleController({ query: { page: "2", page_size: "20", search: " manager ", scope: "company" } } as unknown as Request, res, undefined, roleService);
   assert.deepEqual(list.mock.calls[0].arguments, [{ page: 2, page_size: 20, skip: 20, take: 20 }, "manager", "company"]);
-  await editRoleController({ query: { id } } as unknown as Request, res);
+  await editRoleController({ query: { id } } as unknown as Request, res, undefined, roleService);
   assert.deepEqual(find.mock.calls[0].arguments, [id]);
   for (const query of [{ page_size: "15" }, { scope: "bad" }, { search: ["a", "b"] }]) {
-    await listRoleController({ query } as unknown as Request, res); assert.equal(result().status, 400);
+    await listRoleController({ query } as unknown as Request, res, undefined, roleService); assert.equal(result().status, 400);
   }
   t.mock.method(roleService, "create_role", async () => { throw { cause: { code: "23505", detail: "database details" } }; });
-  await createController({ body: { name: "Manager" } } as Request, res);
+  await createController({ body: { name: "Manager" } } as Request, res, undefined, roleService);
   assert.equal(result().status, 409); assert.equal(JSON.stringify(result()).includes("database details"), false);
   t.mock.method(roleService, "delete_role", async () => { throw { cause: { code: "23503" } }; });
-  await deleteController({ query: { id } } as unknown as Request, res);
+  await deleteController({ query: { id } } as unknown as Request, res, undefined, roleService);
   assert.equal(result().status, 409);
 });
 
@@ -72,12 +74,12 @@ test("service guards system roles and global defaults before writing; mappings c
   assert.equal(queries.filter(query => query.sql.startsWith('delete from "roles"')).length, 0);
 });
 
-test("service rejects reserved slugs and global defaults before creating records", (t) => {
+test("service rejects reserved slugs and global defaults before creating records", async (t) => {
   const repository = { ...rolesRepository };
-  const service = create_role_service(repository);
+  const service = { create_role: (input: Parameters<typeof rolesService.create_role>[0]) => rolesService.create_role(input, repository) };
   const create = t.mock.method(repository, "create_role", async () => role);
-  assert.throws(() => service.create_role(validate_create_role({ name: "Super Admin", slug: "super_admin" })), (error) => error instanceof RoleError && error.code === "system_role");
-  assert.throws(() => service.create_role(validate_create_role({ name: "Global", scope: "global", is_default_role: true })), (error) => error instanceof RoleError && error.code === "company_default_required");
+  await assert.rejects(() => service.create_role(validate_create_role({ name: "Super Admin", slug: "super_admin" })), (error) => error instanceof RoleError && error.code === "system_role");
+  await assert.rejects(() => service.create_role(validate_create_role({ name: "Global", scope: "global", is_default_role: true })), (error) => error instanceof RoleError && error.code === "company_default_required");
   assert.equal(create.mock.callCount(), 0);
 });
 

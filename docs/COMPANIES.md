@@ -42,3 +42,5 @@ await dispatch(listCompany({ page: 1, page_size: 10 })).unwrap();
 ```
 
 The Companies repository exports named async functions: `list_company`, `list_by_id_company`, `create_company`, `update_company`, and `delete_company`. The service opens update/delete transactions and passes the transaction to repository calls; the ID lookup locks the company before reading membership counts. Search remains inside `list_company`.
+
+The Companies service exports named async functions: `create_company`, `list_company`, `edit_company`, `update_company`, and `delete_company`. It has no service factory or exported service object. Update/delete transactions and membership checks remain in these functions.

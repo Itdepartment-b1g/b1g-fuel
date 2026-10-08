@@ -9,9 +9,9 @@ import { getDatabaseErrorCode, CompanyError, RoleError } from "../src/server/uti
 import * as usersRepository from "../src/server/repositories/users_repository";
 import { authRepository } from "../src/server/repositories/auth_repository";
 import * as rolesRepository from "../src/server/repositories/roles_repository";
-import { companyService } from "../src/server/services/companies_service";
-import { roleService } from "../src/server/services/roles_service";
-import { userService } from "../src/server/services/users_service";
+import * as companyService from "../src/server/services/companies_service";
+import * as roleService from "../src/server/services/roles_service";
+import * as userService from "../src/server/services/users_service";
 import { createQuickFilterState } from "../src/lib/quick-filter";
 import { USER_FILTER_DEFAULTS } from "../src/lib/users-filters";
 

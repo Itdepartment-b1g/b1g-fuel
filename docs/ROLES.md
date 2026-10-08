@@ -73,3 +73,5 @@ await dispatch(listRole({ page: 1, page_size: 10 })).unwrap();
 ```
 
 No schema migration is needed. Apply existing migrations so the custom default-role constraints and foreign keys are present; Prisma schema generation alone does not reproduce them. Swagger exposes the endpoints and request/response schemas under Roles.
+
+The Roles service exports named async functions: `create_role`, `list_role`, `edit_role`, `delete_role`, `update_role`, and `get_role_option`. It has no service factory or exported service object. Role protections and update/delete transactions remain in these functions.

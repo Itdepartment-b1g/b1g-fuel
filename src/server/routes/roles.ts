@@ -1,3 +1,4 @@
+import { rateLimit } from "express-rate-limit";
 import { Router } from "express";
 import { requireAuthUser } from "@/server/auth/session";
 import { requireSuperAdmin } from "@/server/auth/authorization";
@@ -7,9 +8,18 @@ import {
   edit_role,
   get_role_option,
   list_role,
-  role_mutation_limiter,
   update_role,
 } from "@/server/controllers/roles_controller";
+
+const role_mutation_limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).json({ error: "Too many role changes. Try again later." });
+  },
+});
 
 export const rolesRouter = Router();
 rolesRouter.use((_req, res, next) => {

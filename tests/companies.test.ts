@@ -1,9 +1,9 @@
 import { mockDatabase } from "./database-fixture";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { validate_create_company, validate_update_company } from "../src/server/controllers/companies_controller";
+import { validate_create_company, validate_update_company } from "../src/server/utils/companies_request";
 import { CompanyError } from "../src/server/utils/errors";
-import { create_company_service } from "../src/server/services/companies_service";
+import * as companyService from "../src/server/services/companies_service";
 import * as companiesRepository from "../src/server/repositories/companies_repository";
 import { makeStore } from "../src/lib/store/store";
 import { createCompany, deleteCompany, listCompany, resetCompanies } from "../src/lib/store/companies-slice";
@@ -20,14 +20,14 @@ test("company validation trims names and rejects missing, oversized or read-only
 test("company deletion checks membership after locking and preserves companies with members", async (t) => {
   mockDatabase(t, () => []);
   let members = 1; let removed = false; let locked = false;
-  const service = create_company_service({ ...companiesRepository,
+  const repository: typeof companiesRepository = { ...companiesRepository,
     list_by_id_company: async (_id, _client, lock) => { locked = Boolean(lock); return { ...company, member_count: members }; },
     update_company: async () => company, delete_company: async () => { removed = true; },
-  });
-  await assert.rejects(service.delete_company(id), (error) => error instanceof CompanyError && error.code === "company_has_members");
+  };
+  await assert.rejects(companyService.delete_company(id, repository), (error) => error instanceof CompanyError && error.code === "company_has_members");
   assert.equal(locked, true); assert.equal(removed, false);
   members = 0;
-  assert.deepEqual(await service.delete_company(id), { id, message: "Company deleted." }); assert.equal(removed, true);
+  assert.deepEqual(await companyService.delete_company(id, repository), { id, message: "Company deleted." }); assert.equal(removed, true);
 });
 test("repository locks the company before reading membership counts in the same transaction", async (t) => {
   const queries = mockDatabase(t, ({ sql }) => {
@@ -35,7 +35,7 @@ test("repository locks the company before reading membership counts in the same 
     if (sql.startsWith('select')) return [[id, company.name, company.created_at, company.updated_at, 0]];
     return [];
   });
-  await create_company_service().delete_company(id);
+  await companyService.delete_company(id);
   assert.ok(queries[0].sql.startsWith("begin"));
   assert.ok(queries[1].sql.endsWith("for update"));
   assert.ok(queries[2].sql.includes("count(*)"));
