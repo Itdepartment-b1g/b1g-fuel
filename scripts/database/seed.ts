@@ -1,9 +1,8 @@
 import "dotenv/config";
 import { createClient, type User } from "@supabase/supabase-js";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../src/generated/prisma/client";
-
-class SeedError extends Error {}
+import { getDatabase, closeDatabase } from "../../src/server/utils/database";
+import { authRepository } from "../../src/server/repositories/auth_repository";
+import { seed_records, SeedError } from "./seed-records";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -20,11 +19,11 @@ async function main() {
   if (fullName.length > 250) throw new SeedError("SEED_SUPER_ADMIN_FULL_NAME must contain at most 250 characters.");
   if (secretKey!.startsWith("sb_publishable_")) throw new SeedError("SUPABASE_SECRET_KEY must be a privileged secret key, not a publishable key.");
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl! }) });
+  const database = getDatabase();
   const supabase = createClient(supabaseUrl!, secretKey!, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
   try {
     // Verify schema availability and role compatibility before creating an Auth account.
-    const existingRole = await prisma.roles.findUnique({ where: { slug: "super_admin" } });
+    const existingRole = await authRepository.get_super_admin_role();
     if (existingRole && existingRole.scope !== "global") throw new SeedError("The existing super_admin role must have global scope. No account was created.");
     let authUser: User | undefined;
     for (let page = 1; ; page++) {
@@ -50,21 +49,9 @@ async function main() {
       authUser = data.user;
     }
     const authId = authUser.id;
-    await prisma.$transaction(async (tx) => {
-      const role = await tx.roles.upsert({
-        where: { slug: "super_admin" },
-        create: { name: "Super Admin", slug: "super_admin", scope: "global", is_system: true },
-        update: { is_system: true, is_default_role: false },
-      });
-      await tx.user.upsert({ where: { id: authId }, create: { id: authId, name: fullName, email }, update: { name: fullName, email } });
-      await tx.user_role.upsert({
-        where: { user_id_role_id: { user_id: authId, role_id: role.id } },
-        create: { user_id: authId, role_id: role.id, scope: "global" },
-        update: {},
-      });
-    });
+    await seed_records(database, authId, fullName, email!);
     console.log(created ? "Super-admin account created and global role assigned." : "Existing account reused; global super-admin role verified. Password unchanged.");
-  } finally { await prisma.$disconnect(); }
+  } finally { await closeDatabase(); }
 }
 
 main().catch((error: unknown) => {

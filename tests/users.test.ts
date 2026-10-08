@@ -6,12 +6,11 @@ import { createClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 import type { Request, Response as ExpressResponse } from "express";
 import * as usersService from "../src/server/services/users_service";
-import { validate_create_user } from "../src/server/utils/users_request";
-import { UserError } from "../src/server/utils/errors";
+import { UserError } from "../src/server/services/users_service";
 import * as usersRepository from "../src/server/repositories/users_repository";
 import { authRepository } from "../src/server/repositories/auth_repository";
 import { requireSuperAdmin } from "../src/server/auth/authorization";
-import { list_user as listUserController } from "../src/server/controllers/users_controller";
+import { create_user as createUserController, list_user as listUserController } from "../src/server/controllers/users_controller";
 import { get_user_session } from "../src/server/controllers/auth_controller";
 import { makeStore } from "../src/lib/store/store";
 import { createUser, listUser, getUserOption, resetUsers } from "../src/lib/store/users-slice";
@@ -54,48 +53,60 @@ test("Redux sends the required name on creation and retains it in creation and l
   assert.equal(String(fetch.mock.calls[1].arguments[0]), "/api/users?search=Test+User");
 });
 
-test("creation validates and normalizes input; rejects privilege fields and malformed assignments", () => {
-  assert.equal(validate_create_user({ ...input, email: " USER@EXAMPLE.COM " }).email, input.email);
-  assert.equal(validate_create_user({ ...input, name: " Test User " }).name, input.name);
+test("creation validates and normalizes input; rejects privilege fields and malformed assignments", async (t) => {
+  const service = { ...usersService };
+  const create = t.mock.method(service, "create_user", async () => user);
+  let status = 200;
+  const res = { status(code: number) { status = code; return this; }, json() {} } as unknown as ExpressResponse;
+  await createUserController({ body: { ...input, email: " USER@EXAMPLE.COM " } } as Request, res, undefined, service);
+  assert.equal(create.mock.calls[0].arguments[0]?.email, input.email);
+  await createUserController({ body: { ...input, name: " Test User " } } as Request, res, undefined, service);
+  assert.equal(create.mock.calls[1].arguments[0]?.name, input.name);
   for (const name of [undefined, null, "", "   ", "x".repeat(251)]) {
-    assert.throws(() => validate_create_user({ ...input, name }), (error) => error instanceof UserError && error.code === 'invalid_input');
+    await createUserController({ body: { ...input, name } } as Request, res, undefined, service);
+    assert.equal(status, 400);
   }
   for (const body of [null, [], { ...input, password: "short" }, { ...input, role_ids: [role, role] }, { ...input, role_ids: null }, { ...input, company_id: null }, { ...input, company_id: "bad" }, { ...input, global_roles: ["super_admin"] }, { ...input, id }]) {
-    assert.throws(() => validate_create_user(body), (error) => error instanceof UserError && error.code === 'invalid_input');
+    await createUserController({ body } as Request, res, undefined, service);
+    assert.equal(status, 400);
   }
+  assert.equal(create.mock.callCount(), 2);
 });
 
-test("creation accepts omitted assignments and company-only memberships; roles require a company", async () => {
+test("creation accepts omitted assignments and company-only memberships; roles require a company", async (t) => {
   const minimal = { name: input.name, email: input.email, password: input.password };
-  assert.deepEqual(validate_create_user(minimal), { ...minimal, company_id: undefined, role_ids: [] });
-  assert.deepEqual(validate_create_user({ ...minimal, role_ids: [] }).role_ids, []);
-  assert.deepEqual(validate_create_user({ ...minimal, company_id: company }).role_ids, []);
-  await assert.rejects(usersService.create_user(validate_create_user({ ...minimal, role_ids: [role] })), (error) => error instanceof UserError && error.code === 'company_required');
+  const service = { ...usersService };
+  const create = t.mock.method(service, "create_user", async () => user);
+  const res = { status() { return this; }, json() {} } as unknown as ExpressResponse;
+  for (const body of [minimal, { ...minimal, role_ids: [] }, { ...minimal, company_id: company }])
+    await createUserController({ body } as Request, res, undefined, service);
+  assert.deepEqual(create.mock.calls[0].arguments[0], { ...minimal, company_id: undefined, role_ids: [] });
+  assert.deepEqual(create.mock.calls[1].arguments[0]?.role_ids, []);
+  assert.deepEqual(create.mock.calls[2].arguments[0]?.role_ids, []);
+  await assert.rejects(usersService.create_user({ ...minimal, role_ids: [role] }), (error) => error instanceof UserError && error.code === 'company_required');
 });
 
 test("repository omits optional lookups and membership writes, but persists company-only memberships", async (t) => {
-  let membershipCreated = false;
-  const membershipId = "44444444-4444-4444-8444-444444444444";
-  const queries = mockDatabase(t, ({ sql }) => {
-    if (sql.startsWith('insert into "user"')) return [[id, input.name, input.email, user.created_at]];
-    if (sql.startsWith('insert into "user_company"')) { membershipCreated = true; return [[membershipId]]; }
-    if (sql.includes('from "user_company" inner join')) return membershipCreated ? [[membershipId, id, company, "Company"]] : [];
-    if (sql.startsWith('select "id" from "company"')) return [[company]];
-    return [];
+  const queries = mockDatabase(t, ({ model, method, args }) => {
+    if (model === "user" && method === "create") return { id, name: input.name, email: input.email, created_at: new Date(user.created_at), user_roles: [],
+      user_companies: (args.data as { user_companies?: unknown }).user_companies ? [{ company: { id: company, name: "Company" }, roles: [] }] : [] };
+    if (model === "company" && method === "findUnique") return { id: company };
+    return null;
   });
   const minimal = { name: input.name, email: input.email, password: input.password };
   assert.deepEqual(await usersRepository.assignable_user(minimal), { existingUser: null, company: null, roleCount: 0 });
-  assert.equal(queries.some(query => query.sql.includes('from "company"')), false);
-  assert.equal(queries.some(query => query.sql.includes('from "roles"')), false);
+  assert.equal(queries.some(query => query.model === "company"), false);
+  assert.equal(queries.some(query => query.model === "roles"), false);
   const created = await usersRepository.create_user(id, minimal);
   assert.deepEqual(created.companies, []);
-  assert.equal(queries.some(query => query.sql.startsWith('insert into "user_company"')), false);
+  assert.equal((queries.find(query => query.method === "create")!.args.data as { user_companies?: unknown }).user_companies, undefined);
   assert.deepEqual(await usersRepository.assignable_user({ ...minimal, company_id: company }), { existingUser: null, company: { id: company }, roleCount: 0 });
-  assert.equal(queries.filter(query => query.sql.startsWith('select "id" from "company"')).length, 1);
+  assert.equal(queries.filter(query => query.model === "company" && query.method === "findUnique").length, 1);
   const member = await usersRepository.create_user(id, { ...minimal, company_id: company });
   assert.deepEqual(member.companies, [{ id: company, name: "Company", roles: [] }]);
-  assert.equal(queries.some(query => query.sql.startsWith('insert into "user_company_role"')), false);
-  assert.equal(queries.filter(query => query.sql === "commit").length, 2);
+  const memberWrite = queries.filter(query => query.model === "user" && query.method === "create")[1];
+  assert.deepEqual((memberWrite.args.data as { user_companies: unknown }).user_companies, { create: { company_id: company } });
+  assert.equal(queries.filter(query => query.method === "commit").length, 2);
 });
 
 test("Redux creates a user without company or role fields", async (t) => {

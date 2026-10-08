@@ -1,266 +1,157 @@
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  sql,
-  type SQL,
-} from "drizzle-orm";
-import { getDatabase, type DatabaseExecutor } from "@/server/utils/database";
-import {
-  companyTable,
-  roleTable,
-  userCompanyRoleTable,
-  userCompanyTable,
-  userRoleTable,
-  userTable,
-} from "@/server/utils/database_schema";
-import { userHasMembership, userHasRole } from "@/server/utils/user_filter";
+import type { Prisma } from "@/generated/prisma/client";
+import { getDatabase } from "@/server/utils/database";
+import { groupActiveConditions, resolveDateRange, type QuickFilterState } from "@/lib/quick-filter";
 import type { CreateUserInput, UserSummary } from "@/server/schema/users_schema";
 import { paginationMetadata, type Pagination } from "@/server/utils/pagination";
 
-const roleSelect = {
-  id: roleTable.id,
-  name: roleTable.name,
-  slug: roleTable.slug,
-};
-const userSelect = {
-  id: userTable.id,
-  name: userTable.name,
-  email: userTable.email,
-  created_at: userTable.created_at,
-};
-type UserRecord = Pick<
-  typeof userTable.$inferSelect,
-  "id" | "name" | "email" | "created_at"
->;
+const role_select = { id: true, name: true, slug: true } satisfies Prisma.rolesSelect;
+const user_select = {
+  id: true,
+  name: true,
+  email: true,
+  created_at: true,
+  user_roles: {
+    select: { role: { select: role_select } },
+    orderBy: [{ role: { name: "asc" } }, { role: { id: "asc" } }],
+  },
+  user_companies: {
+    select: {
+      company: { select: { id: true, name: true } },
+      roles: {
+        select: { role: { select: role_select } },
+        orderBy: [{ role: { name: "asc" } }, { role: { id: "asc" } }],
+      },
+    },
+    orderBy: [{ company: { name: "asc" } }, { company: { id: "asc" } }],
+  },
+} satisfies Prisma.userSelect;
+type UserRecord = Prisma.userGetPayload<{ select: typeof user_select }>;
 
-// Batch related data for the selected page; avoid one query per user or membership.
-async function serialize_user(
-  client: DatabaseExecutor,
-  rows: UserRecord[],
-): Promise<UserSummary[]> {
-  if (!rows.length) return [];
-  const ids = rows.map((row) => row.id);
-  const globalRoles = await client
-    .select({ user_id: userRoleTable.user_id, role: roleSelect })
-    .from(userRoleTable)
-    .innerJoin(
-      roleTable,
-      and(
-        eq(roleTable.id, userRoleTable.role_id),
-        eq(roleTable.scope, userRoleTable.scope),
-      ),
-    )
-    .where(inArray(userRoleTable.user_id, ids))
-    .orderBy(asc(roleTable.name), asc(roleTable.id));
-  const memberships = await client
-    .select({
-      id: userCompanyTable.id,
-      user_id: userCompanyTable.user_id,
-      company: { id: companyTable.id, name: companyTable.name },
-    })
-    .from(userCompanyTable)
-    .innerJoin(companyTable, eq(companyTable.id, userCompanyTable.company_id))
-    .where(inArray(userCompanyTable.user_id, ids))
-    .orderBy(asc(companyTable.name), asc(companyTable.id));
-  const membershipRoles = memberships.length
-    ? await client
-        .select({
-          membership_id: userCompanyRoleTable.user_company_id,
-          role: roleSelect,
-        })
-        .from(userCompanyRoleTable)
-        .innerJoin(
-          roleTable,
-          and(
-            eq(roleTable.id, userCompanyRoleTable.role_id),
-            eq(roleTable.scope, userCompanyRoleTable.scope),
-          ),
-        )
-        .where(
-          inArray(
-            userCompanyRoleTable.user_company_id,
-            memberships.map((row) => row.id),
-          ),
-        )
-        .orderBy(asc(roleTable.name), asc(roleTable.id))
-    : [];
-  return rows.map((row) => ({
-    ...row,
-    created_at: row.created_at.toISOString(),
-    global_roles: globalRoles
-      .filter((item) => item.user_id === row.id)
-      .map((item) => item.role),
-    companies: memberships
-      .filter((item) => item.user_id === row.id)
-      .map((item) => ({
-        ...item.company,
-        roles: membershipRoles
-          .filter((assignment) => assignment.membership_id === item.id)
-          .map((assignment) => assignment.role),
-      })),
-  }));
+function serialize_user(user: UserRecord): UserSummary {
+  const { user_roles, user_companies, ...record } = user;
+  return {
+    ...record,
+    created_at: record.created_at.toISOString(),
+    global_roles: user_roles.map((assignment) => assignment.role),
+    companies: user_companies.map((membership) => ({
+      ...membership.company,
+      roles: membership.roles.map((assignment) => assignment.role),
+    })),
+  };
 }
 
-export async function list_user(pagination: Pagination, where?: SQL) {
-  return getDatabase().transaction(
-    async (tx) => {
-      const rows = await tx
-        .select(userSelect)
-        .from(userTable)
-        .where(where)
-        .orderBy(desc(userTable.created_at), asc(userTable.id))
-        .offset(pagination.skip)
-        .limit(pagination.take);
-      const [totals] = await tx
-        .select({ total: count() })
-        .from(userTable)
-        .where(where);
-      return {
-        users: await serialize_user(tx, rows),
-        ...paginationMetadata(totals.total, pagination),
-      };
-    },
-    { isolationLevel: "repeatable read" },
-  );
+export async function list_user(pagination: Pagination, search: string, filters?: QuickFilterState) {
+  const where: Prisma.userWhereInput = { AND: [build_user_search(search) ?? {}, build_user_filter(filters) ?? {}] };
+  return getDatabase().$transaction(async (tx) => {
+    const users = await tx.user.findMany({
+      where,
+      select: user_select,
+      orderBy: [{ created_at: "desc" }, { id: "asc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+    });
+    const total = await tx.user.count({ where });
+    return { users: users.map(serialize_user), ...paginationMetadata(total, pagination) };
+  }, { isolationLevel: "RepeatableRead" });
 }
 
 export async function get_user_filter_data() {
-  return getDatabase().transaction(
-    async (tx) => {
-      const names = await tx
-        .select({ name: userTable.name, count: count() })
-        .from(userTable)
-        .groupBy(userTable.name)
-        .orderBy(asc(userTable.name));
-      const emails = await tx
-        .select({ email: userTable.email, count: count() })
-        .from(userTable)
-        .where(isNotNull(userTable.email))
-        .groupBy(userTable.email)
-        .orderBy(asc(userTable.email));
-      const companies = await tx
-        .select({
-          id: companyTable.id,
-          name: companyTable.name,
-          count: sql`(select count(*) from ${userCompanyTable}
-        where ${userCompanyTable}.${sql.identifier("company_id")} = ${companyTable}.${sql.identifier("id")})`.mapWith(
-            Number,
-          ),
-        })
-        .from(companyTable)
-        .orderBy(asc(companyTable.name));
-      const roles = await tx
-        .select({
-          id: roleTable.id,
-          name: roleTable.name,
-          scope: roleTable.scope,
-        })
-        .from(roleTable)
-        .orderBy(asc(roleTable.name));
-      const [totals] = await tx.select({ total: count() }).from(userTable);
-      const [assigned] = await tx
-        .select({ total: count() })
-        .from(userTable)
-        .where(userHasRole);
-      const [members] = await tx
-        .select({ total: count() })
-        .from(userTable)
-        .where(userHasMembership);
-      return {
-        names,
-        emails,
-        companies,
-        roles,
-        total: totals.total,
-        assigned: assigned.total,
-        members: members.total,
-      };
-    },
-    { isolationLevel: "repeatable read" },
-  );
+  return getDatabase().$transaction(async (tx) => {
+    const names = await tx.user.groupBy({ by: ["name"], _count: { _all: true }, orderBy: { name: "asc" } });
+    const emails = await tx.user.groupBy({ by: ["email"], where: { email: { not: null } }, _count: { _all: true }, orderBy: { email: "asc" } });
+    const companies = await tx.company.findMany({
+      select: { id: true, name: true, _count: { select: { user_companies: true } } },
+      orderBy: { name: "asc" },
+    });
+    const roles = await tx.roles.findMany({ select: { id: true, name: true, scope: true }, orderBy: { name: "asc" } });
+    const total = await tx.user.count();
+    const assigned = await tx.user.count({ where: user_has_role });
+    const members = await tx.user.count({ where: user_has_membership });
+    return {
+      names: names.map((row) => ({ name: row.name, count: row._count._all })),
+      emails: emails.map((row) => ({ email: row.email!, count: row._count._all })),
+      companies: companies.map(({ _count, ...company }) => ({ ...company, count: _count.user_companies })),
+      roles, total, assigned, members,
+    };
+  }, { isolationLevel: "RepeatableRead" });
 }
 
 export async function get_user_option() {
   const db = getDatabase();
   const [companies, roles] = await Promise.all([
-    db
-      .select({ id: companyTable.id, name: companyTable.name })
-      .from(companyTable)
-      .orderBy(asc(companyTable.name), asc(companyTable.id)),
-    db
-      .select(roleSelect)
-      .from(roleTable)
-      .where(eq(roleTable.scope, "company"))
-      .orderBy(asc(roleTable.name), asc(roleTable.id)),
+    db.company.findMany({ select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] }),
+    db.roles.findMany({ where: { scope: "company" }, select: role_select, orderBy: [{ name: "asc" }, { id: "asc" }] }),
   ]);
   return { companies, roles };
 }
 
 export async function assignable_user(input: CreateUserInput): Promise<{
-    existingUser: { id: string } | null;
-    company: { id: string } | null;
-    roleCount: number;
-  }> {
+  existingUser: { id: string } | null;
+  company: { id: string } | null;
+  roleCount: number;
+}> {
   const db = getDatabase();
   const roleIds = input.role_ids ?? [];
-  const [existing, company, roles] = await Promise.all([
-    db
-      .select({ id: userTable.id })
-      .from(userTable)
-      .where(eq(sql`lower(${userTable.email})`, input.email.toLowerCase()))
-      .limit(1),
-    input.company_id === undefined
-      ? []
-      : db
-          .select({ id: companyTable.id })
-          .from(companyTable)
-          .where(eq(companyTable.id, input.company_id))
-          .limit(1),
-    roleIds.length
-      ? db
-          .select({ total: count() })
-          .from(roleTable)
-          .where(
-            and(
-              inArray(roleTable.id, roleIds),
-              eq(roleTable.scope, "company"),
-            ),
-          )
-      : [{ total: 0 }],
+  const [existingUser, company, roleCount] = await Promise.all([
+    db.user.findFirst({ where: { email: { equals: input.email, mode: "insensitive" } }, select: { id: true } }),
+    input.company_id === undefined ? null : db.company.findUnique({ where: { id: input.company_id }, select: { id: true } }),
+    roleIds.length ? db.roles.count({ where: { id: { in: roleIds }, scope: "company" } }) : 0,
   ]);
-  return {
-    existingUser: existing[0] ?? null,
-    company: company[0] ?? null,
-    roleCount: roles[0].total,
-  };
+  return { existingUser, company, roleCount };
 }
 
 export async function create_user(id: string, input: CreateUserInput) {
-  return getDatabase().transaction(async (tx) => {
-    const [user] = await tx
-      .insert(userTable)
-      .values({ id, name: input.name, email: input.email })
-      .returning(userSelect);
-    if (input.company_id !== undefined) {
-      const [membership] = await tx
-        .insert(userCompanyTable)
-        .values({ user_id: id, company_id: input.company_id })
-        .returning({ id: userCompanyTable.id });
-      if (input.role_ids?.length)
-        await tx.insert(userCompanyRoleTable).values(
-          input.role_ids.map((role_id) => ({
-            user_company_id: membership.id,
-            role_id,
-            scope: "company" as const,
-          })),
-        );
-    }
-    const [result] = await serialize_user(tx, [user]);
-    return result;
+  return getDatabase().$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        id, name: input.name, email: input.email,
+        ...(input.company_id !== undefined ? {
+          user_companies: {
+            create: {
+              company_id: input.company_id,
+              ...(input.role_ids?.length ? {
+                roles: { create: input.role_ids.map((role_id) => ({ role_id, scope: "company" as const })) },
+              } : {}),
+            },
+          },
+        } : {}),
+      },
+      select: user_select,
+    });
+    return serialize_user(user);
   });
+}
+
+// Prisma contains uses LIKE; escape wildcards so searches retain literal substring behavior.
+function literal_contains(value: string): Prisma.StringFilter {
+  return { contains: value.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" };
+}
+const user_has_membership: Prisma.userWhereInput = { user_companies: { some: {} } };
+const user_has_role: Prisma.userWhereInput = { OR: [
+  { user_roles: { some: {} } },
+  { user_companies: { some: { roles: { some: {} } } } },
+] };
+
+export function build_user_filter(filters?: QuickFilterState, now = new Date()): Prisma.userWhereInput | undefined {
+  if (!filters) return undefined;
+  const clauses: Prisma.userWhereInput[] = [];
+  for (const [field, values] of groupActiveConditions(filters.conditions)) {
+    if (field === "name" || field === "email") clauses.push({ OR: values.map((value) => ({ [field]: { equals: value, mode: "insensitive" } })) });
+    else if (field === "company") clauses.push({ user_companies: { some: { company_id: { in: values } } } });
+    else if (field === "role") clauses.push({ OR: [
+      { user_roles: { some: { role_id: { in: values } } } },
+      { user_companies: { some: { roles: { some: { role_id: { in: values } } } } } },
+    ] });
+  }
+  const range = resolveDateRange(filters.date, now);
+  if (range.from || range.toExclusive) clauses.push({ created_at: { ...(range.from ? { gte: range.from } : {}), ...(range.toExclusive ? { lt: range.toExclusive } : {}) } });
+  if (filters.status === "assigned") clauses.push(user_has_role);
+  else if (filters.status === "unassigned") clauses.push({ NOT: user_has_role });
+  if (filters.additional.membership === "assigned") clauses.push(user_has_membership);
+  else if (filters.additional.membership === "unassigned") clauses.push({ NOT: user_has_membership });
+  return clauses.length ? { AND: clauses } : undefined;
+}
+
+function build_user_search(search: string): Prisma.userWhereInput | undefined {
+  return search ? { OR: [{ name: literal_contains(search) }, { email: literal_contains(search) }] } : undefined;
 }

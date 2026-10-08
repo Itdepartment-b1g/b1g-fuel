@@ -1,10 +1,10 @@
 node_modules/
+src/generated/prisma/
 .next/
 out/
 coverage/
 .env*
 !.env.example
-src/generated/prisma/
 supabase/.temp/
 *.tsbuildinfo
 next-env.d.ts

@@ -1,6 +1,6 @@
 # B1G Fuel
 
-Next.js App Router frontend with a separate Express 5 API on Node.js. TypeScript, Redux Toolkit, Tailwind CSS, shadcn/ui components, Lucide React, Drizzle ORM for API queries, Prisma 7 for migrations/seeding, and Supabase Auth/Postgres are configured.
+Next.js App Router frontend with a separate Express 5 API on Node.js. TypeScript, Redux Toolkit, Tailwind CSS, shadcn/ui components, Lucide React, Prisma ORM for repository queries, migrations, and seeding, and Supabase Auth/Postgres are configured.
 
 ## Setup
 
@@ -16,7 +16,6 @@ Set `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_K
 For local Supabase, install Docker and the Supabase CLI, then run `supabase start` from this directory. The local ports are configured in `supabase/config.toml`; copy the displayed connection URL and anon key into `.env`. Local auth emails appear at http://127.0.0.1:56324. You can also use Supabase Cloud instead.
 
 ```sh
-npm run db:generate
 npm run db:deploy
 npm run dev
 ```
@@ -25,7 +24,7 @@ Open http://localhost:3000. Express listens on http://127.0.0.1:4000. `/api/*` r
 
 For local development, `API_ORIGIN`, `API_HOST`, `API_PORT`, and `APP_ORIGIN` are optional: the code defaults to `http://127.0.0.1:4000`, `127.0.0.1`, `4000`, and `http://localhost:3000` respectively. Business API routers belong in `src/server/routes/`; no `src/app/api` folder is needed for this Express setup.
 
-Sign in with an admin-provisioned account using its app password or Continue with Google. Public registration is disabled locally; provision matching Auth accounts and Prisma profiles through the seed or protected users API. Restart local Supabase after configuring Google credentials; see the Google login guide below. For a hosted Supabase project, disable new user signups in its authentication settings as well. `/docs` serves Swagger UI and `/api/openapi` serves the spec. `/api/health` reports API liveness; it does not verify database connectivity.
+Sign in with an admin-provisioned account using its app password or Continue with Google. Public registration is disabled locally; provision matching Auth accounts and database profiles through the seed or protected users API. Restart local Supabase after configuring Google credentials; see the Google login guide below. For a hosted Supabase project, disable new user signups in its authentication settings as well. `/docs` serves Swagger UI and `/api/openapi` serves the spec. `/api/health` reports API liveness; it does not verify database connectivity.
 
 ## Seed the first super-admin
 
@@ -37,7 +36,7 @@ npm run db:seed
 npm run dev
 ```
 
-The seed creates an email-confirmed Supabase Auth account, a matching Prisma profile, the global/system `super_admin` role, and its `user_role` assignment. It does not require a company membership or expose public registration. Reruns reuse an existing confirmed account without resetting its password and upsert the database records without duplicate assignments. Set `SEED_SUPER_ADMIN_FULL_NAME` to save the name in both the Prisma profile and Auth metadata; leaving it blank uses `Super Admin`. The sidebar displays this name above the email and Logout button. If an account already exists, use its existing password to log in. A database failure after Auth creation is recoverable by rerunning the seed; Auth creation is outside the Prisma transaction.
+The seed creates an email-confirmed Supabase Auth account, a matching database profile, the global/system `super_admin` role, and its `user_role` assignment. It does not require a company membership or expose public registration. Reruns reuse an existing confirmed account without resetting its password and upsert the database records without duplicate assignments. Set `SEED_SUPER_ADMIN_FULL_NAME` to save the name in both the database profile and Auth metadata; leaving it blank uses `Super Admin`. The sidebar displays this name above the email and Logout button. If an account already exists, use its existing password to log in. A database failure after Auth creation is recoverable by rerunning the seed; Auth creation is outside the Prisma transaction.
 
 Keep `[auth].enable_signup = false` and `[auth.email].enable_signup = true` in local Supabase configuration: the first blocks registration, while the second keeps the email provider available for sign-in. Restart this project's Supabase stack after changing Auth settings.
 
@@ -49,28 +48,33 @@ Open `/login` and enter the seed credentials. Successful login redirects to `/da
 | --- | --- |
 | `npm run dev` | Run Next.js and Express together with reload |
 | `npm run dev:web` / `npm run dev:api` | Run either process independently |
-| `npm run build` | Generate Prisma client and build Next.js |
+| `npm run build` | Generate Prisma Client and build Next.js |
 | `npm run start` | Run both processes after build |
 | `npm run start:web` / `npm run start:api` | Start either production process |
 | `npm run lint` | Check source and layer boundaries |
-| `npm run typecheck` | Generate Prisma and check frontend/backend TypeScript |
+| `npm run typecheck` | Generate Prisma Client and check TypeScript |
 | `npm test` | Run API boundary and authorization tests |
-| `npm run test:db` | Verify Drizzle repositories against the configured database with temporary fixtures |
-| `npm run db:migrate -- --name add_resource` | Create a migration during development |
-| `npm run db:deploy` | Apply committed migrations |
-| `npm run db:seed` | Generate Prisma and create/reuse the seeded super-admin |
+| `npm run test:db` | Verify Prisma repositories against the configured database with temporary fixtures |
+| `npm run db:generate -- --name add_resource` | Create a Prisma migration for review without applying it |
+| `npm run db:migrate -- --name add_resource` | Create/apply Prisma migrations during development |
+| `npm run db:validate` | Validate the Prisma schema |
+| `npm run db:client` | Generate Prisma Client after model changes |
+| `npm run db:status` | Inspect Prisma migration status |
+| `npm run db:deploy` | Apply committed Prisma migrations |
+| `npm run db:seed` | Create/reuse the seeded super-admin with Prisma |
 | `npm run db:studio` | Inspect the database |
 
 The API runs TypeScript with `tsx` in development and production. Keep runtime dependencies installed for the API; don't prune `tsx`. `build` does not require a running database and does not apply migrations.
 
-The reference resource has been removed. If you already applied the initial migration, the next `npm run db:deploy` applies the removal migration and drops its table and data. No database migration was run during this cleanup.
+Prisma manages queries, transactions, seeding, and migrations using the original committed SQL history. Prisma Client is generated from the model schema. See [database migration workflow](docs/PRISMA.md).
 
 ## Guides
 
 - [Folder structure](docs/FOLDER_STRUCTURE.md)
 - [Architecture and CRUD playbook](docs/ARCHITECTURE.md)
+- [Backend structure and request flow](docs/BACKEND_STRUCTURE.md)
 - [Backend layers and function naming](docs/CODE_CONVENTIONS.md)
-- [Drizzle repository queries and Prisma migrations](docs/DRIZZLE.md)
+- [Prisma repositories and migrations](docs/PRISMA.md)
 - [Authentication and access control](docs/SECURITY.md)
 - [Authentication Redux requests](docs/AUTH_REDUX.md)
 - [Users, roles, and company assignments](docs/DATA_MODEL.md)

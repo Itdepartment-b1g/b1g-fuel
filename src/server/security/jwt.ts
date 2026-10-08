@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import type { createAuthClient } from "@/server/auth/supabase";
-import { UserError } from "@/server/utils/errors";
+import { UserError } from "@/server/services/users_service";
 
 type TokenVerifier = Pick<ReturnType<typeof createAuthClient>["auth"], "getUser">;
 

@@ -24,7 +24,7 @@ The list response is `{ companies, total, page, page_size }`. Each company inclu
 
 Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. A company row lock also protects the check from concurrent membership creation, preventing unintended cascading deletion. Renaming preserves memberships.
 
-Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Drizzle queries and transaction-bound operations live in `companies_repository.ts`. No schema migration is needed. Swagger documents Companies under `/docs`.
+Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Prisma queries and transaction-bound operations live in `companies_repository.ts`. No schema migration is needed. Swagger documents Companies under `/docs`.
 
 ## Redux
 
@@ -43,4 +43,4 @@ await dispatch(listCompany({ page: 1, page_size: 10 })).unwrap();
 
 The Companies repository exports named async functions: `list_company`, `list_by_id_company`, `create_company`, `update_company`, and `delete_company`. The service opens update/delete transactions and passes the transaction to repository calls; the ID lookup locks the company before reading membership counts. Search remains inside `list_company`.
 
-The Companies service exports named async functions: `create_company`, `list_company`, `edit_company`, `update_company`, and `delete_company`. It has no service factory or exported service object. Update/delete transactions and membership checks remain in these functions.
+The Companies service exports named async functions: `create_company`, `list_company`, `list_by_id_company`, `update_company`, and `delete_company`. It has no service factory or exported service object. Update/delete transactions and membership checks remain in these functions.

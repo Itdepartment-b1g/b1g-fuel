@@ -8,9 +8,6 @@ import {
 import { createAdminClient } from "@/server/auth/admin";
 import * as usersRepository from "@/server/repositories/users_repository";
 import type { Pagination } from "@/server/utils/pagination";
-import { UserError } from "@/server/utils/errors";
-import { and } from "drizzle-orm";
-import { buildUserFilter, buildUserSearch } from "@/server/utils/user_filter";
 
 export async function list_user(
   pagination: Pagination,
@@ -18,10 +15,7 @@ export async function list_user(
   filters?: UserFilters,
   repository = usersRepository,
 ) {
-  return repository.list_user(
-    pagination,
-    and(buildUserSearch(search), buildUserFilter(filters)),
-  );
+  return repository.list_user(pagination, search, filters);
 }
 
 export async function get_user_option(repository = usersRepository) {
@@ -153,4 +147,10 @@ export async function create_user(
     // Controllers translate persistence errors after the service finishes compensation.
     throw error;
   }
+}
+
+export type UserErrorCode = "invalid_input" | "invalid_session" | "invalid_credentials" | "account_not_provisioned" | "super_admin_required" | "logout_failed" | "company_required" | "assignments_unavailable" | "email_exists" | "invalid_account_details" | "auth_creation_failed" | "google_start_failed" | "google_exchange_failed";
+
+export class UserError extends Error {
+  constructor(public code: UserErrorCode, message: string) { super(message); }
 }

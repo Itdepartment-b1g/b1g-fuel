@@ -6,7 +6,7 @@ import {
   create_google_service,
   type GoogleAuth,
 } from "@/server/services/google_auth_service";
-import { UserError } from "@/server/utils/errors";
+import { UserError } from "@/server/services/users_service";
 import { respond_auth_error } from "./auth_controller";
 
 

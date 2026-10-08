@@ -1,0 +1,92 @@
+import "dotenv/config";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { getDatabase, closeDatabase } from "../src/server/utils/database";
+import { Prisma } from "../src/generated/prisma/client";
+import { CompanyError } from "../src/server/services/companies_service";
+import { RoleError } from "../src/server/services/roles_service";
+import * as usersRepository from "../src/server/repositories/users_repository";
+import { authRepository } from "../src/server/repositories/auth_repository";
+import * as rolesRepository from "../src/server/repositories/roles_repository";
+import * as companyService from "../src/server/services/companies_service";
+import * as roleService from "../src/server/services/roles_service";
+import * as userService from "../src/server/services/users_service";
+import { createQuickFilterState } from "../src/lib/quick-filter";
+import { USER_FILTER_DEFAULTS } from "../src/lib/users-filters";
+
+// Run explicitly with npm run test:db. Fixtures test persistence without creating Supabase Auth accounts.
+export async function verify_repository_database() {
+  const token = randomUUID().replaceAll("-", "");
+  const db = getDatabase();
+  const userIds: string[] = [], roleIds: string[] = [], companyIds: string[] = [];
+  const pagination = { page: 1, page_size: 10, skip: 0, take: 10 };
+  try {
+    const company = await companyService.create_company({ name: `Prisma ${token}` }); companyIds.push(company.id);
+    const renamed = await companyService.update_company({ id: company.id, name: `Prisma edited ${token}` });
+    assert.equal(renamed.member_count, 0);
+    assert.ok(new Date(renamed.updated_at) >= new Date(company.updated_at));
+    assert.equal((await companyService.list_company(pagination, token)).total, 1);
+    const input = { name: `Prisma ${token}`, slug: `prisma_${token}`, scope: "company" as const, is_default_role: false, pages: ["users"], permissions: ["users.view"] };
+    const role = await roleService.create_role(input); roleIds.push(role.id);
+    assert.deepEqual(role.pages, ["users"]);
+    assert.deepEqual((await roleService.list_by_id_role(role.id)).permissions, ["users.view"]);
+    assert.equal((await roleService.list_role(pagination, token, "company")).total, 1);
+    await assert.rejects(roleService.create_role(input), error => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002");
+    const failedSlug = `failed_${token}`;
+    await assert.rejects(rolesRepository.create_role({ ...input, slug: failedSlug, pages: ["users", "users"] }), error => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002");
+    assert.equal(await db.roles.count({ where: { slug: failedSlug } }), 0);
+    const unassignedId = randomUUID();
+    const person = { name: `Person ${token}`, email: `${token}@example.invalid`, password: "unused-database-only" };
+    const unassigned = await usersRepository.create_user(unassignedId, person); userIds.push(unassignedId);
+    assert.deepEqual(unassigned.companies, []);
+    assert.equal((await authRepository.get_user_profile(unassignedId))?.name, person.name);
+    assert.deepEqual(await authRepository.list_user_global_role(unassignedId), []);
+    const assignments = await usersRepository.assignable_user({ ...person, email: `other-${token}@example.invalid`, company_id: company.id, role_ids: [role.id] });
+    assert.equal(assignments.roleCount, 1); assert.deepEqual(assignments.company, { id: company.id });
+    const assignedId = randomUUID();
+    const assigned = await usersRepository.create_user(assignedId, { ...person, email: `other-${token}@example.invalid`, company_id: company.id, role_ids: [role.id] }); userIds.push(assignedId);
+    assert.equal(assigned.companies[0].roles[0].slug, role.slug);
+    const duplicate = await usersRepository.assignable_user({ ...person, email: person.email.toUpperCase() });
+    assert.equal(duplicate.existingUser?.id, unassignedId);
+    assert.equal((await companyService.list_by_id_company(company.id)).member_count, 1);
+    assert.equal((await roleService.list_by_id_role(role.id)).assignment_count, 1);
+    await assert.rejects(companyService.delete_company(company.id), error => error instanceof CompanyError && error.code === "company_has_members");
+    await assert.rejects(roleService.delete_role(role.id), error => error instanceof RoleError && error.code === "role_assigned");
+    const all = await userService.list_user(pagination, token);
+    assert.equal(all.total, 2); assert.equal(all.users.length, 2);
+    const filters = createQuickFilterState(USER_FILTER_DEFAULTS);
+    filters.conditions = [{ id: "a", field: "name", value: ` ${person.name.toUpperCase()} ` }, { id: "b", field: "company", value: company.id }, { id: "c", field: "name", value: "does-not-exist" }];
+    const grouped = await userService.list_user(pagination, token, filters);
+    assert.equal(grouped.total, 1); assert.equal(grouped.users[0].id, assignedId);
+    filters.conditions = [{ id: "a", field: "role", value: role.id }];
+    assert.equal((await userService.list_user(pagination, token, filters)).total, 1);
+    filters.conditions = [{ id: "a", field: "", value: "" }]; filters.status = "unassigned";
+    assert.equal((await userService.list_user(pagination, token, filters)).users[0].id, unassignedId);
+    filters.status = "all"; filters.additional.membership = "unassigned";
+    assert.equal((await userService.list_user(pagination, token, filters)).total, 1);
+    filters.additional.membership = "all"; filters.date = { preset: "custom", from: "2099-01-01", to: "2099-01-01" };
+    assert.equal((await userService.list_user(pagination, token, filters)).total, 0);
+    const options = await userService.get_user_filter_option();
+    assert.equal(options.fields.find(field => field.key === "name")?.options.find(option => option.value === person.name)?.count, 2);
+    assert.equal(options.fields.find(field => field.key === "company")?.options.find(option => option.value === company.id)?.count, 1);
+    assert.ok((await usersRepository.get_user_option()).roles.some(item => item.id === role.id));
+    const failedId = randomUUID();
+    await assert.rejects(usersRepository.create_user(failedId, { ...person, email: `failed-${token}@example.invalid`, company_id: company.id, role_ids: [randomUUID()] }), error => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003");
+    assert.equal(await authRepository.get_user_profile(failedId), null);
+    const globalRole = await roleService.create_role({ ...input, slug: `global_${token}`, scope: "global", pages: [], permissions: [] }); roleIds.push(globalRole.id);
+    await db.user_role.create({ data: { user_id: unassignedId, role_id: globalRole.id } });
+    assert.deepEqual(await authRepository.list_user_global_role(unassignedId), [{ role: { slug: globalRole.slug } }]);
+    filters.date = { preset: "all", from: "", to: "" }; filters.conditions = [{ id: "a", field: "role", value: globalRole.id }];
+    assert.equal((await userService.list_user(pagination, token, filters)).users[0].id, unassignedId);
+    const editedRole = await roleService.update_role({ id: role.id, name: `Edited ${token}`, pages: [], permissions: ["users.view"] });
+    assert.deepEqual(editedRole.pages, []); assert.deepEqual(editedRole.permissions, ["users.view"]);
+    await db.user.deleteMany({ where: { id: { in: userIds } } });
+    await roleService.delete_role(role.id); await roleService.delete_role(globalRole.id); await companyService.delete_company(company.id);
+  } finally {
+    try {
+      if (userIds.length) await db.user.deleteMany({ where: { id: { in: userIds } } });
+      if (roleIds.length) await db.roles.deleteMany({ where: { id: { in: roleIds } } });
+      if (companyIds.length) await db.company.deleteMany({ where: { id: { in: companyIds } } });
+    } finally { await closeDatabase(); }
+  }
+}

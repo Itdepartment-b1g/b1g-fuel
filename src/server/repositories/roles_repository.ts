@@ -1,22 +1,5 @@
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  or,
-  sql,
-} from "drizzle-orm";
+import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/utils/database";
-import {
-  roleTable,
-  rolePageTable,
-  rolePermissionTable,
-  userRoleTable,
-  userCompanyRoleTable,
-} from "@/server/utils/database_schema";
-import { containsText } from "@/server/utils/user_filter";
 import type {
   CreateRoleInput,
   UpdateRoleInput,
@@ -25,68 +8,61 @@ import type {
 } from "@/server/schema/roles_schema";
 import { paginationMetadata, type Pagination } from "@/server/utils/pagination";
 
-const roleSelect = {
-  ...getTableColumns(roleTable),
-  pages: sql<
-    string[]
-  >`array(select ${rolePageTable.page_key} from ${rolePageTable}
-    where ${rolePageTable}.${sql.identifier("role_id")} = ${roleTable}.${sql.identifier("id")} order by ${rolePageTable.page_key})`,
-  permissions: sql<
-    string[]
-  >`array(select ${rolePermissionTable.permission_key} from ${rolePermissionTable}
-    where ${rolePermissionTable}.${sql.identifier("role_id")} = ${roleTable}.${sql.identifier("id")} order by ${rolePermissionTable.permission_key})`,
-  assignment_count:
-    sql`(select count(*) from ${userRoleTable} where ${userRoleTable}.${sql.identifier("role_id")} = ${roleTable}.${sql.identifier("id")})
-    + (select count(*) from ${userCompanyRoleTable} where ${userCompanyRoleTable}.${sql.identifier("role_id")} = ${roleTable}.${sql.identifier("id")})`.mapWith(
-      Number,
-    ),
-};
-type RoleRecord = typeof roleTable.$inferSelect & {
-  pages: string[];
-  permissions: string[];
-  assignment_count: number;
-};
+const role_include = {
+  pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
+  permissions: {
+    select: { permission_key: true },
+    orderBy: { permission_key: "asc" },
+  },
+  _count: { select: { user_roles: true, company_roles: true } },
+} satisfies Prisma.rolesInclude;
+type RoleRecord = Prisma.rolesGetPayload<{ include: typeof role_include }>;
 type ExpectedRole = Pick<RoleSummary, "is_system" | "slug" | "scope">;
+
 function serialize_role(role: RoleRecord): RoleSummary {
+  const { pages, permissions, _count, ...record } = role;
   return {
-    ...role,
-    created_at: role.created_at.toISOString(),
-    updated_at: role.updated_at.toISOString(),
+    ...record,
+    created_at: record.created_at.toISOString(),
+    updated_at: record.updated_at.toISOString(),
+    pages: pages.map((page) => page.page_key),
+    permissions: permissions.map((permission) => permission.permission_key),
+    assignment_count: _count.user_roles + _count.company_roles,
   };
 }
+
 export async function list_role(
   pagination: Pagination,
   search: string,
   scope?: RoleScope,
 ) {
-  const where = and(
-    scope ? eq(roleTable.scope, scope) : undefined,
-    search
-      ? or(
-          containsText(roleTable.name, search),
-          containsText(roleTable.slug, search),
-        )
-      : undefined,
-  );
-  return getDatabase().transaction(
+  const where: Prisma.rolesWhereInput = {
+    ...(scope ? { scope } : {}),
+    ...(search
+      ? {
+          OR: [
+            { name: literal_contains(search) },
+            { slug: literal_contains(search) },
+          ],
+        }
+      : {}),
+  };
+  return getDatabase().$transaction(
     async (tx) => {
-      const rows = await tx
-        .select(roleSelect)
-        .from(roleTable)
-        .where(where)
-        .orderBy(desc(roleTable.created_at), asc(roleTable.id))
-        .offset(pagination.skip)
-        .limit(pagination.take);
-      const [totals] = await tx
-        .select({ total: count() })
-        .from(roleTable)
-        .where(where);
+      const roles = await tx.roles.findMany({
+        where,
+        include: role_include,
+        orderBy: [{ created_at: "desc" }, { id: "asc" }],
+        skip: pagination.skip,
+        take: pagination.take,
+      });
+      const total = await tx.roles.count({ where });
       return {
-        roles: rows.map(serialize_role),
-        ...paginationMetadata(totals.total, pagination),
+        roles: roles.map(serialize_role),
+        ...paginationMetadata(total, pagination),
       };
     },
-    { isolationLevel: "repeatable read" },
+    { isolationLevel: "RepeatableRead" },
   );
 }
 
@@ -94,45 +70,32 @@ export async function list_by_id_role(
   id: string,
   client: DatabaseExecutor = getDatabase(),
 ) {
-  const [role] = await client
-    .select(roleSelect)
-    .from(roleTable)
-    .where(eq(roleTable.id, id))
-    .limit(1);
+  const role = await client.roles.findUnique({
+    where: { id },
+    include: role_include,
+  });
   return role ? serialize_role(role) : null;
 }
 
 export async function create_role(input: Required<CreateRoleInput>) {
-  return getDatabase().transaction(async (client) => {
-    const [role] = await client
-      .insert(roleTable)
-      .values({
+  return getDatabase().$transaction(async (tx) => {
+    const role = await tx.roles.create({
+      data: {
         name: input.name,
         slug: input.slug,
         scope: input.scope,
         is_system: false,
         is_default_role: input.is_default_role,
-      })
-      .returning();
-    if (input.pages.length)
-      await client
-        .insert(rolePageTable)
-        .values(
-          input.pages.map((page_key) => ({ role_id: role.id, page_key })),
-        );
-    if (input.permissions.length)
-      await client.insert(rolePermissionTable).values(
-        input.permissions.map((permission_key) => ({
-          role_id: role.id,
-          permission_key,
-        })),
-      );
-    return serialize_role({
-      ...role,
-      pages: input.pages.toSorted(),
-      permissions: input.permissions.toSorted(),
-      assignment_count: 0,
+        pages: { create: input.pages.map((page_key) => ({ page_key })) },
+        permissions: {
+          create: input.permissions.map((permission_key) => ({
+            permission_key,
+          })),
+        },
+      },
+      include: role_include,
     });
+    return serialize_role(role);
   });
 }
 
@@ -141,47 +104,33 @@ export async function update_role(
   expected: ExpectedRole,
   client: DatabaseExecutor,
 ) {
-  const changed = await client
-    .update(roleTable)
-    .set({
+  const changed = await client.roles.updateMany({
+    where: { id: input.id, ...expected },
+    data: {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.is_default_role !== undefined
         ? { is_default_role: input.is_default_role }
         : {}),
       updated_at: new Date(),
-    })
-    .where(
-      and(
-        eq(roleTable.id, input.id),
-        eq(roleTable.is_system, expected.is_system),
-        eq(roleTable.slug, expected.slug),
-        eq(roleTable.scope, expected.scope),
-      ),
-    )
-    .returning({ id: roleTable.id });
-  if (!changed.length) return null;
+    },
+  });
+  if (!changed.count) return null;
   if (input.pages !== undefined) {
-    await client
-      .delete(rolePageTable)
-      .where(eq(rolePageTable.role_id, input.id));
+    await client.role_pages.deleteMany({ where: { role_id: input.id } });
     if (input.pages.length)
-      await client
-        .insert(rolePageTable)
-        .values(
-          input.pages.map((page_key) => ({ role_id: input.id, page_key })),
-        );
+      await client.role_pages.createMany({
+        data: input.pages.map((page_key) => ({ role_id: input.id, page_key })),
+      });
   }
   if (input.permissions !== undefined) {
-    await client
-      .delete(rolePermissionTable)
-      .where(eq(rolePermissionTable.role_id, input.id));
+    await client.role_permissions.deleteMany({ where: { role_id: input.id } });
     if (input.permissions.length)
-      await client.insert(rolePermissionTable).values(
-        input.permissions.map((permission_key) => ({
+      await client.role_permissions.createMany({
+        data: input.permissions.map((permission_key) => ({
           role_id: input.id,
           permission_key,
         })),
-      );
+      });
   }
   return list_by_id_role(input.id, client);
 }
@@ -191,16 +140,11 @@ export async function delete_role(
   expected: ExpectedRole,
   client: DatabaseExecutor,
 ) {
-  const removed = await client
-    .delete(roleTable)
-    .where(
-      and(
-        eq(roleTable.id, id),
-        eq(roleTable.is_system, expected.is_system),
-        eq(roleTable.slug, expected.slug),
-        eq(roleTable.scope, expected.scope),
-      ),
-    )
-    .returning({ id: roleTable.id });
-  return removed.length > 0;
+  const removed = await client.roles.deleteMany({ where: { id, ...expected } });
+  return removed.count > 0;
+}
+
+// Prisma contains uses LIKE; escape wildcards so searches retain literal substring behavior.
+function literal_contains(value: string): Prisma.StringFilter {
+  return { contains: value.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" };
 }

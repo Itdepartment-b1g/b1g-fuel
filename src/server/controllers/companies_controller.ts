@@ -1,89 +1,234 @@
 import type { Request, Response, NextFunction } from "express";
 import * as companyService from "@/server/services/companies_service";
-import { parsePagination } from "@/server/utils/pagination";
-import { CompanyError } from "@/server/utils/errors";
-import {
-  validate_company_id,
-  validate_create_company,
-  validate_update_company,
-  respond_company_error,
-} from "@/server/utils/companies_request";
+import { CompanyError } from "@/server/services/companies_service";
+import { parsePagination, PaginationError } from "@/server/utils/pagination";
+import type { CreateCompanyInput, UpdateCompanyInput } from "@/server/schema/companies_schema";
 
-export async function list_company(
-  req: Request,
-  res: Response,
-  _next?: NextFunction,
-  service = companyService,
-) {
+const company_id_pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const company_error_status: Partial<Record<CompanyError["code"], number>> = {
+  invalid_input: 400, company_not_found: 404, company_has_members: 409,
+};
+const company_database_errors: Record<string, { status: number; message: string }> = {
+  "23503": { status: 409, message: "Company memberships changed. Refresh and try again." },
+};
+const prisma_error_codes: Record<string, string> = { P2002: "23505", P2003: "23503", P2004: "23514" };
+
+export async function create_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
+  try {
+    const value: unknown = req.body;
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => key !== "name"))
+      throw new CompanyError("invalid_input", "Provide company details using only the name field.");
+    const name = (value as Record<string, unknown>).name;
+    if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
+      throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
+    const input: CreateCompanyInput = { name: name.trim() };
+    res.status(201).json({ company: await service.create_company(input) });
+  } catch (error) {
+
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message }); return;
+    }
+    if (error instanceof CompanyError && company_error_status[error.code]) {
+      res.status(company_error_status[error.code]!).json({ error: error.message }); return;
+    }
+    const visited = new Set<unknown>();
+    const pending = [error];
+    let code = "";
+    let fallback = "";
+    while (pending.length) {
+      const current = pending.pop();
+      if (!current || typeof current !== "object" || visited.has(current)) continue;
+      visited.add(current);
+      if ("code" in current && typeof current.code === "string") {
+        if (Object.hasOwn(prisma_error_codes, current.code)) { code = prisma_error_codes[current.code]; break; }
+        if (/^[0-9A-Z]{5}$/.test(current.code) && !/^P\d{4}$/.test(current.code)) { code = current.code; break; }
+        fallback ||= current.code;
+      }
+      if ("originalCode" in current && typeof current.originalCode === "string" && /^[0-9A-Z]{5}$/.test(current.originalCode)) { code = current.originalCode; break; }
+      if ("cause" in current) pending.push(current.cause);
+      if ("meta" in current) pending.push(current.meta);
+      if ("driverAdapterError" in current) pending.push(current.driverAdapterError);
+    }
+    code ||= fallback;
+    const databaseError = Object.hasOwn(company_database_errors, code) ? company_database_errors[code] : undefined;
+    if (databaseError) {
+      res.status(databaseError.status).json({ error: databaseError.message }); return;
+    }
+    console.error("Companies request failed:", error);
+    res.status(500).json({ error: "The request could not be completed." });
+  }
+}
+
+export async function update_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
+  try {
+    const value: unknown = req.body;
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !["id", "name"].includes(key)))
+      throw new CompanyError("invalid_input", "Provide company ID and name.");
+    const { id, name } = value as Record<string, unknown>;
+    if (typeof id !== "string" || !company_id_pattern.test(id))
+      throw new CompanyError("invalid_input", "Provide a valid company ID.");
+    if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
+      throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
+    const input: UpdateCompanyInput = { id: id.toLowerCase(), name: name.trim() };
+    res.status(200).json({ company: await service.update_company(input) });
+  } catch (error) {
+
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message }); return;
+    }
+    if (error instanceof CompanyError && company_error_status[error.code]) {
+      res.status(company_error_status[error.code]!).json({ error: error.message }); return;
+    }
+    const visited = new Set<unknown>();
+    const pending = [error];
+    let code = "";
+    let fallback = "";
+    while (pending.length) {
+      const current = pending.pop();
+      if (!current || typeof current !== "object" || visited.has(current)) continue;
+      visited.add(current);
+      if ("code" in current && typeof current.code === "string") {
+        if (Object.hasOwn(prisma_error_codes, current.code)) { code = prisma_error_codes[current.code]; break; }
+        if (/^[0-9A-Z]{5}$/.test(current.code) && !/^P\d{4}$/.test(current.code)) { code = current.code; break; }
+        fallback ||= current.code;
+      }
+      if ("originalCode" in current && typeof current.originalCode === "string" && /^[0-9A-Z]{5}$/.test(current.originalCode)) { code = current.originalCode; break; }
+      if ("cause" in current) pending.push(current.cause);
+      if ("meta" in current) pending.push(current.meta);
+      if ("driverAdapterError" in current) pending.push(current.driverAdapterError);
+    }
+    code ||= fallback;
+    const databaseError = Object.hasOwn(company_database_errors, code) ? company_database_errors[code] : undefined;
+    if (databaseError) {
+      res.status(databaseError.status).json({ error: databaseError.message }); return;
+    }
+    console.error("Companies request failed:", error);
+    res.status(500).json({ error: "The request could not be completed." });
+  }
+}
+
+export async function delete_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
+  try {
+    const id = req.query.id;
+    if (typeof id !== "string" || !company_id_pattern.test(id))
+      throw new CompanyError("invalid_input", "Provide a valid company ID.");
+    res.status(200).json(await service.delete_company(id.toLowerCase()));
+  } catch (error) {
+
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message }); return;
+    }
+    if (error instanceof CompanyError && company_error_status[error.code]) {
+      res.status(company_error_status[error.code]!).json({ error: error.message }); return;
+    }
+    const visited = new Set<unknown>();
+    const pending = [error];
+    let code = "";
+    let fallback = "";
+    while (pending.length) {
+      const current = pending.pop();
+      if (!current || typeof current !== "object" || visited.has(current)) continue;
+      visited.add(current);
+      if ("code" in current && typeof current.code === "string") {
+        if (Object.hasOwn(prisma_error_codes, current.code)) { code = prisma_error_codes[current.code]; break; }
+        if (/^[0-9A-Z]{5}$/.test(current.code) && !/^P\d{4}$/.test(current.code)) { code = current.code; break; }
+        fallback ||= current.code;
+      }
+      if ("originalCode" in current && typeof current.originalCode === "string" && /^[0-9A-Z]{5}$/.test(current.originalCode)) { code = current.originalCode; break; }
+      if ("cause" in current) pending.push(current.cause);
+      if ("meta" in current) pending.push(current.meta);
+      if ("driverAdapterError" in current) pending.push(current.driverAdapterError);
+    }
+    code ||= fallback;
+    const databaseError = Object.hasOwn(company_database_errors, code) ? company_database_errors[code] : undefined;
+    if (databaseError) {
+      res.status(databaseError.status).json({ error: databaseError.message }); return;
+    }
+    console.error("Companies request failed:", error);
+    res.status(500).json({ error: "The request could not be completed." });
+  }
+}
+
+export async function list_by_id_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
+  try {
+    const id = req.query.id;
+    if (typeof id !== "string" || !company_id_pattern.test(id))
+      throw new CompanyError("invalid_input", "Provide a valid company ID.");
+    res.status(200).json({ company: await service.list_by_id_company(id.toLowerCase()) });
+  } catch (error) {
+
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message }); return;
+    }
+    if (error instanceof CompanyError && company_error_status[error.code]) {
+      res.status(company_error_status[error.code]!).json({ error: error.message }); return;
+    }
+    const visited = new Set<unknown>();
+    const pending = [error];
+    let code = "";
+    let fallback = "";
+    while (pending.length) {
+      const current = pending.pop();
+      if (!current || typeof current !== "object" || visited.has(current)) continue;
+      visited.add(current);
+      if ("code" in current && typeof current.code === "string") {
+        if (Object.hasOwn(prisma_error_codes, current.code)) { code = prisma_error_codes[current.code]; break; }
+        if (/^[0-9A-Z]{5}$/.test(current.code) && !/^P\d{4}$/.test(current.code)) { code = current.code; break; }
+        fallback ||= current.code;
+      }
+      if ("originalCode" in current && typeof current.originalCode === "string" && /^[0-9A-Z]{5}$/.test(current.originalCode)) { code = current.originalCode; break; }
+      if ("cause" in current) pending.push(current.cause);
+      if ("meta" in current) pending.push(current.meta);
+      if ("driverAdapterError" in current) pending.push(current.driverAdapterError);
+    }
+    code ||= fallback;
+    const databaseError = Object.hasOwn(company_database_errors, code) ? company_database_errors[code] : undefined;
+    if (databaseError) {
+      res.status(databaseError.status).json({ error: databaseError.message }); return;
+    }
+    console.error("Companies request failed:", error);
+    res.status(500).json({ error: "The request could not be completed." });
+  }
+}
+
+export async function list_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
     const search = req.query.search ?? "";
     if (typeof search !== "string" || search.length > 160)
-      throw new CompanyError(
-        "invalid_input",
-        "Search must contain at most 160 characters.",
-      );
-    res
-      .status(200)
-      .json(
-        await service.list_company(parsePagination(req.query), search.trim()),
-      );
+      throw new CompanyError("invalid_input", "Search must contain at most 160 characters.");
+    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim()));
   } catch (error) {
-    respond_company_error(error, res);
-  }
-}
-export async function edit_company(
-  req: Request,
-  res: Response,
-  _next?: NextFunction,
-  service = companyService,
-) {
-  try {
-    res.status(200).json({
-      company: await service.edit_company(validate_company_id(req.query.id)),
-    });
-  } catch (error) {
-    respond_company_error(error, res);
-  }
-}
-export async function create_company(
-  req: Request,
-  res: Response,
-  _next?: NextFunction,
-  service = companyService,
-) {
-  try {
-    res.status(201).json({
-      company: await service.create_company(validate_create_company(req.body)),
-    });
-  } catch (error) {
-    respond_company_error(error, res);
-  }
-}
-export async function update_company(
-  req: Request,
-  res: Response,
-  _next?: NextFunction,
-  service = companyService,
-) {
-  try {
-    res.status(200).json({
-      company: await service.update_company(validate_update_company(req.body)),
-    });
-  } catch (error) {
-    respond_company_error(error, res);
-  }
-}
-export async function delete_company(
-  req: Request,
-  res: Response,
-  _next?: NextFunction,
-  service = companyService,
-) {
-  try {
-    res
-      .status(200)
-      .json(await service.delete_company(validate_company_id(req.query.id)));
-  } catch (error) {
-    respond_company_error(error, res);
+
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message }); return;
+    }
+    if (error instanceof CompanyError && company_error_status[error.code]) {
+      res.status(company_error_status[error.code]!).json({ error: error.message }); return;
+    }
+    const visited = new Set<unknown>();
+    const pending = [error];
+    let code = "";
+    let fallback = "";
+    while (pending.length) {
+      const current = pending.pop();
+      if (!current || typeof current !== "object" || visited.has(current)) continue;
+      visited.add(current);
+      if ("code" in current && typeof current.code === "string") {
+        if (Object.hasOwn(prisma_error_codes, current.code)) { code = prisma_error_codes[current.code]; break; }
+        if (/^[0-9A-Z]{5}$/.test(current.code) && !/^P\d{4}$/.test(current.code)) { code = current.code; break; }
+        fallback ||= current.code;
+      }
+      if ("originalCode" in current && typeof current.originalCode === "string" && /^[0-9A-Z]{5}$/.test(current.originalCode)) { code = current.originalCode; break; }
+      if ("cause" in current) pending.push(current.cause);
+      if ("meta" in current) pending.push(current.meta);
+      if ("driverAdapterError" in current) pending.push(current.driverAdapterError);
+    }
+    code ||= fallback;
+    const databaseError = Object.hasOwn(company_database_errors, code) ? company_database_errors[code] : undefined;
+    if (databaseError) {
+      res.status(databaseError.status).json({ error: databaseError.message }); return;
+    }
+    console.error("Companies request failed:", error);
+    res.status(500).json({ error: "The request could not be completed." });
   }
 }

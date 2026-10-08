@@ -2,9 +2,9 @@ import type { RequestHandler, Response } from "express";
 import { createAuthClient } from "@/server/auth/supabase";
 import { clearAuthSession } from "@/server/auth/clear-session";
 import { authService } from "@/server/services/auth_service";
-import { UserError, type ApplicationErrorCode } from "@/server/utils/errors";
+import { UserError } from "@/server/services/users_service";
 
-const authErrorStatus: Partial<Record<ApplicationErrorCode, number>> = {
+const authErrorStatus: Partial<Record<UserError["code"], number>> = {
   invalid_input: 400,
   invalid_session: 401,
   invalid_credentials: 401,

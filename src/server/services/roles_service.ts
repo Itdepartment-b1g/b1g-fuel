@@ -3,13 +3,9 @@ import type {
   UpdateRoleInput,
   RoleScope,
   RoleSummary,
-  RoleOptions,
 } from "@/server/schema/roles_schema";
-import { PAGE_CATALOG } from "@/lib/auth/catalog";
-import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import * as rolesRepository from "@/server/repositories/roles_repository";
 import { getDatabase } from "@/server/utils/database";
-import { RoleError } from "@/server/utils/errors";
 import type { Pagination } from "@/server/utils/pagination";
 
 function require_editable_role(role: RoleSummary | null): RoleSummary {
@@ -44,14 +40,14 @@ export async function list_role(
   return repository.list_role(pagination, search, scope);
 }
 
-export async function edit_role(id: string, repository = rolesRepository) {
+export async function list_by_id_role(id: string, repository = rolesRepository) {
   const role = await repository.list_by_id_role(id);
   if (!role) throw new RoleError("role_not_found", "Role not found.");
   return role;
 }
 
 export async function delete_role(id: string, repository = rolesRepository) {
-  return getDatabase().transaction(async (transaction) => {
+  return getDatabase().$transaction(async (transaction) => {
     const current = require_editable_role(
       await repository.list_by_id_role(id, transaction),
     );
@@ -80,7 +76,7 @@ export async function delete_role(id: string, repository = rolesRepository) {
 }
 
 export async function update_role(input: UpdateRoleInput, repository = rolesRepository) {
-  return getDatabase().transaction(async (transaction) => {
+  return getDatabase().$transaction(async (transaction) => {
     const current = require_editable_role(
       await repository.list_by_id_role(input.id, transaction),
     );
@@ -107,14 +103,8 @@ export async function update_role(input: UpdateRoleInput, repository = rolesRepo
   });
 }
 
-export async function get_role_option(): Promise<RoleOptions> {
-  return {
-    scopes: ["company", "global"],
-    pages: PAGE_CATALOG.map(({ key, label, href }) => ({
-      key,
-      label,
-      href,
-    })),
-    permissions: [...PERMISSION_CATALOG],
-  };
+export type RoleErrorCode = "invalid_input" | "role_not_found" | "system_role" | "company_default_required" | "role_changed" | "role_assigned";
+
+export class RoleError extends Error {
+  constructor(public code: RoleErrorCode, message: string) { super(message); }
 }

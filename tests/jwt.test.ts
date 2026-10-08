@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createClient, type User, AuthApiError } from "@supabase/supabase-js";
 import { verifyUserToken } from "../src/server/security/jwt";
-import { UserError } from "../src/server/utils/errors";
+import { UserError } from "../src/server/services/users_service";
 
 const user = { id: "11111111-1111-4111-8111-111111111111", email: "approved@example.com" } as User;
 

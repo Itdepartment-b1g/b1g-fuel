@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import { createAuthClient } from "./supabase";
 import { clearAuthSession } from "./clear-session";
 import { authService } from "@/server/services/auth_service";
-import { UserError } from "@/server/utils/errors";
+import { UserError } from "@/server/services/users_service";
 import { respond_auth_error } from "@/server/controllers/auth_controller";
 
 export const requireAuthUser: RequestHandler = async (req, res, next) => {

@@ -28,7 +28,7 @@ Composite foreign keys and CHECK constraints enforce assignment scope. A company
 
 Deleting a user removes their memberships and assignments. Deleting a company removes its memberships and their role assignments. Deleting an unassigned role removes its page and permission mappings. Removing a membership removes its company roles, while global assignments remain independent.
 
-All new tables have RLS enabled without public policies, matching the backend-only database access pattern. Apply the Prisma SQL migration; `db push` does not reproduce the custom CHECK constraints or RLS configuration. The unique nullable profile email retains compatibility with the existing authentication repository; multiple NULL emails are allowed, but duplicate non-NULL emails cause migration failure and must be resolved beforehand. Runtime repository queries use Drizzle; update its table mappings alongside Prisma schema changes.
+All new tables have RLS enabled without public policies, matching the backend-only database access pattern. Prisma models define the schema and Prisma Migrate manages committed SQL; the SQL also defines custom CHECK constraints, partial indexes and RLS. Apply committed migrations with `db:deploy`. The unique nullable profile email retains compatibility with the existing authentication repository; multiple NULL emails are allowed, but duplicate non-NULL emails cause migration failure and must be resolved beforehand. Parameterized Prisma queries and seed writes live in repositories.
 
 ## Super-admin workflow
 
@@ -39,15 +39,14 @@ All new tables have RLS enabled without public policies, matching the backend-on
 5. Create the user's `user_company` membership.
 6. Assign company roles through `user_company_role`. Assign global roles through `user_role` separately.
 
-Use a Drizzle transaction for related API database assignments. Supabase Auth creation happens outside that database transaction, so provisioning must handle partial failure and retry using the same account ID. The seed retains its Prisma transaction.
+Use a Prisma transaction for related API database assignments. Supabase Auth creation happens outside that database transaction, so provisioning must handle partial failure and retry using the same account ID. The seed retains its Prisma transaction.
 
-The model stores permissions; it does not implement permission enforcement. Future controllers must check permissions for the requested company, validate stable page/permission keys, protect system roles, and prevent removal of the last super-admin. Hiding a page is UI behavior, not authorization. The current app exposes login/logout/session and public health/API documentation endpoints. `prisma/seed.ts` provisions the first global super-admin; administration APIs are separate work.
+The model stores permissions; it does not implement permission enforcement. Future controllers must check permissions for the requested company, validate stable page/permission keys, protect system roles, and prevent removal of the last super-admin. Hiding a page is UI behavior, not authorization. The current app exposes login/logout/session and public health/API documentation endpoints. `scripts/database/seed.ts` provisions the first global super-admin; administration APIs are separate work.
 
 ## Apply
 
 ```sh
 npm run db:deploy
-npm run db:generate
 ```
 
 The migration is committed but not applied automatically. It adds the new tables and makes profile email unique; it does not provision any accounts or roles.

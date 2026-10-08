@@ -1,7 +1,5 @@
-import { asc, count, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/utils/database";
-import { companyTable, userCompanyTable } from "@/server/utils/database_schema";
-import { containsText } from "@/server/utils/user_filter";
 import type {
   CreateCompanyInput,
   UpdateCompanyInput,
@@ -9,45 +7,43 @@ import type {
 } from "@/server/schema/companies_schema";
 import { paginationMetadata, type Pagination } from "@/server/utils/pagination";
 
-const companySelect = {
-  ...getTableColumns(companyTable),
-  member_count: sql`(select count(*) from ${userCompanyTable}
-    where ${userCompanyTable}.${sql.identifier("company_id")} = ${companyTable}.${sql.identifier("id")})`.mapWith(
-    Number,
-  ),
-};
-type CompanyRecord = typeof companyTable.$inferSelect & {
-  member_count: number;
-};
+const company_include = {
+  _count: { select: { user_companies: true } },
+} satisfies Prisma.companyInclude;
+type CompanyRecord = Prisma.companyGetPayload<{
+  include: typeof company_include;
+}>;
+
 function serialize_company(company: CompanyRecord): CompanySummary {
+  const { _count, ...record } = company;
   return {
-    ...company,
-    created_at: company.created_at.toISOString(),
-    updated_at: company.updated_at.toISOString(),
+    ...record,
+    created_at: record.created_at.toISOString(),
+    updated_at: record.updated_at.toISOString(),
+    member_count: _count.user_companies,
   };
 }
 
 export async function list_company(pagination: Pagination, search: string) {
-  const where = search ? containsText(companyTable.name, search) : undefined;
-  return getDatabase().transaction(
+  const where: Prisma.companyWhereInput = search
+    ? { name: literal_contains(search) }
+    : {};
+  return getDatabase().$transaction(
     async (tx) => {
-      const rows = await tx
-        .select(companySelect)
-        .from(companyTable)
-        .where(where)
-        .orderBy(desc(companyTable.created_at), asc(companyTable.id))
-        .offset(pagination.skip)
-        .limit(pagination.take);
-      const [totals] = await tx
-        .select({ total: count() })
-        .from(companyTable)
-        .where(where);
+      const companies = await tx.company.findMany({
+        where,
+        include: company_include,
+        orderBy: [{ created_at: "desc" }, { id: "asc" }],
+        skip: pagination.skip,
+        take: pagination.take,
+      });
+      const total = await tx.company.count({ where });
       return {
-        companies: rows.map(serialize_company),
-        ...paginationMetadata(totals.total, pagination),
+        companies: companies.map(serialize_company),
+        ...paginationMetadata(total, pagination),
       };
     },
-    { isolationLevel: "repeatable read" },
+    { isolationLevel: "RepeatableRead" },
   );
 }
 
@@ -56,42 +52,43 @@ export async function list_by_id_company(
   client: DatabaseExecutor = getDatabase(),
   lock = false,
 ) {
-  // Lock before reading membership counts. Membership inserts need a
-  // conflicting foreign-key lock, so deletion cannot cascade new members.
+  // Keep the row lock before reading membership counts to protect against concurrent inserts.
   if (lock)
-    await client
-      .select({ id: companyTable.id })
-      .from(companyTable)
-      .where(eq(companyTable.id, id))
-      .for("update");
-  const [company] = await client
-    .select(companySelect)
-    .from(companyTable)
-    .where(eq(companyTable.id, id))
-    .limit(1);
+    await client.$queryRaw`select id from "company" where id = ${id}::uuid for update`;
+  const company = await client.company.findUnique({
+    where: { id },
+    include: company_include,
+  });
   return company ? serialize_company(company) : null;
 }
 
 export async function create_company(input: CreateCompanyInput) {
-  const [company] = await getDatabase()
-    .insert(companyTable)
-    .values(input)
-    .returning();
-  return serialize_company({ ...company, member_count: 0 });
+  return serialize_company(
+    await getDatabase().company.create({
+      data: input,
+      include: company_include,
+    }),
+  );
 }
 
 export async function update_company(
   input: UpdateCompanyInput,
   client: DatabaseExecutor,
 ) {
-  const [company] = await client
-    .update(companyTable)
-    .set({ name: input.name, updated_at: new Date() })
-    .where(eq(companyTable.id, input.id))
-    .returning(companySelect);
-  return serialize_company(company);
+  return serialize_company(
+    await client.company.update({
+      where: { id: input.id },
+      data: { name: input.name },
+      include: company_include,
+    }),
+  );
 }
 
 export async function delete_company(id: string, client: DatabaseExecutor) {
-  await client.delete(companyTable).where(eq(companyTable.id, id));
+  await client.company.delete({ where: { id } });
+}
+
+// Prisma contains uses LIKE; escape wildcards so searches retain literal substring behavior.
+function literal_contains(value: string): Prisma.StringFilter {
+  return { contains: value.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" };
 }

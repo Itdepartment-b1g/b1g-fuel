@@ -1,6 +1,6 @@
 import type { createAuthClient } from "@/server/auth/supabase";
 import { authRepository } from "@/server/repositories/auth_repository";
-import { UserError } from "@/server/utils/errors";
+import { UserError } from "@/server/services/users_service";
 import { verifyUserToken } from "@/server/security/jwt";
 export type GoogleAuth = Pick<
   ReturnType<typeof createAuthClient>["auth"],

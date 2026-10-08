@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import type { createAuthClient } from "@/server/auth/supabase";
 import { authRepository } from "@/server/repositories/auth_repository";
-import { UserError } from "@/server/utils/errors";
+import { UserError } from "@/server/services/users_service";
 import { verifyUserToken } from "@/server/security/jwt";
 
 type Auth = ReturnType<typeof createAuthClient>["auth"];

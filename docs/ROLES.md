@@ -2,7 +2,7 @@
 
 Role request and response types live in `src/server/schema/roles_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
 
-All roles endpoints require a verified Supabase session, an existing Prisma profile and the global `super_admin` role. Responses are private/no-store. Mutations require the exact application Origin and are rate limited.
+All roles endpoints require a verified Supabase session, an existing database profile and the global `super_admin` role. Responses are private/no-store. Mutations require the exact application Origin and are rate limited.
 
 ## Management screen
 
@@ -72,6 +72,6 @@ const { role } = await dispatch(createRole({ name: "Branch Manager" })).unwrap()
 await dispatch(listRole({ page: 1, page_size: 10 })).unwrap();
 ```
 
-No schema migration is needed. Apply existing migrations so the custom default-role constraints and foreign keys are present; Prisma schema generation alone does not reproduce them. Swagger exposes the endpoints and request/response schemas under Roles.
+No schema migration is needed. Apply existing migrations so the custom default-role constraints and foreign keys are present; Generating migration files alone does not apply them. Swagger exposes the endpoints and request/response schemas under Roles.
 
-The Roles service exports named async functions: `create_role`, `list_role`, `edit_role`, `delete_role`, `update_role`, and `get_role_option`. It has no service factory or exported service object. Role protections and update/delete transactions remain in these functions.
+The Roles controller and service expose `create_role`, `update_role`, `delete_role`, `list_by_id_role`, and `list_role`. Request validation and HTTP error handling are inline in these controller operations. The `/options` route returns static scope, page and permission choices directly. Role protections and update/delete transactions remain in the service.

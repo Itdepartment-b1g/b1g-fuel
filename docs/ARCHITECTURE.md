@@ -11,8 +11,8 @@ flowchart LR
   Auth --> Controller[Controllers]
   Controller --> Service[Services: business conditions]
   Service --> Repository[Repositories]
-  Repository --> Drizzle[Drizzle ORM and pg pool]
-  Drizzle --> DB[(Supabase Postgres)]
+  Repository --> Prisma[Prisma ORM and pg pool]
+  Prisma --> DB[(Supabase Postgres)]
 ```
 
 ## Layers
@@ -26,12 +26,12 @@ flowchart LR
 | Proxy | `next.config.ts` | Forward `/api/*` to `API_ORIGIN` |
 | API entry | `src/server/index.ts`, `app.ts` | Start Express, middleware, errors |
 | Routes | `src/server/routes/` | index.ts registers endpoints/resource routers/404; resource files apply auth and dispatch controllers |
-| Controllers | `src/server/controllers/` | Inline validation, explicit success/error HTTP statuses and local try/catch |
+| Controllers | `src/server/controllers/` | Async resource operation handlers matching services; validate input, translate errors and send HTTP responses |
 | Services | `src/server/services/` | Business conditions/reasons, workflows and transactions; no HTTP statuses |
 | Repositories | `src/server/repositories/` | Database queries; no HTTP code |
-| Database client | `src/server/utils/database.ts` | Lazy Drizzle singleton with pg pool |
-| Query mappings | `src/server/utils/database_schema.ts` | Typed mappings for the existing tables |
-| Migrations / seed | `prisma/` | Prisma schema, SQL migrations, and the seed's own Prisma client |
+| Database client | `src/server/utils/database.ts` | Lazy Prisma singleton with pg pool |
+| Database schema | `prisma/schema.prisma`, `prisma/migrations/` | Prisma models and committed SQL, including custom constraints and RLS |
+| Migrations / seed | `prisma/`, `scripts/database/` | Prisma migrations and Prisma seed orchestration through the auth repository |
 | Authentication | `src/server/auth/` | Cookie adapter and verified Supabase user |
 
 Do not add Next.js API handlers for business resources. Do not import backend modules into React components or Redux. Express files cannot use Next.js `server-only`; ESLint checks the frontend boundary. Redux providers create a store per mounted application, rather than sharing a singleton across server requests.
@@ -46,20 +46,20 @@ Redux slices own resource types and HTTP requests, using `credentials: "include"
 
 ## Add a CRUD resource
 
-1. Add a snake_case Prisma model with `user_id` when the data is per-user. Run `npm run db:migrate -- --name add_resource` and generate the client. Add matching Drizzle query columns to `src/server/utils/database_schema.ts`.
-2. Create `src/server/repositories/{entity}_repository.ts` with Drizzle queries; scope every per-user query by the authenticated user.
-3. Create `src/server/services/{entity}_service.ts` for conditions and workflows, then `src/server/controllers/{entity}_controller.ts` for inline validation and consistent HTTP errors. Use matching singular snake_case function names, such as `list_role`, `create_role`, `edit_role`, `update_role` and `delete_role`; see [code conventions](CODE_CONVENTIONS.md).
+1. Add a model to `prisma/schema.prisma` with snake_case SQL names and `user_id` when the data is per-user. Run `npm run db:generate -- --name add_resource` to create a migration for review. Preserve custom constraints and RLS in the SQL, then apply it with `npm run db:migrate`.
+2. Create `src/server/repositories/{entity}_repository.ts` with generated Prisma model queries; scope every per-user query by the authenticated user. Database queries stay in repositories and use the generated model types.
+3. Create `src/server/services/{entity}_service.ts` for conditions and workflows, `src/server/controllers/{entity}_controller.ts` with matching async operation handlers and request/HTTP helpers as needed. Use singular snake_case function names, such as `list_role`, `create_role`, `list_by_id_role`, `update_role` and `delete_role`; see [backend structure](BACKEND_STRUCTURE.md) and [code conventions](CODE_CONVENTIONS.md).
 4. Create `src/server/routes/{entity}.ts`, apply `requireAuthUser`, and mount it in `src/server/routes/index.ts`. `app.ts` mounts that root router after shared middleware and before the error handler.
 5. Extend paths and schemas in `src/lib/openapi.ts`.
 6. Create an entity slice and register its reducer in `store.ts`.
 7. Create the feature's list/table/form/dialogs and create a thin App Router page.
 8. Add navigation, then run lint, typecheck, tests, and build. Verify CRUD with a real database and two users to check isolation.
 
-Generated Prisma code is never edited or committed. Commit schema changes and SQL migrations together. Apply migrations separately from builds. Swagger uses `swagger-ui-dist` loaded on the client for React compatibility.
+Commit repository changes and SQL migrations together. Apply migrations separately from builds. Swagger uses `swagger-ui-dist` loaded on the client for React compatibility.
 
 ## Dependency maintenance
 
-The lockfile includes targeted overrides for Prisma CLI's `deepmerge-ts` and `mysql2` dependencies to address their published advisories without downgrading Prisma. Generation and the build have been verified with these overrides. Remove them once upstream packages adopt the patched versions.
+Prisma manages queries and migrations. Prisma Client is generated from the model schema and ignored by Git. Targeted Prisma CLI dependency overrides are retained from the existing setup.
 
 At scaffold verification on 2026-10-05, `npm audit --omit=dev` reported no runtime advisories. The full audit reported five high-severity development-tool entries arising from the `braces` dependency chain in Next.js's ESLint plugin. The registry's current `braces` release had no patch; the suggested forced fix would downgrade the Next.js lint configuration to version 14. Keep track of the upstream fix rather than forcing that incompatible downgrade.
 

@@ -104,8 +104,8 @@ Do not reset the database to enable Google login. These snippets match the imple
 - [ ] Add `GET /api/auth/google/callback` to exchange the code with the existing cookie-aware Supabase client. Handle cancellation, missing/expired codes and exchange errors.
 - [ ] Register explicit Google routes before the generic `POST /api/auth/:action` route.
 - [ ] Construct redirects from trusted `APP_ORIGIN`; redirect successful logins to `/dashboard`. Do not accept arbitrary redirect destinations.
-- [ ] Require an existing admin-created Prisma profile matching the verified Auth UUID. Reject an unprovisioned Google user and clear its app session.
-- [ ] Apply that profile requirement in protected-request middleware, not only the OAuth callback. The current `requireAuthUser` requires a matching Prisma profile.
+- [ ] Require an existing admin-created database profile matching the verified Auth UUID. Reject an unprovisioned Google user and clear its app session.
+- [ ] Apply that profile requirement in protected-request middleware, not only the OAuth callback. The current `requireAuthUser` requires a matching database profile.
 - [ ] Password login requires an existing profile and clears rejected sessions; login does not provision accounts.
 - [ ] Keep `super_admin` and company permissions in database assignments. Google metadata must not grant roles.
 - [ ] Add loading/error behavior for the Google button and readable callback failures. OAuth codes and tokens must not enter Redux state or logs.
@@ -134,7 +134,7 @@ The existing origin check covers POST initiation. The GET callback must remain r
 
 | Test | Expected result |
 | --- | --- |
-| Provisioned email/password account signs in with Google | Same Auth UUID and Prisma profile; no duplicate user |
+| Provisioned email/password account signs in with Google | Same Auth UUID and database profile; no duplicate user |
 | Same user signs in with the app password afterward | Login still works |
 | Provisioned user without company/roles | Can log in; cannot use super-admin operations |
 | Unknown Google email | No application access and no automatic approved profile |
