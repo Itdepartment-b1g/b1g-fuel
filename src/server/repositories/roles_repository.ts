@@ -1,3 +1,4 @@
+import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type {
@@ -40,11 +41,12 @@ function serialize_role(role: RoleRecord): RoleSummary {
   };
 }
 
-/** Return a page of roles matching a literal, case-insensitive name or slug search and an optional scope. Include access mappings and assignment counts, reading rows and the matching total from one snapshot. */
+/** Return a sorted page of roles matching a literal, case-insensitive name or slug search and an optional scope. Include access mappings and assignment counts, reading rows and the matching total from one snapshot. */
 export async function list_role(
   pagination: Pagination,
   search: string,
   scope?: RoleScope,
+  sorting?: Sorting,
 ) {
   const where = build_filter<Prisma.rolesWhereInput>(undefined, {
     where: scope ? { scope } : undefined,
@@ -53,12 +55,25 @@ export async function list_role(
       fields: [(filter) => ({ name: filter }), (filter) => ({ slug: filter })],
     },
   });
+  const orderBy = build_sort<Prisma.rolesOrderByWithRelationInput>(sorting, {
+    fields: {
+      id: (direction) => ({ id: direction }),
+      name: (direction) => ({ name: direction }),
+      slug: (direction) => ({ slug: direction }),
+      scope: (direction) => ({ scope: direction }),
+      is_default_role: (direction) => ({ is_default_role: direction }),
+      created_at: (direction) => ({ created_at: direction }),
+      updated_at: (direction) => ({ updated_at: direction }),
+    },
+    default: { field: "created_at", direction: "desc" },
+    tieBreaker: { field: "id", order: { id: "asc" } },
+  });
   return getDatabase().$transaction(
     async (tx) => {
       const roles = await tx.roles.findMany({
         where,
         include: role_include,
-        orderBy: [{ created_at: "desc" }, { id: "asc" }],
+        orderBy,
         skip: pagination.skip,
         take: pagination.take,
       });

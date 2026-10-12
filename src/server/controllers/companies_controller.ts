@@ -1,3 +1,5 @@
+import { parse_sort, SortingError } from "@/server/lib/sorting";
+import { COMPANY_SORT_FIELDS } from "@/server/schema/companies_schema";
 import type { Request, Response, NextFunction } from "express";
 import * as companyService from "@/server/services/companies_service";
 import { CompanyError } from "@/server/services/companies_service";
@@ -193,13 +195,14 @@ export async function list_by_id_company(req: Request, res: Response, _next?: Ne
 
 export async function list_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
+    const sorting = parse_sort(req.query, COMPANY_SORT_FIELDS);
     const search = req.query.search ?? "";
     if (typeof search !== "string" || search.length > 160)
       throw new CompanyError("invalid_input", "Search must contain at most 160 characters.");
-    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim()));
+    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim(), sorting));
   } catch (error) {
 
-    if (error instanceof PaginationError) {
+    if (error instanceof PaginationError || error instanceof SortingError) {
       res.status(400).json({ error: error.message }); return;
     }
     if (error instanceof CompanyError && company_error_status[error.code]) {

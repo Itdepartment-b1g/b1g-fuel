@@ -1,3 +1,5 @@
+import { parse_sort, SortingError } from "@/server/lib/sorting";
+import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";
 import type { Request, Response, NextFunction } from "express";
 import * as roleService from "@/server/services/roles_service";
 import { RoleError } from "@/server/services/roles_service";
@@ -476,6 +478,7 @@ export async function list_role(
   service = roleService,
 ) {
   try {
+    const sorting = parse_sort(req.query, ROLE_SORT_FIELDS);
     const pagination = parsePagination(req.query);
     const search = req.query.search ?? "";
     if (typeof search !== "string" || search.length > 100)
@@ -491,9 +494,9 @@ export async function list_role(
       );
     res
       .status(200)
-      .json(await service.list_role(pagination, search.trim(), scope));
+      .json(await service.list_role(pagination, search.trim(), scope, sorting));
   } catch (error) {
-    if (error instanceof PaginationError) {
+    if (error instanceof PaginationError || error instanceof SortingError) {
       res.status(400).json({ error: error.message });
       return;
     }

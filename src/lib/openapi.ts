@@ -1,3 +1,4 @@
+import { USER_SORT_FIELDS } from "@/server/schema/users_schema";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./pagination";
 import { rolePaths, roleSchemas } from "./openapi-roles";
 import { quickFilterSchemas } from "./openapi-quick-filter";
@@ -64,6 +65,8 @@ export const openapi = {
     "/api/users": {
       get: { tags: ["Users"], summary: "List users (global super_admin only)", security: [{ session: [] }], parameters: [
         { name: "page", in: "query", schema: { type: "integer", minimum: 1, maximum: 1000000, default: 1 } },
+        { name: "sort_by", in: "query", description: "Sort before pagination; defaults to created_at.", schema: { type: "string", enum: [...USER_SORT_FIELDS] } },
+        { name: "sort_order", in: "query", description: "asc or desc; defaults to desc for created_at and asc for other fields.", schema: { type: "string", enum: ["asc", "desc"] } },
         { name: "page_size", in: "query", schema: { type: "integer", enum: [...PAGE_SIZE_OPTIONS], default: DEFAULT_PAGE_SIZE } },
         { name: "search", in: "query", description: "Case-insensitive name or email search", schema: { type: "string", maxLength: 254 } },
         { name: "filters", in: "query", description: "JSON-encoded QuickFilters. Same-field conditions use OR; different fields, date, role status, membership and search combine with AND. Applied before pagination; company/role values are UUIDs.", schema: { type: "string", maxLength: 12000 } },

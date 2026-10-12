@@ -1,3 +1,4 @@
+import type { Sorting } from "@/server/lib/sorting";
 import type { CreateCompanyInput, UpdateCompanyInput } from "@/server/schema/companies_schema";
 import * as companiesRepository from "@/server/repositories/companies_repository";
 import { getDatabase } from "@/server/lib/database";
@@ -13,9 +14,10 @@ export async function create_company(
 export async function list_company(
   pagination: Pagination,
   search: string,
+  sorting?: Sorting,
   repository = companiesRepository,
 ) {
-  return repository.list_company(pagination, search);
+  return repository.list_company(pagination, search, sorting);
 }
 
 export async function list_by_id_company(id: string, repository = companiesRepository) {

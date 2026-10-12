@@ -1,3 +1,4 @@
+import type { Sorting } from "@/server/lib/sorting";
 import type { CreateUserInput } from "@/server/schema/users_schema";
 import type { UserFilters, UserFilterOptions } from "@/lib/users-filters";
 import {
@@ -13,9 +14,10 @@ export async function list_user(
   pagination: Pagination,
   search: string,
   filters?: UserFilters,
+  sorting?: Sorting,
   repository = usersRepository,
 ) {
-  return repository.list_user(pagination, search, filters);
+  return repository.list_user(pagination, search, filters, sorting);
 }
 
 export async function get_user_option(repository = usersRepository) {

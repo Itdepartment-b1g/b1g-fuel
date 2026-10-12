@@ -1,3 +1,4 @@
+import type { Sorting } from "@/server/lib/sorting";
 import type {
   CreateRoleInput,
   UpdateRoleInput,
@@ -35,9 +36,10 @@ export async function list_role(
   pagination: Pagination,
   search: string,
   scope?: RoleScope,
+  sorting?: Sorting,
   repository = rolesRepository,
 ) {
-  return repository.list_role(pagination, search, scope);
+  return repository.list_role(pagination, search, scope, sorting);
 }
 
 export async function list_by_id_role(id: string, repository = rolesRepository) {

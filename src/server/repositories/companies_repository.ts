@@ -1,3 +1,4 @@
+import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type {
@@ -26,17 +27,27 @@ function serialize_company(company: CompanyRecord): CompanySummary {
   };
 }
 
-/** Return a page of companies matching a literal, case-insensitive name search, including their membership counts. Read the rows and matching total from the same database snapshot. */
-export async function list_company(pagination: Pagination, search: string) {
+/** Return a sorted page of companies matching a literal, case-insensitive name search, including their membership counts. Read the rows and matching total from the same database snapshot. */
+export async function list_company(pagination: Pagination, search: string, sorting?: Sorting) {
   const where = build_filter<Prisma.companyWhereInput>(undefined, {
     search: { value: search, fields: [(filter) => ({ name: filter })] },
+  });
+  const orderBy = build_sort<Prisma.companyOrderByWithRelationInput>(sorting, {
+    fields: {
+      id: (direction) => ({ id: direction }),
+      name: (direction) => ({ name: direction }),
+      created_at: (direction) => ({ created_at: direction }),
+      updated_at: (direction) => ({ updated_at: direction }),
+    },
+    default: { field: "created_at", direction: "desc" },
+    tieBreaker: { field: "id", order: { id: "asc" } },
   });
   return getDatabase().$transaction(
     async (tx) => {
       const companies = await tx.company.findMany({
         where,
         include: company_include,
-        orderBy: [{ created_at: "desc" }, { id: "asc" }],
+        orderBy,
         skip: pagination.skip,
         take: pagination.take,
       });

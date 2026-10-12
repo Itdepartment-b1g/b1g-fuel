@@ -1,3 +1,4 @@
+import { COMPANY_SORT_FIELDS } from "@/server/schema/companies_schema";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./pagination";
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const json = (schema: object) => ({ content: { "application/json": { schema } } });
@@ -18,7 +19,9 @@ export const companyPaths = {
     get: { tags: ["Companies"], security: [{ session: [] }], summary: "List companies or load one for editing (super_admin only)", parameters: [
       { name: "id", in: "query", schema: id, description: "When provided, returns one company and ignores list filters." },
       { name: "page", in: "query", schema: { type: "integer", minimum: 1, maximum: 1000000, default: 1 } },
-      { name: "page_size", in: "query", schema: { type: "integer", enum: [...PAGE_SIZE_OPTIONS], default: DEFAULT_PAGE_SIZE } },
+      { name: "sort_by", in: "query", description: "Sort before pagination; defaults to created_at.", schema: { type: "string", enum: [...COMPANY_SORT_FIELDS] } },
+        { name: "sort_order", in: "query", description: "asc or desc; defaults to desc for created_at and asc for other fields.", schema: { type: "string", enum: ["asc", "desc"] } },
+        { name: "page_size", in: "query", schema: { type: "integer", enum: [...PAGE_SIZE_OPTIONS], default: DEFAULT_PAGE_SIZE } },
       { name: "search", in: "query", schema: { type: "string", maxLength: 160 }, description: "Case-insensitive company-name search" },
     ], responses: { "200": { description: "Companies with membership counts", ...json({ oneOf: [ref("CompaniesPage"), ref("CompanyResponse")] }) }, ...errors } },
     post: { tags: ["Companies"], security: [{ session: [] }], summary: "Create company (super_admin only)", requestBody: { required: true, ...json(ref("CreateCompany")) }, responses: { "201": { description: "Company created", ...json(ref("CompanyResponse")) }, ...errors } },

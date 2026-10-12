@@ -1,3 +1,4 @@
+import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type { QuickFilterState } from "@/lib/quick-filter";
@@ -60,11 +61,12 @@ function serialize_user(user: UserRecord): UserSummary {
   };
 }
 
-/** Return a page of users matching text search, column conditions, creation dates and assignment filters. Rows and the matching total are read from the same database snapshot before returning pagination metadata. */
+/** Return a sorted page of users matching text search, column conditions, creation dates and assignment filters. Rows and the matching total are read from the same database snapshot before returning pagination metadata. */
 export async function list_user(
   pagination: Pagination,
   search: string,
   filters?: QuickFilterState,
+  sorting?: Sorting,
 ) {
   const where = build_filter<Prisma.userWhereInput>(filters, {
     search: {
@@ -105,12 +107,23 @@ export async function list_user(
       },
     },
   });
+  const orderBy = build_sort<Prisma.userOrderByWithRelationInput>(sorting, {
+    fields: {
+      id: (direction) => ({ id: direction }),
+      name: (direction) => ({ name: direction }),
+      email: (direction) => ({ email: direction }),
+      created_at: (direction) => ({ created_at: direction }),
+      updated_at: (direction) => ({ updated_at: direction }),
+    },
+    default: { field: "created_at", direction: "desc" },
+    tieBreaker: { field: "id", order: { id: "asc" } },
+  });
   return getDatabase().$transaction(
     async (tx) => {
       const users = await tx.user.findMany({
         where,
         select: user_select,
-        orderBy: [{ created_at: "desc" }, { id: "asc" }],
+        orderBy,
         skip: pagination.skip,
         take: pagination.take,
       });

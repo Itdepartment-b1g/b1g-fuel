@@ -56,6 +56,16 @@ export async function verify_repository_database() {
     await assert.rejects(roleService.delete_role(role.id), error => error instanceof RoleError && error.code === "role_assigned");
     const all = await userService.list_user(pagination, token);
     assert.equal(all.total, 2); assert.equal(all.users.length, 2);
+    const sorted = await userService.list_user(pagination, token, undefined, { field: "name", direction: "asc" });
+    assert.deepEqual(sorted.users.map(user => user.id), [unassignedId, assignedId].sort());
+    await usersRepository.update_user({ id: unassignedId, name: `A ${token}` });
+    await usersRepository.update_user({ id: assignedId, name: `Z ${token}` });
+    const oneRow = { page: 1, page_size: 1, skip: 0, take: 1 };
+    const ascending = await usersRepository.list_user(oneRow, token, undefined, { field: "name", direction: "asc" });
+    const descending = await usersRepository.list_user(oneRow, token, undefined, { field: "name", direction: "desc" });
+    assert.equal(ascending.users[0].id, unassignedId); assert.equal(ascending.total, 2);
+    assert.equal(descending.users[0].id, assignedId); assert.equal(descending.total, 2);
+    for (const userId of [unassignedId, assignedId]) await usersRepository.update_user({ id: userId, name: person.name });
     const filters = createQuickFilterState(USER_FILTER_DEFAULTS);
     filters.conditions = [{ id: "a", field: "name", value: ` ${person.name.toUpperCase()} ` }, { id: "b", field: "company", value: company.id }, { id: "c", field: "name", value: "does-not-exist" }];
     const grouped = await userService.list_user(pagination, token, filters);

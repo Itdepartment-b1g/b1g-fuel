@@ -1,3 +1,5 @@
+export const USER_SORT_FIELDS = ["id","name","email","created_at","updated_at"] as const;
+
 export type RoleOption = { id: string; name: string; slug: string };
 export type CompanyOption = { id: string; name: string };
 export type UserSummary = {

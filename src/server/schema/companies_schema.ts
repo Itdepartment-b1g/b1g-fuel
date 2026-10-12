@@ -1,3 +1,5 @@
+export const COMPANY_SORT_FIELDS = ["id","name","created_at","updated_at"] as const;
+
 export type CompanySummary = {
   id: string;
   name: string;

@@ -94,3 +94,5 @@ Database constraints remain the final protection against races: unique slugs, th
 8. Test validation, business conditions, authorization, transaction behavior and failures; run lint/typecheck/tests/build.
 
 This refactor preserves existing HTTP URLs, query conventions, response keys and permissions. No schema migration is required.
+
+Repository list functions use `build_sort` from `src/server/lib/sorting.ts` to order database rows before pagination. Controllers validate `sort_by` and `sort_order` using the resource schema allowlist; see [server list sorting](SORTING.md).

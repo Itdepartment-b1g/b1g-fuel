@@ -1,3 +1,5 @@
+import { parse_sort, SortingError } from "@/server/lib/sorting";
+import { USER_SORT_FIELDS } from "@/server/schema/users_schema";
 import type { Request, Response, NextFunction } from "express";
 import * as userService from "@/server/services/users_service";
 import { parsePagination, PaginationError } from "@/server/lib/pagination";
@@ -41,6 +43,7 @@ export async function list_user(
   service = userService,
 ) {
   try {
+    const sorting = parse_sort(req.query, USER_SORT_FIELDS);
     const pagination = parsePagination(req.query);
     const search = req.query.search ?? "";
     if (typeof search !== "string" || search.length > 254)
@@ -152,9 +155,9 @@ try {
     }
     res
       .status(200)
-      .json(await service.list_user(pagination, search.trim(), filters));
+      .json(await service.list_user(pagination, search.trim(), filters, sorting));
   } catch (error) {
-    if (error instanceof PaginationError) {
+    if (error instanceof PaginationError || error instanceof SortingError) {
       res.status(400).json({ error: error.message });
       return;
     }

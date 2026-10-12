@@ -49,7 +49,7 @@ test("controllers validate list filters and translate conflicts without exposing
   const find = t.mock.method(roleService, "list_by_id_role", async () => role);
   const { res, result } = response();
   await listRoleController({ query: { page: "2", page_size: "20", search: " manager ", scope: "company" } } as unknown as Request, res, undefined, roleService);
-  assert.deepEqual(list.mock.calls[0].arguments, [{ page: 2, page_size: 20, skip: 20, take: 20 }, "manager", "company"]);
+  assert.deepEqual(list.mock.calls[0].arguments, [{ page: 2, page_size: 20, skip: 20, take: 20 }, "manager", "company", undefined]);
   await editRoleController({ query: { id } } as unknown as Request, res, undefined, roleService);
   assert.deepEqual(find.mock.calls[0].arguments, [id]);
   for (const query of [{ page_size: "15" }, { scope: "bad" }, { search: ["a", "b"] }]) {

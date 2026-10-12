@@ -1,3 +1,4 @@
+import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./pagination";
 import { PAGE_CATALOG } from "./auth/catalog";
 import { PERMISSION_CATALOG } from "./auth/permissions";
@@ -191,6 +192,8 @@ export const rolePaths = {
           in: "query",
           schema: { type: "integer", minimum: 1, maximum: 1000000, default: 1 },
         },
+        { name: "sort_by", in: "query", description: "Sort before pagination; defaults to created_at.", schema: { type: "string", enum: [...ROLE_SORT_FIELDS] } },
+        { name: "sort_order", in: "query", description: "asc or desc; defaults to desc for created_at and asc for other fields.", schema: { type: "string", enum: ["asc", "desc"] } },
         {
           name: "page_size",
           in: "query",
