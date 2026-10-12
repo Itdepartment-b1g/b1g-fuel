@@ -53,7 +53,7 @@ Redux slices own resource types and HTTP requests, using `credentials: "include"
 5. Extend paths and schemas in `src/lib/openapi.ts`.
 6. Create an entity slice and register its reducer in `store.ts`.
 7. Create the feature's list/table/form/dialogs and create a thin App Router page.
-8. Add navigation, then run lint, typecheck, tests, and build. Verify CRUD with a real database and two users to check isolation.
+8. Add navigation, then run lint, typecheck, and build. Verify CRUD with a real database and two users to check isolation.
 
 Commit repository changes and SQL migrations together. Apply migrations separately from builds. Swagger uses `swagger-ui-dist` loaded on the client for React compatibility.
 
@@ -63,7 +63,7 @@ Prisma manages queries and migrations. Prisma Client is generated from the model
 
 At scaffold verification on 2026-10-05, `npm audit --omit=dev` reported no runtime advisories. The full audit reported five high-severity development-tool entries arising from the `braces` dependency chain in Next.js's ESLint plugin. The registry's current `braces` release had no patch; the suggested forced fix would downgrade the Next.js lint configuration to version 14. Keep track of the upstream fix rather than forcing that incompatible downgrade.
 
-Lint, typecheck, API tests, and the Next.js production build passed. A production smoke check returned 200 for all application pages, proxied health, and proxied OpenAPI. Real login and future persisted resources require configured Supabase credentials and an applied database migration; they have not been verified against an external database.
+Lint, typecheck, and the Next.js production build passed. A production smoke check returned 200 for all application pages, proxied health, and proxied OpenAPI. Real login and future persisted resources require configured Supabase credentials and an applied database migration; they have not been verified against an external database.
 
 See [Security](SECURITY.md), [Folder structure](FOLDER_STRUCTURE.md), and [Setup](../README.md).
 

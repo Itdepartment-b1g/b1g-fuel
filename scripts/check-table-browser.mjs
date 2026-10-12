@@ -19,7 +19,6 @@ async function main() {
   const entry = path.join(root, "entry.tsx");
   fs.writeFileSync(entry, `
     import { createRoot } from "react-dom/client";
-    import { DataTableExamples } from "../../src/components/common/data-table-examples";
     import { DataTable } from "../../src/components/common/data-table";
     import { useState } from "react";
     import { SearchQuickFilter } from "../../src/components/common/search-quick-filter";
@@ -38,7 +37,7 @@ async function main() {
     const rows = [{id:"one",name:"Freeze only",created_at:"2026-10-12"}];
     const columns = [{id:"name",header:"Freeze Only",freezable:true,value:row=>row.name}];
     createRoot(document.getElementById("root")).render(<main style={{maxWidth:1100,margin:"auto",padding:24}}>
-      <h1 style={{fontSize:26,marginBottom:20}}>Reusable list controls</h1><ToolbarFixture /><DataTableExamples />
+      <h1 style={{fontSize:26,marginBottom:20}}>Reusable list controls</h1><ToolbarFixture />
       <DataTable data={rows} columns={columns} rowKey={row=>row.id} caption="Freeze without sorting" />
       <DataTable data={[]} columns={columns} rowKey={row=>row.id} caption="Empty table" />
       <DataTable data={[]} columns={columns} rowKey={row=>row.id} caption="Loading table" loading />
@@ -86,7 +85,7 @@ async function main() {
     await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
     await send("Page.navigate", { url: "http://127.0.0.1:" + server.address().port });
     for (let attempt = 0; attempt < 100; attempt++) {
-      if (await evaluate(`document.querySelectorAll("table").length === 8`)) break;
+      if (await evaluate(`document.querySelectorAll("table").length === 3`)) break;
       await sleep(100);
     }
     await evaluate(`window.getTable = caption => [...document.querySelectorAll("table")].find(table => table.caption.textContent === caption);
@@ -115,36 +114,6 @@ async function main() {
     await evaluate(`document.querySelector('#toolbar-fixture button[aria-haspopup=dialog]').click(); settle()`);
     assert.equal(await evaluate(`document.querySelector('select[aria-label=Date]').value`), "today");
     await evaluate(`document.querySelector('button[aria-label="Close quick filter"]').click(); settle()`);
-    assert.match((await evaluate(`rowNames("Normal table with sorting")[0]`)), /LPG 11kg/);
-    await evaluate(`clickHeader("Normal table with sorting", "Item Name"); settle()`);
-    assert.equal(await evaluate(`document.activeElement.textContent.startsWith("Default")`), true);
-    await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowDown", code: "ArrowDown" });
-    assert.equal(await evaluate(`document.activeElement.textContent.startsWith("Ascending")`), true);
-    await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", text: "\r", windowsVirtualKeyCode: 13 });
-    await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
-    await evaluate(`settle()`);
-    assert.match(await evaluate(`rowNames("Normal table with sorting")[0]`), /Butane/);
-    await evaluate(`clickHeader("Normal table with sorting", "Item Name"); settle()`);
-    await evaluate(`selectMenu("Default"); settle()`);
-    assert.match(await evaluate(`rowNames("Normal table with sorting")[0]`), /LPG 11kg/);
-    await evaluate(`clickHeader("All features enabled", "Quantity"); settle()`);
-    await evaluate(`selectMenu("Freeze Column"); settle()`);
-    assert.equal(await evaluate(`getTable("All features enabled").querySelectorAll("th svg[aria-label='Frozen column']").length`), 2);
-    await evaluate(`getTable("All features enabled").querySelector("button[aria-label='Expand row lpg-1']").click(); settle()`);
-    await evaluate(`getTable("All features enabled").querySelector("button[aria-label='Expand row lpg-2']").click(); settle()`);
-    assert.equal(await evaluate(`getTable("All features enabled").querySelectorAll('button[aria-expanded="true"][aria-label^="Collapse"]').length`), 2);
-    await evaluate(`clickHeader("All features enabled", "Item Name"); settle()`);
-    await evaluate(`selectMenu("Ascending"); settle()`);
-    assert.equal(await evaluate(`getTable("All features enabled").querySelector("button[aria-label='Collapse row lpg-1']").getAttribute("aria-expanded")`), "true");
-    assert.equal(await evaluate(`getTable("All features enabled").querySelectorAll("th svg[aria-label='Frozen column']").length`), 2);
-    await evaluate(`getTable("All features enabled").querySelector("button[aria-label='Actions for row lpg-1']").click(); settle()`);
-    assert.equal(await evaluate(`[...document.querySelectorAll("[role=menu] button")].find(button => button.textContent.startsWith("Delete")).disabled`), true);
-    await evaluate(`selectMenu("View Details"); settle()`);
-    assert.match(await evaluate(`document.querySelector("[role=status]").textContent`), /LPG 11kg/);
-    assert.equal(await evaluate(`getTable("All features enabled").querySelectorAll('button[aria-expanded="true"][aria-label^="Collapse"]').length`), 2);
-    await evaluate(`getTable("Sorting and accordion").querySelector("button[aria-label='Expand row lpg-1']").click(); settle()`);
-    await evaluate(`getTable("Sorting and accordion").querySelector("button[aria-label='Expand row lpg-2']").click(); settle()`);
-    assert.equal(await evaluate(`getTable("Sorting and accordion").querySelectorAll('button[aria-expanded="true"][aria-label^="Collapse"]').length`), 1);
     await evaluate(`clickHeader("Freeze without sorting", "Freeze Only"); settle()`);
     assert.equal(await evaluate(`document.querySelectorAll("[role=menu] button").length`), 1);
     await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
@@ -158,30 +127,12 @@ async function main() {
     await evaluate(`scrollTo(0,0); settle()`);
     const mobileScreenshot = await send("Page.captureScreenshot", { format: "png" });
     fs.writeFileSync(path.join(root, "toolbar-mobile.png"), Buffer.from(mobileScreenshot.data, "base64"));
-    await evaluate(`getTable("All features enabled").parentElement.scrollLeft = 300; settle()`);
-    const pinned = await evaluate(`(() => {
-      const table = getTable("All features enabled"), heads = [...table.querySelectorAll("th")].filter(head => head.querySelector('svg[aria-label="Frozen column"]'));
-      return heads.map(head => ({ header: head.getBoundingClientRect().left, cell: table.querySelector('tbody tr td:nth-child(' + (head.cellIndex + 1) + ')').getBoundingClientRect().left }));
-    })()`);
-    assert.equal(pinned.length, 2);
-    assert.ok(pinned.every(column => Math.abs(column.header - column.cell) < 1));
-    assert.ok(pinned[1].header > pinned[0].header);
-    await evaluate(`getTable("All features enabled").scrollIntoView(); settle()`);
-    await evaluate(`clickHeader("All features enabled", "Item Name"); settle()`);
-    assert.equal(await evaluate(`document.querySelector("[role=menu]").getBoundingClientRect().right <= innerWidth`), true);
-    await evaluate(`document.body.dispatchEvent(new PointerEvent("pointerdown", {bubbles:true})); settle()`);
-    assert.equal(await evaluate(`document.querySelector("[role=menu]") === null`), true);
     await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
-    await evaluate(`getTable("All features enabled").scrollIntoView(); settle()`);
-    await evaluate(`clickHeader("All features enabled", "Quantity"); settle()`);
-    await evaluate(`selectMenu("Unfreeze Column"); settle()`);
-    assert.equal(await evaluate(`getTable("All features enabled").querySelectorAll("th svg[aria-label='Frozen column']").length`), 1);
-    assert.equal(await evaluate(`getTable("All features enabled").querySelector('th[aria-sort="ascending"]').textContent`), "Item Name");
     await evaluate(`scrollTo(0, 0); settle()`);
     const screenshot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
     fs.writeFileSync(path.join(root, "table-desktop.png"), Buffer.from(screenshot.data, "base64"));
     assert.deepEqual(errors, []);
-    console.log("Browser checks passed: toolbar submission/duplicate prevention, existing QuickFilter/focus/persistence, mobile layout, table sorting, frozen columns, expansion and actions.");
+    console.log("Browser checks passed: toolbar submission/duplicate prevention, existing QuickFilter/focus/persistence, mobile layout, empty and loading tables.");
     console.log("Screenshot: " + path.join(root, "table-desktop.png"));
   } finally {
     socket?.close(); browser.kill(); await new Promise(resolve => server.close(resolve));

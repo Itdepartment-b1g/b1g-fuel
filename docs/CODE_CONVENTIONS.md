@@ -91,7 +91,7 @@ Database constraints remain the final protection against races: unique slugs, th
 5. Add async operation handlers to controllers with the same names as their service operations. Keep request validation and HTTP error helpers locally, and send explicit success statuses.
 6. Mount protected routes and document them in Swagger.
 7. Add matching Redux actions and update component imports.
-8. Test validation, business conditions, authorization, transaction behavior and failures; run lint/typecheck/tests/build.
+8. Run lint, typecheck, and build. Verify validation, business conditions, authorization, transaction behavior, and failures against a real database.
 
 This refactor preserves existing HTTP URLs, query conventions, response keys and permissions. No schema migration is required.
 

@@ -28,10 +28,10 @@ npm run db:client
 
 `db:generate` creates a migration with `prisma migrate dev --create-only`; it does not generate the runtime client. `db:client` runs `prisma generate`. Development migrations require a database and a shadow database. `db:deploy` applies committed SQL in deployment, `db:status` inspects migration status, and `db:studio` opens Prisma Studio. See the [Prisma migration reference](https://www.prisma.io/docs/cli/v7/migrate).
 
-Install, build, typecheck, tests and seeding generate Prisma Client automatically. Builds do not apply database migrations. Commit models and migrations together, and apply migrations separately from application builds.
+Install, build, typecheck, and seeding generate Prisma Client automatically. Builds do not apply database migrations. Commit models and migrations together, and apply migrations separately from application builds.
 
 ## Seeding and verification
 
 `db:seed` runs `prisma/seed.ts`, which provisions or reuses a confirmed Supabase Auth account and calls the auth repository for transactional profile and global role writes. Existing passwords are retained and role assignments are idempotent. Auth provisioning happens outside the database transaction.
 
-Run `db:validate`, `npm test`, `typecheck`, `lint`, and `build`. The normal tests exercise real Prisma Client through its PostgreSQL adapter against embedded PostgreSQL (PGlite), replaying committed migration SQL. They verify CRUD, filtering, assignments, constraints, RLS, rollback and seed reruns. `test:db` explicitly exercises the configured live database with temporary fixtures and cleanup, without creating Auth accounts.
+Run `db:validate`, `typecheck`, `lint`, and `build`. Verify CRUD, filtering, assignments, constraints, and rollback against the configured database.

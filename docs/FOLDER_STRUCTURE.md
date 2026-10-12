@@ -13,7 +13,6 @@ b1g-fuel/
     seed-records.ts         Seed orchestration through the Prisma auth repository
   public/                   Static assets
   supabase/config.toml      Local Supabase configuration
-  tests/                    API boundary and access-control tests
   src/
     app/                    Next.js App Router pages and root layout
       dashboard/page.tsx     Empty authenticated landing page

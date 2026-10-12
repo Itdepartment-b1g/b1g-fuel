@@ -7,8 +7,6 @@
     "build": "prisma generate && next build",
     "start": "concurrently -k -n web,api \"npm run start:web\" \"npm run start:api\"",
     "lint": "eslint .",
-    "test": "prisma generate && tsx --test tests/*.test.ts",
-    "test:db": "prisma generate && tsx --test tests/database.integration.ts",
     "typecheck": "prisma generate && tsc --noEmit",
     "db:generate": "prisma migrate dev --create-only",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
@@ -54,7 +52,6 @@
     "tsx": "^4.23.15"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",

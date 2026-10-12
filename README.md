@@ -53,8 +53,6 @@ Open `/login` and enter the seed credentials. Successful login redirects to `/da
 | `npm run start:web` / `npm run start:api` | Start either production process |
 | `npm run lint` | Check source and layer boundaries |
 | `npm run typecheck` | Generate Prisma Client and check TypeScript |
-| `npm test` | Run API boundary and authorization tests |
-| `npm run test:db` | Verify Prisma repositories against the configured database with temporary fixtures |
 | `npm run db:generate -- --name add_resource` | Create a Prisma migration for review without applying it |
 | `npm run db:migrate -- --name add_resource` | Create/apply Prisma migrations during development |
 | `npm run db:validate` | Validate the Prisma schema |

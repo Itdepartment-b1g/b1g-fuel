@@ -89,4 +89,4 @@ For another resource, define its allowed field list in the schema, validate it i
 
 Users, Companies and Roles table headers now expose Default, Ascending and Descending through the [reusable data table](DATA_TABLE.md). Their parent list screens send `sort_by` and `sort_order`, reset the page to 1 when sorting changes, and request a new server page. Default omits both parameters and restores newest-first ordering.
 
-`tests/sorting.test.ts` covers validation, defaults, tie-breakers, repository ordering and controller-to-repository forwarding. Database scenarios verify ascending and descending results before slicing, equal-name ordering by ID, and unchanged totals. See [pagination](PAGINATION.md) for page-size and offset behavior.
+See [pagination](PAGINATION.md) for page-size and offset behavior.

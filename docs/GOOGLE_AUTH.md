@@ -109,7 +109,7 @@ Do not reset the database to enable Google login. These snippets match the imple
 - [ ] Password login requires an existing profile and clears rejected sessions; login does not provision accounts.
 - [ ] Keep `super_admin` and company permissions in database assignments. Google metadata must not grant roles.
 - [ ] Add loading/error behavior for the Google button and readable callback failures. OAuth codes and tokens must not enter Redux state or logs.
-- [ ] Document the start/callback endpoints in Swagger and add automated callback/access tests.
+- [ ] Document the start/callback endpoints in Swagger.
 
 The existing origin check covers POST initiation. The GET callback must remain reachable after the Google/Supabase redirect and rely on the OAuth/PKCE validation rather than requiring a browser Origin header.
 
@@ -156,4 +156,4 @@ The existing origin check covers POST initiation. The GET callback must remain r
 | PKCE exchange fails or returns to login | Start/callback use the same browser/frontend host and verifier/session cookies survive the proxy |
 | Password login says invalid credentials | Exact account email and app password; Gmail password is not the app password |
 
-Keep this document updated after live Google consent testing and production deployment. Automated tests cover PKCE initiation, callback success/failures, profile rejection and cookies; real Google consent remains a manual verification step.
+Keep this document updated after live Google consent testing and production deployment. Real Google consent remains a manual verification step.

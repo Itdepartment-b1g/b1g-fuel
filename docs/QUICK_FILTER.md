@@ -80,7 +80,7 @@ The `list_user` handler validates quick filters inline; user operations also han
 
 Native field/date/status selects support keyboard navigation. Value dropdowns open a nested Radix Dialog portal above the panel. Their focused search input uses combobox/listbox semantics; Arrow Up/Down move the active choice, Enter selects and Escape closes only the dropdown. Tab follows dialog focus management. Resize or scrolling the trigger's container closes the dropdown so it does not become detached. The panel traps focus, closes with Escape, and returns focus to its trigger.
 
-Logic tests cover grouping, incomplete rows, IDs, option search, indicator counts, AND composition, date boundaries and server validation. Browser checks cover actual database-filtered Users results, saved selections, reset behavior, layering and mobile width.
+Browser checks cover actual database-filtered Users results, saved selections, reset behavior, layering and mobile width.
 
 ## Shared database filter utility
 

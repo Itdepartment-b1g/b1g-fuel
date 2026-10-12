@@ -70,19 +70,16 @@ Actions can be an array or a function returning an array for each row. `hidden(r
 
 Companies and Roles preserve their existing edit/delete restrictions and confirmation dialogs. Their card views retain the existing action buttons; Users has no extra account mutation actions.
 
-## States, accessibility and examples
+## States and accessibility
 
 `loading` shows skeleton rows when data is empty and announces loading; existing rows remain visible during refresh. Configure `skeletonRows`, `emptyTitle` and `emptyDescription` as needed. Column widths and horizontal scrolling support narrow screens, including frozen-column alignment and viewport-constrained menus.
 
 Menus support Enter/Space, Arrow Up/Down, Home/End, Escape, Tab, outside clicks and focus restoration. They close on outside scrolling/resizing to avoid drifting from their triggers.
 
-`src/components/common/data-table-examples.tsx` exports `DataTableExamples` with five local-fixture examples: sorting only, sorting and accordion, sorting and actions, sorting and frozen columns, and all features together. Import it into a client page for a preview; it performs no API writes.
-
 Verification:
 
 ```text
-npm test
 node scripts/check-table-browser.mjs
 ```
 
-The optional browser check uses an installed Chromium browser, the existing esbuild dependency, and the theme CSS from `npm run build`. Set `TABLE_BROWSER_PATH` if Edge/Chrome/Chromium is in another location. It checks keyboard menus, default reset, sticky alignment on mobile, expanded row identity, disabled actions, loading and empty states, and saves a preview under `.next/table-browser/table-desktop.png`.
+The optional browser check uses an installed Chromium browser, the existing esbuild dependency, and the theme CSS from `npm run build`. Set `TABLE_BROWSER_PATH` if Edge/Chrome/Chromium is in another location. It checks search submission, Quick Filter, mobile toolbar layout, and empty and loading tables, and saves a preview under `.next/table-browser/table-desktop.png`.
