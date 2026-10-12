@@ -8,8 +8,8 @@ b1g-fuel/
   prisma/
     schema.prisma           Models for Prisma Client and migrations
     migrations/             Original committed SQL migration history
-  scripts/database/
     seed.ts                 Supabase account and global super-admin assignment
+  scripts/database/
     seed-records.ts         Seed orchestration through the Prisma auth repository
   public/                   Static assets
   supabase/config.toml      Local Supabase configuration

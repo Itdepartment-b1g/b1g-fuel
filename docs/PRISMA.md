@@ -32,6 +32,6 @@ Install, build, typecheck, tests and seeding generate Prisma Client automaticall
 
 ## Seeding and verification
 
-`db:seed` runs `scripts/database/seed.ts`, which provisions or reuses a confirmed Supabase Auth account and calls the auth repository for transactional profile and global role writes. Existing passwords are retained and role assignments are idempotent. Auth provisioning happens outside the database transaction.
+`db:seed` runs `prisma/seed.ts`, which provisions or reuses a confirmed Supabase Auth account and calls the auth repository for transactional profile and global role writes. Existing passwords are retained and role assignments are idempotent. Auth provisioning happens outside the database transaction.
 
 Run `db:validate`, `npm test`, `typecheck`, `lint`, and `build`. The normal tests exercise real Prisma Client through its PostgreSQL adapter against embedded PostgreSQL (PGlite), replaying committed migration SQL. They verify CRUD, filtering, assignments, constraints, RLS, rollback and seed reruns. `test:db` explicitly exercises the configured live database with temporary fixtures and cleanup, without creating Auth accounts.

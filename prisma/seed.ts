@@ -1,8 +1,8 @@
 import "dotenv/config";
 import { createClient, type User } from "@supabase/supabase-js";
-import { getDatabase, closeDatabase } from "../../src/server/utils/database";
-import { authRepository } from "../../src/server/repositories/auth_repository";
-import { seed_records, SeedError } from "./seed-records";
+import { getDatabase, closeDatabase } from "../src/server/utils/database";
+import { authRepository } from "../src/server/repositories/auth_repository";
+import { seed_records, SeedError } from "../scripts/database/seed-records";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;

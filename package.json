@@ -11,7 +11,7 @@
     "test:db": "prisma generate && tsx --test tests/database.integration.ts",
     "typecheck": "prisma generate && tsc --noEmit",
     "db:generate": "prisma migrate dev --create-only",
-    "db:seed": "prisma generate && tsx scripts/database/seed.ts",
+    "db:seed": "prisma generate && tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",

@@ -41,7 +41,7 @@ All new tables have RLS enabled without public policies, matching the backend-on
 
 Use a Prisma transaction for related API database assignments. Supabase Auth creation happens outside that database transaction, so provisioning must handle partial failure and retry using the same account ID. The seed retains its Prisma transaction.
 
-The model stores permissions; it does not implement permission enforcement. Future controllers must check permissions for the requested company, validate stable page/permission keys, protect system roles, and prevent removal of the last super-admin. Hiding a page is UI behavior, not authorization. The current app exposes login/logout/session and public health/API documentation endpoints. `scripts/database/seed.ts` provisions the first global super-admin; administration APIs are separate work.
+The model stores permissions; it does not implement permission enforcement. Future controllers must check permissions for the requested company, validate stable page/permission keys, protect system roles, and prevent removal of the last super-admin. Hiding a page is UI behavior, not authorization. The current app exposes login/logout/session and public health/API documentation endpoints. `prisma/seed.ts` provisions the first global super-admin; administration APIs are separate work.
 
 ## Apply
 
