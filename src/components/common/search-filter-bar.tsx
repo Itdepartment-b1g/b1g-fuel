@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import type {
-  AdditionalFilter,
-  FilterField,
-  FilterOption,
-  QuickFilterState,
+import {
+  fromDateMenuValue,
+  toDateMenuValue,
+  type AdditionalFilter,
+  type FilterField,
+  type FilterOption,
+  type QuickFilterState,
 } from "@/lib/quick-filter";
 import { cn } from "@/lib/utils";
+import { DateRangeMenu } from "./date-range-menu";
 import { SearchQuickFilter } from "./search-quick-filter";
 
 type FilterLabels = {
@@ -78,6 +81,16 @@ export function SearchFilterBar({
         canClearSearch={Boolean(search)}
         onClearSearch={() => onSearch("")}
         quickFilterActive={quickFilterActive}
+        trailingContent={
+          <DateRangeMenu
+            value={toDateMenuValue(filters.date)}
+            onChange={(next) =>
+              onFiltersChange({ ...filters, date: fromDateMenuValue(next) })
+            }
+            align="end"
+            disabled={disabled}
+          />
+        }
         filter={{
           value: filters,
           onChange: onFiltersChange,

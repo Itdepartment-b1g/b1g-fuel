@@ -1,3 +1,10 @@
+import {
+  formatDateForInput,
+  parseDateFromInput,
+  type DatePreset,
+  type DateRangeFilterValue,
+} from "./dateRangePresets";
+
 export type FilterOption = { value: string; label: string; count?: number };
 export type FilterField = {
   key: string;
@@ -32,6 +39,24 @@ export const DATE_PRESETS: FilterOption[] = [
   { value: "last_year", label: "Last Year" },
   { value: "custom", label: "Custom range" },
 ];
+const datePresetValues = new Set<string>(DATE_PRESETS.map((preset) => preset.value));
+
+export function toDateMenuValue(date: DateFilter): DateRangeFilterValue {
+  return {
+    preset: datePresetValues.has(date.preset) ? (date.preset as DatePreset) : "all",
+    customStart: parseDateFromInput(date.from),
+    customEnd: parseDateFromInput(date.to),
+  };
+}
+
+export function fromDateMenuValue(value: DateRangeFilterValue): DateFilter {
+  return {
+    preset: value.preset,
+    from: formatDateForInput(value.customStart),
+    to: formatDateForInput(value.customEnd),
+  };
+}
+
 export function emptyCondition(field = ""): ColumnCondition {
   return { id: crypto.randomUUID(), field, value: "" };
 }

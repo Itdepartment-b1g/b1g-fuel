@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ export type DateRangeMenuProps = {
   align?: "start" | "center" | "end";
   modal?: boolean;
   contentClassName?: string;
+  disabled?: boolean;
 };
 
 const fieldLabelClass =
@@ -41,8 +42,11 @@ export function DateRangeMenu({
   align = "start",
   modal = false,
   contentClassName,
+  disabled = false,
 }: DateRangeMenuProps) {
   const [open, setOpen] = useState(false);
+  const fromId = useId();
+  const toId = useId();
   const label = getDatePresetLabel(
     value.preset,
     value.customStart,
@@ -81,6 +85,7 @@ export function DateRangeMenu({
           <Button
             type="button"
             variant="outline"
+            disabled={disabled}
             className={cn(
               "h-10 w-full justify-between md:w-[220px]",
               triggerClassName,
@@ -130,9 +135,9 @@ export function DateRangeMenu({
               <p className={fieldLabelClass}>Custom Range</p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="orders-date-from">From</Label>
+                  <Label htmlFor={fromId}>From</Label>
                   <Input
-                    id="orders-date-from"
+                    id={fromId}
                     type="date"
                     className="h-9"
                     value={formatDateForInput(value.customStart)}
@@ -140,9 +145,9 @@ export function DateRangeMenu({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="orders-date-to">To</Label>
+                  <Label htmlFor={toId}>To</Label>
                   <Input
-                    id="orders-date-to"
+                    id={toId}
                     type="date"
                     className="h-9"
                     value={formatDateForInput(value.customEnd)}

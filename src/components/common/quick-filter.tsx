@@ -7,21 +7,16 @@ import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateRangeMenu } from "@/components/common/date-range-menu";
 import {
-  formatDateForInput,
-  parseDateFromInput,
-  type DatePreset,
-  type DateRangeFilterValue,
-} from "@/lib/dateRangePresets";
-import {
   addCondition,
   changeConditionField,
   countActiveFilters,
   createQuickFilterState,
   emptyCondition,
+  fromDateMenuValue,
   isActiveCondition,
   removeCondition,
+  toDateMenuValue,
   type AdditionalFilter,
-  type DateFilter,
   type FilterField,
   type FilterOption,
   type QuickFilterState,
@@ -46,34 +41,6 @@ type QuickFilterProps = {
   maxConditions?: number;
 };
 const selectClass = "h-10 w-full rounded-md border bg-white px-3 text-sm";
-const datePresets = new Set<DatePreset>([
-  "all",
-  "this_month",
-  "last_month",
-  "last_3_months",
-  "last_6_months",
-  "this_year",
-  "last_year",
-  "custom",
-]);
-
-function toDateMenuValue(date: DateFilter): DateRangeFilterValue {
-  return {
-    preset: datePresets.has(date.preset as DatePreset)
-      ? (date.preset as DatePreset)
-      : "all",
-    customStart: parseDateFromInput(date.from),
-    customEnd: parseDateFromInput(date.to),
-  };
-}
-
-function fromDateMenuValue(value: DateRangeFilterValue): DateFilter {
-  return {
-    preset: value.preset,
-    from: formatDateForInput(value.customStart),
-    to: formatDateForInput(value.customEnd),
-  };
-}
 export function QuickFilter({
   value,
   onChange,
