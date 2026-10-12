@@ -4,7 +4,7 @@ The frontend counterpart is `Pagination` in `src/components/common/pagination.ts
 
 Import `parsePagination`, `paginationMetadata` and the `Pagination` type from `@/server/lib/pagination`.
 
-Controllers parse `req.query` once and pass the result into their service/repository. The repository uses Prisma `skip` and `take`, counts records with the same filters, and attaches the shared metadata to its resource array:
+Controllers parse `req.query` once and pass the result into their service/repository. The repository orders matching rows before applying Prisma `skip` and `take`, counts records with the same filters, and attaches the shared metadata to its resource array. Users, Companies and Roles use [server list sorting](SORTING.md), defaulting to the latest `created_at` first with an ID tie-breaker:
 
 ```ts
 // Controller
