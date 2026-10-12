@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/common/pagination";
 import { paginateItems } from "@/lib/pagination";
+import { sortTableRows, type TableSort } from "@/lib/table";
 import type { UserSummary } from "@/server/schema/users_schema";
 import { UsersTable } from "./users-table";
 
@@ -12,20 +13,20 @@ export function PaginatedUsersTable({ users }: { users: UserSummary[] }) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<"asc" | "desc">("asc");
+  const [sort, setSort] = useState<TableSort | null>(null);
   const records = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
-    return users.filter((user) => user.name.toLocaleLowerCase().includes(query) || (user.email ?? "").toLocaleLowerCase().includes(query))
-      .sort((a, b) => (sort === "asc" ? 1 : -1) * (a.name.localeCompare(b.name) || a.id.localeCompare(b.id)));
+    const filtered = users.filter((user) => user.name.toLocaleLowerCase().includes(query) || (user.email ?? "").toLocaleLowerCase().includes(query));
+    return sortTableRows(filtered, sort ?? { field: "created_at", direction: "desc" },
+      user => sort?.field === "name" ? user.name : new Date(user.created_at), user => user.id);
   }, [users, search, sort]);
   const result = paginateItems(records, page, limit);
   // A guarded local update keeps parent-owned page state valid when supplied records shrink.
   if (page !== result.page) setPage(result.page);
   return <section className="overflow-hidden rounded-xl border bg-white">
     <div className="flex flex-wrap gap-3 border-b p-4"><Input type="search" aria-label="Search users" placeholder="Search users" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} className="max-w-sm" />
-      <select aria-label="Sort users by name" value={sort} onChange={(event) => { setSort(event.target.value as "asc" | "desc"); setPage(1); }} className="h-10 rounded-md border bg-white px-3 text-sm"><option value="asc">Name: A–Z</option><option value="desc">Name: Z–A</option></select>
     </div>
-    {result.items.length ? <UsersTable users={result.items} /> : <p className="p-8 text-center text-sm text-muted-foreground">No matching users.</p>}
+    <UsersTable users={result.items} sorting={sort} onSortingChange={next => { setSort(next); setPage(1); }} />
     <Pagination metadata={result} onPrev={() => setPage(result.page - 1)} onNext={() => setPage(result.page + 1)} onPage={setPage} onLimitChange={(value) => { setLimit(value); setPage(1); }} />
   </section>;
 }

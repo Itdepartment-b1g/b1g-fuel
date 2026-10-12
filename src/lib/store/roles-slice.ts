@@ -1,3 +1,4 @@
+import type { TableSort } from "@/lib/table";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import type { CreateRoleInput, UpdateRoleInput, RoleResponse, RoleScope, RoleSummary, RolesPage, RoleOptions, DeleteRoleResponse } from "@/server/schema/roles_schema";
@@ -5,7 +6,7 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type RoleFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type RolesQuery = { page?: number; page_size?: number; search?: string; scope?: RoleScope };
+export type RolesQuery = { page?: number; page_size?: number; search?: string; scope?: RoleScope; sort_by?: string; sort_order?: TableSort["direction"] };
 export type RolesState = {
   roles: RoleSummary[]; total: number; page: number; page_size: number;
   selectedRole: RoleSummary | null; options: RoleOptions; lastChangedRole: RoleSummary | null;

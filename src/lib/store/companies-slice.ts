@@ -1,3 +1,4 @@
+import type { TableSort } from "@/lib/table";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import type { CompanySummary, CompaniesPage, CompanyResponse, CreateCompanyInput, UpdateCompanyInput, DeleteCompanyResponse } from "@/server/schema/companies_schema";
@@ -5,7 +6,7 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type CompanyFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type CompaniesQuery = { page?: number; page_size?: number; search?: string };
+export type CompaniesQuery = { page?: number; page_size?: number; search?: string; sort_by?: string; sort_order?: TableSort["direction"] };
 export type CompaniesState = {
   companies: CompanySummary[]; total: number; page: number; page_size: number; selectedCompany: CompanySummary | null;
   listStatus: Status; detailStatus: Status; mutationStatus: Status; mutationOperation: "create" | "update" | "delete" | null;

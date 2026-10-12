@@ -85,6 +85,7 @@ Prisma manages queries, transactions, seeding, and migrations using the original
 - [Reusable Quick Filter and Users integration](docs/QUICK_FILTER.md)
 - [Responsive pagination and array helper](docs/RESPONSIVE_PAGINATION.md)
 - [Server list sorting and newest-first defaults](docs/SORTING.md)
+- [Reusable table, column freezing and row actions](docs/DATA_TABLE.md)
 
 Root-level guide links point to the implemented documentation. Express replaces the API-route layer from those references at your request. `server-only` is intentionally absent: it is a Next.js bundler marker that cannot run in standalone Express. ESLint prohibits frontend components and Redux slices from importing server or generated database code.
 

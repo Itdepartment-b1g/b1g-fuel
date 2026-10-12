@@ -1,3 +1,4 @@
+import type { TableSort } from "@/lib/table";
 import {
   createAsyncThunk,
   createSlice,
@@ -17,7 +18,7 @@ import { USER_ADDITIONAL_FILTERS, USER_FILTER_FIELDS, USER_STATUS_OPTIONS, type 
 
 export type ApiFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type UsersQuery = { page?: number; page_size?: number; search?: string; filters?: UserFilters };
+export type UsersQuery = { page?: number; page_size?: number; search?: string; filters?: UserFilters; sort_by?: string; sort_order?: TableSort["direction"] };
 export type UsersState = {
   users: UserSummary[];
   total: number;
@@ -110,6 +111,8 @@ export const listUser = createAsyncThunk<
   if (query?.page_size !== undefined)
     params.set("page_size", String(query.page_size));
   if (query?.search) params.set("search", query.search);
+  if (query?.sort_by) params.set("sort_by", query.sort_by);
+  if (query?.sort_order) params.set("sort_order", query.sort_order);
   if (query?.filters) params.set("filters", JSON.stringify(query.filters));
   try {
     return await requestUser<UsersPage>(`/api/users?${params}`, { signal });

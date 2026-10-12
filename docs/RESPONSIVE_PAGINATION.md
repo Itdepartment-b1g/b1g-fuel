@@ -62,6 +62,6 @@ At `sm` (640px) and above, show the optional Rows per page select on the left an
 <PaginatedUsersTable users={allUsers} />
 ```
 
-It provides parent-controlled search, name sorting, page and limit; filters/sorts before calling `paginateItems`; reuses the existing Users table; and normalizes page state when supplied records shrink. Its guarded local page update stabilizes state before rendering. It uses the generic 5/10/20/50 options. Do not pass one server page as if it were the full dataset.
+It provides parent-controlled search, header sorting with a newest-first default, page and limit; filters/sorts before calling `paginateItems`; reuses the existing Users table; and normalizes page state when supplied records shrink. Its guarded local page update stabilizes state before rendering. It uses the generic 5/10/20/50 options. Do not pass one server page as if it were the full dataset.
 
 Existing GET query conventions and response fields remain compatible. See [server pagination](PAGINATION.md) and [Quick Filter](QUICK_FILTER.md).
