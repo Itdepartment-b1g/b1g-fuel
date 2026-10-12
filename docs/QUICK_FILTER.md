@@ -24,7 +24,7 @@ const [filters, setFilters] = useState(() => createQuickFilterState(defaults));
 />
 ```
 
-Imports: component from `@/components/common/quick-filter`; shared types, date preset choices and UI state helpers from `@/lib/quick-filter`. Server record matching, condition grouping and date resolution live in `@/server/lib/filter`. Fields are `{ key, label, options }`; dropdown options are `{ value, label, count? }`. Additional filters also have a unique `key`. The first status/additional option is unrestricted. Supply nonempty option lists with a distinct unrestricted first value. Labels can customize the button, panel title, section headings, All columns and Any. Optional `datePresets`, `onOpenChange` and `maxConditions` support other screens.
+Imports: component from `@/components/common/quick-filter`; shared types, date preset choices and UI state helpers from `@/lib/quick-filter`. Server record matching, condition grouping and date resolution live in `@/server/lib/filter`. Fields are `{ key, label, options }`; dropdown options are `{ value, label, count? }`. Additional filters also have a unique `key`. The first status/additional option is unrestricted. Supply nonempty option lists with a distinct unrestricted first value. Labels can customize the button, panel title, section headings, All columns and Any. Optional `onOpenChange` and `maxConditions` support other screens. The date section uses `DateRangeMenu`.
 
 ## Column semantics
 
@@ -59,9 +59,9 @@ Apply filters before slicing pages. For a paginated backend, translate `groupAct
 
 ## Dates and indicators
 
-The built-in presets are All dates, Today, Last 7 days, Last 30 days and Custom range. Calendar boundaries use Asia/Manila (UTC+08:00) by default. Today includes the full current calendar day; multi-day presets include today. Custom from/to dates are inclusive and can be open-ended. A custom range with both dates empty permits all dates until a boundary is entered. `resolveDateRange` produces `[from, toExclusive)` database bounds; `matchesDate` supports an injected clock and UTC offset for testing or other projects. Invalid calendar dates and reversed ranges are rejected.
+The date control is `DateRangeMenu`. Presets are All Time, This Month, Last Month, Last 3 Months, Last 6 Months, This Year, Last Year, and a custom range. Calendar boundaries use Asia/Manila (UTC+08:00). This Month and Last Month cover the full calendar month. Last 3 Months and Last 6 Months are rolling windows ending today. This Year and Last Year cover 1 January through 31 December. Custom from/to dates are inclusive calendar days. `resolveDateRange` produces `[from, toExclusive)` database bounds. Invalid calendar dates and reversed ranges are rejected.
 
-The badge counts each active condition, one nondefault date preset, one nondefault status and each nondefault extra dropdown. Custom range counts as selected even before boundaries are entered. The button highlights when the total exceeds zero; Clear appears only then and resets every configured default. Text search outside Quick Filter is separate and is not counted in its badge.
+The badge counts each active condition, one nondefault date preset, one nondefault status and each nondefault extra dropdown. A custom range counts when its preset is custom. The button highlights when the total exceeds zero; Clear appears only then and resets every configured default. Text search outside Quick Filter is separate and is not counted in its badge.
 
 ## Users integration
 

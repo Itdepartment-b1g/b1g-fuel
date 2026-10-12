@@ -23,10 +23,13 @@ export type FilterDefaults = {
   additional?: Record<string, string>;
 };
 export const DATE_PRESETS: FilterOption[] = [
-  { value: "all", label: "All dates" },
-  { value: "today", label: "Today" },
-  { value: "last7", label: "Last 7 days" },
-  { value: "last30", label: "Last 30 days" },
+  { value: "all", label: "All Time" },
+  { value: "this_month", label: "This Month" },
+  { value: "last_month", label: "Last Month" },
+  { value: "last_3_months", label: "Last 3 Months" },
+  { value: "last_6_months", label: "Last 6 Months" },
+  { value: "this_year", label: "This Year" },
+  { value: "last_year", label: "Last Year" },
   { value: "custom", label: "Custom range" },
 ];
 export function emptyCondition(field = ""): ColumnCondition {

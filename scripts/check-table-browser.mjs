@@ -106,13 +106,14 @@ async function main() {
     assert.equal(await evaluate(`document.querySelector('#toolbar-fixture input').value`), "");
     await evaluate(`document.querySelector('#toolbar-fixture button[aria-haspopup=dialog]').click(); settle()`);
     assert.equal(await evaluate(`document.querySelectorAll('[role=dialog]').length`), 1);
-    await evaluate(`document.querySelector('select[aria-label=Date]').value = 'today'; document.querySelector('select[aria-label=Date]').dispatchEvent(new Event('change', {bubbles:true})); settle()`);
+    await evaluate(`[...document.querySelectorAll("button")].find(button => button.textContent.includes("All Time")).click(); settle()`);
+    await evaluate(`[...document.querySelectorAll("button")].find(button => button.textContent.trim() === "This Month").click(); settle()`);
     await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
     await evaluate(`settle()`);
     assert.equal(await evaluate(`document.querySelector('[role=dialog]') === null`), true);
     assert.equal(await evaluate(`document.activeElement.textContent`), "Quick Filter");
     await evaluate(`document.querySelector('#toolbar-fixture button[aria-haspopup=dialog]').click(); settle()`);
-    assert.equal(await evaluate(`document.querySelector('select[aria-label=Date]').value`), "today");
+    assert.match(await evaluate(`[...document.querySelectorAll("button")].find(button => button.textContent.includes("This Month")).textContent`), /This Month/);
     await evaluate(`document.querySelector('button[aria-label="Close quick filter"]').click(); settle()`);
     await evaluate(`clickHeader("Freeze without sorting", "Freeze Only"); settle()`);
     assert.equal(await evaluate(`document.querySelectorAll("[role=menu] button").length`), 1);

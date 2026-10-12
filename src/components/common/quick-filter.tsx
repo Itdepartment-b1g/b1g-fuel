@@ -5,8 +5,14 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateRangeMenu } from "@/components/common/date-range-menu";
 import {
-  DATE_PRESETS,
+  formatDateForInput,
+  parseDateFromInput,
+  type DatePreset,
+  type DateRangeFilterValue,
+} from "@/lib/dateRangePresets";
+import {
   addCondition,
   changeConditionField,
   countActiveFilters,
@@ -15,6 +21,7 @@ import {
   isActiveCondition,
   removeCondition,
   type AdditionalFilter,
+  type DateFilter,
   type FilterField,
   type FilterOption,
   type QuickFilterState,
@@ -26,7 +33,6 @@ type QuickFilterProps = {
   fields: FilterField[];
   statusOptions: FilterOption[];
   additionalFilters?: AdditionalFilter[];
-  datePresets?: FilterOption[];
   labels?: {
     button?: string;
     title?: string;
@@ -40,13 +46,40 @@ type QuickFilterProps = {
   maxConditions?: number;
 };
 const selectClass = "h-10 w-full rounded-md border bg-white px-3 text-sm";
+const datePresets = new Set<DatePreset>([
+  "all",
+  "this_month",
+  "last_month",
+  "last_3_months",
+  "last_6_months",
+  "this_year",
+  "last_year",
+  "custom",
+]);
+
+function toDateMenuValue(date: DateFilter): DateRangeFilterValue {
+  return {
+    preset: datePresets.has(date.preset as DatePreset)
+      ? (date.preset as DatePreset)
+      : "all",
+    customStart: parseDateFromInput(date.from),
+    customEnd: parseDateFromInput(date.to),
+  };
+}
+
+function fromDateMenuValue(value: DateRangeFilterValue): DateFilter {
+  return {
+    preset: value.preset,
+    from: formatDateForInput(value.customStart),
+    to: formatDateForInput(value.customEnd),
+  };
+}
 export function QuickFilter({
   value,
   onChange,
   fields,
   statusOptions,
   additionalFilters = [],
-  datePresets = DATE_PRESETS,
   labels = {},
   onOpenChange,
   maxConditions = Infinity,
@@ -55,7 +88,7 @@ export function QuickFilter({
   const descriptionId = useId();
   const [fallbackCondition] = useState(() => emptyCondition());
   const defaults = {
-    date: datePresets[0]?.value ?? "all",
+    date: "all",
     status: statusOptions[0]?.value ?? "",
     additional: Object.fromEntries(
       additionalFilters.map((filter) => [
@@ -75,6 +108,15 @@ export function QuickFilter({
   const lastActive = Boolean(
     conditions.length && isActiveCondition(conditions[conditions.length - 1]),
   );
+  function keepDateMenu(event: { target: EventTarget | null; preventDefault: () => void }) {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest("[data-slot=popover-content]")
+    ) {
+      event.preventDefault();
+    }
+  }
   return (
     <Dialog.Root open={open} onOpenChange={changeOpen}>
       <Dialog.Trigger asChild>
@@ -103,6 +145,9 @@ export function QuickFilter({
         <Dialog.Content
           className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l bg-white shadow-2xl outline-none sm:w-[460px]"
           aria-describedby={descriptionId}
+          onPointerDownOutside={keepDateMenu}
+          onFocusOutside={keepDateMenu}
+          onInteractOutside={keepDateMenu}
         >
           <header className="flex items-start justify-between gap-3 border-b px-6 py-5">
             <div>
@@ -129,66 +174,14 @@ export function QuickFilter({
           <div className="min-h-0 flex-1 space-y-7 overflow-y-auto px-6 py-6">
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">{labels.date ?? "Date"}</h3>
-              <select
-                aria-label={labels.date ?? "Date"}
-                className={selectClass}
-                value={value.date.preset}
-                onChange={(event) =>
-                  onChange({
-                    ...value,
-                    date: { ...value.date, preset: event.target.value },
-                  })
+              <DateRangeMenu
+                value={toDateMenuValue(value.date)}
+                onChange={(next) =>
+                  onChange({ ...value, date: fromDateMenuValue(next) })
                 }
-              >
-                {datePresets.map((preset) => (
-                  <option key={preset.value} value={preset.value}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-              {value.date.preset === "custom" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1 text-xs text-muted-foreground">
-                    From
-                    <input
-                      type="date"
-                      aria-label="From date"
-                      className={selectClass}
-                      value={value.date.from}
-                      onChange={(event) =>
-                        onChange({
-                          ...value,
-                          date: {
-                            ...value.date,
-                            from: event.target.value,
-                            to:
-                              value.date.to &&
-                              event.target.value > value.date.to
-                                ? ""
-                                : value.date.to,
-                          },
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="space-y-1 text-xs text-muted-foreground">
-                    To
-                    <input
-                      type="date"
-                      aria-label="To date"
-                      className={selectClass}
-                      min={value.date.from || undefined}
-                      value={value.date.to}
-                      onChange={(event) =>
-                        onChange({
-                          ...value,
-                          date: { ...value.date, to: event.target.value },
-                        })
-                      }
-                    />
-                  </label>
-                </div>
-              )}
+                triggerClassName="w-full md:w-full"
+                contentClassName="z-[60]"
+              />
             </section>
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">

@@ -103,13 +103,44 @@ export function resolveDateRange(
       ...(end !== undefined ? { toExclusive: new Date(end + dayMs) } : {}),
     };
   }
-  const days = { today: 1, last7: 7, last30: 30 }[date.preset];
-  if (!days) throw new RangeError("Unknown date preset.");
-  const today = Math.floor((now.getTime() + offset) / dayMs) * dayMs - offset;
-  return {
-    from: new Date(today - (days - 1) * dayMs),
-    toExclusive: new Date(today + dayMs),
-  };
+  const shifted = new Date(now.getTime() + offset);
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth();
+  const dayOfMonth = shifted.getUTCDate();
+  const manilaStart = (calendarYear: number, calendarMonth: number, calendarDay: number) =>
+    new Date(Date.UTC(calendarYear, calendarMonth, calendarDay) - offset);
+  if (date.preset === "this_month") {
+    return {
+      from: manilaStart(year, month, 1),
+      toExclusive: manilaStart(year, month + 1, 1),
+    };
+  }
+  if (date.preset === "last_month") {
+    return {
+      from: manilaStart(year, month - 1, 1),
+      toExclusive: manilaStart(year, month, 1),
+    };
+  }
+  if (date.preset === "last_3_months" || date.preset === "last_6_months") {
+    const months = date.preset === "last_3_months" ? 3 : 6;
+    return {
+      from: new Date(Date.UTC(year, month - months, dayOfMonth) - offset),
+      toExclusive: new Date(manilaStart(year, month, dayOfMonth).getTime() + dayMs),
+    };
+  }
+  if (date.preset === "this_year") {
+    return {
+      from: manilaStart(year, 0, 1),
+      toExclusive: manilaStart(year + 1, 0, 1),
+    };
+  }
+  if (date.preset === "last_year") {
+    return {
+      from: manilaStart(year - 1, 0, 1),
+      toExclusive: manilaStart(year, 0, 1),
+    };
+  }
+  throw new RangeError("Unknown date preset.");
 }
 export function matchesDate(
   value: string | Date,
