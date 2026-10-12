@@ -1,10 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import * as userService from "@/server/services/users_service";
-import { parsePagination, PaginationError } from "@/server/utils/pagination";
+import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import type { CreateUserInput } from "@/server/schema/users_schema";
 import {
   DATE_PRESETS,
-  resolveDateRange,
   type QuickFilterState,
 } from "@/lib/quick-filter";
 import {
@@ -12,6 +11,7 @@ import {
   USER_STATUS_OPTIONS,
   USER_ADDITIONAL_FILTERS,
 } from "@/lib/users-filters";
+import { resolveDateRange } from "@/server/lib/filter";
 import { UserError } from "@/server/services/users_service";
 
 const user_database_errors: Record<string, { status: number; message: string }> = {

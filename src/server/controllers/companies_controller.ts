@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import * as companyService from "@/server/services/companies_service";
 import { CompanyError } from "@/server/services/companies_service";
-import { parsePagination, PaginationError } from "@/server/utils/pagination";
+import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import type { CreateCompanyInput, UpdateCompanyInput } from "@/server/schema/companies_schema";
 
 const company_id_pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

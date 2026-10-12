@@ -22,4 +22,5 @@ export type CreateUserInput = {
   company_id?: string;
   role_ids?: string[];
 };
+export type UpdateUserInput = { id: string; name?: string; email?: string | null };
 export type CreateUserResponse = { user: UserSummary };

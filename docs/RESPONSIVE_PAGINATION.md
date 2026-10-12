@@ -1,6 +1,6 @@
 # Responsive pagination
 
-Component: `src/components/common/pagination.tsx`. Separate data/helper module: `src/lib/pagination.ts`.
+Component: `src/components/common/pagination.tsx`. Shared types and UI helper module: `src/lib/pagination.ts`. API query validation and database offsets: `src/server/lib/pagination.ts`.
 
 ## Metadata and helper
 

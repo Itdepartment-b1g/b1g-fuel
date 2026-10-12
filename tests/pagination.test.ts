@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parsePagination, paginationMetadata, PaginationError } from "../src/server/utils/pagination";
+import { parsePagination, paginationMetadata, PaginationError } from "../src/server/lib/pagination";
 import { createPaginationMetadata, paginateItems, mobilePageNumbers, paginationFromApi, pageNavigation, DEFAULT_LIMIT_OPTIONS } from "../src/lib/pagination";
 
 test("number navigation ignores current/invalid pages and only permits adjacent fallback callbacks", () => {

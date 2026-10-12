@@ -1,3 +1,5 @@
+// Server pagination: validate API queries and calculate database offsets.
+// UI calculations, navigation and shared page-size choices live in @/lib/pagination.
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/pagination";
 
 export type Pagination = {

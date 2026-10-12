@@ -1,31 +1,33 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { getDatabase, type DatabaseExecutor } from "@/server/utils/database";
+import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type {
   CreateRoleInput,
   UpdateRoleInput,
   RoleSummary,
   RoleScope,
 } from "@/server/schema/roles_schema";
-import { paginationMetadata, type Pagination } from "@/server/utils/pagination";
+import { build_filter } from "@/server/lib/filter";
+import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 
 const role_include = {
   pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
   permissions: {
-    select: { 
-      permission_key: true
-     },
+    select: {
+      permission_key: true,
+    },
     orderBy: {
-       permission_key: "asc"
-       },
+      permission_key: "asc",
+    },
   },
   _count: { select: { user_roles: true, company_roles: true } },
 } satisfies Prisma.rolesInclude;
 
 type RoleRecord = Prisma.rolesGetPayload<{
-   include: typeof role_include 
-  }>;
+  include: typeof role_include;
+}>;
 type ExpectedRole = Pick<RoleSummary, "is_system" | "slug" | "scope">;
 
+/** Convert role timestamps to ISO strings and flatten page and permission mappings into their keys. Sum global and company role assignments into assignment_count. */
 function serialize_role(role: RoleRecord): RoleSummary {
   const { pages, permissions, _count, ...record } = role;
   return {
@@ -38,22 +40,19 @@ function serialize_role(role: RoleRecord): RoleSummary {
   };
 }
 
+/** Return a page of roles matching a literal, case-insensitive name or slug search and an optional scope. Include access mappings and assignment counts, reading rows and the matching total from one snapshot. */
 export async function list_role(
   pagination: Pagination,
   search: string,
   scope?: RoleScope,
 ) {
-  const where: Prisma.rolesWhereInput = {
-    ...(scope ? { scope } : {}),
-    ...(search
-      ? {
-          OR: [
-            { name: literal_contains(search) },
-            { slug: literal_contains(search) },
-          ],
-        }
-      : {}),
-  };
+  const where = build_filter<Prisma.rolesWhereInput>(undefined, {
+    where: scope ? { scope } : undefined,
+    search: {
+      value: search,
+      fields: [(filter) => ({ name: filter }), (filter) => ({ slug: filter })],
+    },
+  });
   return getDatabase().$transaction(
     async (tx) => {
       const roles = await tx.roles.findMany({
@@ -73,6 +72,7 @@ export async function list_role(
   );
 }
 
+/** Find a role by ID with its page keys, permission keys and assignment counts. Return null when the role does not exist. */
 export async function list_by_id_role(
   id: string,
   client: DatabaseExecutor = getDatabase(),
@@ -84,6 +84,7 @@ export async function list_by_id_role(
   return role ? serialize_role(role) : null;
 }
 
+/** Create a non-system role with the supplied scope and default setting, plus its page and permission mappings in one transaction. Return the saved role summary. */
 export async function create_role(input: Required<CreateRoleInput>) {
   return getDatabase().$transaction(async (tx) => {
     const role = await tx.roles.create({
@@ -106,6 +107,7 @@ export async function create_role(input: Required<CreateRoleInput>) {
   });
 }
 
+/** Update a role only if its system flag, slug and scope still match the values checked by the service, returning null when they no longer match. Supplied page and permission lists replace their existing mappings through the same transaction client, and empty lists clear them. */
 export async function update_role(
   input: UpdateRoleInput,
   expected: ExpectedRole,
@@ -142,6 +144,7 @@ export async function update_role(
   return list_by_id_role(input.id, client);
 }
 
+/** Delete a role only if its system flag, slug and scope still match the values checked by the service. Return whether a row was deleted so the service can detect a concurrent change. */
 export async function delete_role(
   id: string,
   expected: ExpectedRole,
@@ -149,9 +152,4 @@ export async function delete_role(
 ) {
   const removed = await client.roles.deleteMany({ where: { id, ...expected } });
   return removed.count > 0;
-}
-
-// Prisma contains uses LIKE; escape wildcards so searches retain literal substring behavior.
-function literal_contains(value: string): Prisma.StringFilter {
-  return { contains: value.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" };
 }

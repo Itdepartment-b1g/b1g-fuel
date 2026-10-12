@@ -1,4 +1,4 @@
-import type { Database } from "../../src/server/utils/database";
+import type { Database } from "../../src/server/lib/database";
 import { authRepository } from "../../src/server/repositories/auth_repository";
 
 export class SeedError extends Error {}

@@ -2,7 +2,7 @@ import express, { type ErrorRequestHandler } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { routesRouter } from "@/server/routes";
-import { PaginationError } from "@/server/utils/pagination";
+import { PaginationError } from "@/server/lib/pagination";
 import { createOriginMiddleware } from "@/server/security/middleware";
 
 export function createApp() {

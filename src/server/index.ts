@@ -9,7 +9,7 @@ const server = createApp().listen(port, host, () =>
 
 function shutdown() {
   server.close(async () => {
-    const { closeDatabase } = await import("./utils/database");
+    const { closeDatabase } = await import("./lib/database");
     await closeDatabase();
     process.exit(0);
   });

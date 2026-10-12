@@ -1,11 +1,11 @@
 import { mockDatabase } from "./database-fixture";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addCondition, changeConditionField, countActiveFilters, createQuickFilterState, filterRecords, groupActiveConditions, matchesColumnConditions, matchesDate, removeCondition, resolveDateRange, searchFilterOptions, type QuickFilterState } from "../src/lib/quick-filter";
+import { addCondition, changeConditionField, countActiveFilters, createQuickFilterState, removeCondition, searchFilterOptions, type QuickFilterState } from "../src/lib/quick-filter";
+import { filterRecords, groupActiveConditions, matchesColumnConditions, matchesDate, resolveDateRange } from "../src/server/lib/filter";
 import { USER_FILTER_DEFAULTS } from "../src/lib/users-filters";
 import { list_user as listUserController } from "../src/server/controllers/users_controller";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
-import { build_user_filter } from "../src/server/repositories/users_repository";
 import * as userService from "../src/server/services/users_service";
 import { makeStore } from "../src/lib/store/store";
 import { listUser } from "../src/lib/store/users-slice";
@@ -62,6 +62,7 @@ test("Manila dates are inclusive calendar days with open-ended custom ranges and
   assert.throws(() => resolveDateRange({ preset: "custom", from: "2026-10-08", to: "2026-10-07" }), RangeError);
 });
 test("users filtering validates input and translates groups before database pagination", async (t) => {
+  const queries = mockDatabase(t, ({ method }) => method === "count" ? 0 : []);
   const state = createQuickFilterState(USER_FILTER_DEFAULTS);
   state.conditions = [{ id: "a", field: "name", value: " Juan " }, { id: "b", field: "email", value: "juan@example.com" }, { id: "c", field: "name", value: "Aaron" }];
   const service = { ...userService };
@@ -69,7 +70,8 @@ test("users filtering validates input and translates groups before database pagi
   let status = 200;
   const res = { status(code: number) { status = code; return this; }, json() {} } as unknown as ExpressResponse;
   await listUserController({ query: { filters: JSON.stringify(state) } } as unknown as ExpressRequest, res, undefined, service);
-  const query = build_user_filter(list.mock.calls[0].arguments[2]);
+  await userService.list_user({ page: 1, page_size: 10, skip: 0, take: 10 }, "", list.mock.calls[0].arguments[2]);
+  const query = queries.find(query => query.method === "findMany")!.args.where;
   assert.deepEqual(query, { AND: [
     { OR: [{ name: { equals: "Juan", mode: "insensitive" } }, { name: { equals: "Aaron", mode: "insensitive" } }] },
     { OR: [{ email: { equals: "juan@example.com", mode: "insensitive" } }] },
@@ -79,7 +81,9 @@ test("users filtering validates input and translates groups before database pagi
     assert.equal(status, 400);
   }
   assert.equal(list.mock.callCount(), 1);
-  const cleared: QuickFilterState = createQuickFilterState(USER_FILTER_DEFAULTS); assert.equal(build_user_filter(cleared), undefined);
+  const cleared: QuickFilterState = createQuickFilterState(USER_FILTER_DEFAULTS);
+  await userService.list_user({ page: 1, page_size: 10, skip: 0, take: 10 }, "", cleared);
+  assert.deepEqual(queries.filter(query => query.method === "findMany").at(-1)!.args.where, {});
 });
 
 test("user rows and total share the same database filter before skip/take", async (t) => {

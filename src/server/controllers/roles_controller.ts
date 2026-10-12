@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import * as roleService from "@/server/services/roles_service";
 import { RoleError } from "@/server/services/roles_service";
-import { parsePagination, PaginationError } from "@/server/utils/pagination";
+import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import type {
   CreateRoleInput,
   UpdateRoleInput,

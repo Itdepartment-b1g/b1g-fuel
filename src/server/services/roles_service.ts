@@ -5,8 +5,8 @@ import type {
   RoleSummary,
 } from "@/server/schema/roles_schema";
 import * as rolesRepository from "@/server/repositories/roles_repository";
-import { getDatabase } from "@/server/utils/database";
-import type { Pagination } from "@/server/utils/pagination";
+import { getDatabase } from "@/server/lib/database";
+import type { Pagination } from "@/server/lib/pagination";
 
 function require_editable_role(role: RoleSummary | null): RoleSummary {
   if (!role) throw new RoleError("role_not_found", "Role not found.");

@@ -1,3 +1,4 @@
+// Shared pagination types and pure UI helpers. Server API pagination lives in @/server/lib/pagination.
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 export const DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
 // Generic component defaults. API-backed screens can pass PAGE_SIZE_OPTIONS instead.
@@ -26,7 +27,7 @@ export function createPaginationMetadata(total: number, requestedPage = 1, limit
   return { page, limit, total, total_pages: totalPages, has_next_page: page < totalPages, has_prev_page: totalPages > 0 && page > 1 };
 }
 
-/** Filter and sort the complete dataset before calling this helper. Does not mutate input. */
+/** For a complete local dataset: filter and sort first. Never pass one page of API results. */
 export function paginateItems<T>(items: readonly T[], requestedPage = 1, limit: number = DEFAULT_PAGE_SIZE): PaginatedItems<T> {
   const metadata = createPaginationMetadata(items.length, requestedPage, limit);
   const start = (metadata.page - 1) * limit;

@@ -1,5 +1,5 @@
 import type { TestContext } from "node:test";
-import type { Database } from "../src/server/utils/database";
+import type { Database } from "../src/server/lib/database";
 
 export type DatabaseCall = { model: string; method: string; args: Record<string, unknown> };
 

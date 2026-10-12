@@ -7,7 +7,7 @@ import {
 } from "@/lib/users-filters";
 import { createAdminClient } from "@/server/auth/admin";
 import * as usersRepository from "@/server/repositories/users_repository";
-import type { Pagination } from "@/server/utils/pagination";
+import type { Pagination } from "@/server/lib/pagination";
 
 export async function list_user(
   pagination: Pagination,

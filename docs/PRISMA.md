@@ -4,7 +4,7 @@ Prisma handles the database schema, migrations, repository queries, transactions
 
 ## Client and repositories
 
-`src/server/utils/database.ts` provides a lazy Prisma Client using the PostgreSQL adapter and the backend `DATABASE_URL`. The client is reused and disconnected during API shutdown.
+`src/server/lib/database.ts` provides a lazy Prisma Client using the PostgreSQL adapter and the backend `DATABASE_URL`. The client is reused and disconnected during API shutdown.
 
 Repository files use generated model APIs such as `findMany`, `count`, `create`, `updateMany`, and `deleteMany`. Relations load role assignments, memberships, pages, permissions and assignment counts. Repositories serialize dates into the existing public response shapes. Prisma supplies model UUID defaults and `updated_at` values.
 

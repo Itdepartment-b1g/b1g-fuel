@@ -1,7 +1,7 @@
 import type { CreateCompanyInput, UpdateCompanyInput } from "@/server/schema/companies_schema";
 import * as companiesRepository from "@/server/repositories/companies_repository";
-import { getDatabase } from "@/server/utils/database";
-import type { Pagination } from "@/server/utils/pagination";
+import { getDatabase } from "@/server/lib/database";
+import type { Pagination } from "@/server/lib/pagination";
 
 export async function create_company(
   input: CreateCompanyInput,

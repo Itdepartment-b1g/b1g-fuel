@@ -19,7 +19,7 @@ Component → Redux → Express route → Controller → Service → Repository 
 
 Controllers and services must not import directly into client components or slices. Redux accesses the Express API through `/api` with cookies.
 
-Shared pagination and the Prisma connection belong in `src/server/utils`. Resource request validation, database error translation and HTTP error responses stay in controllers. Resource error classes live in their service modules. Prisma filtering helpers, including `build_user_filter`, stay in their repositories; services pass search/filter values without constructing database queries.
+The Prisma connection belongs in `src/server/lib/database.ts`; shared query composition belongs in `src/server/lib/filter.ts`. API pagination validation, offsets and response metadata belong in `src/server/lib/pagination.ts`; shared pagination types and UI calculations stay in `src/lib/pagination.ts`. Filter grouping, record matching and date resolution belong in `src/server/lib/filter.ts`; shared types and UI state helpers stay in `src/lib/quick-filter.ts`. Resource request validation, database error translation and HTTP error responses stay in controllers. Resource error classes live in their service modules. Repository `list_*` functions use `build_filter` from `src/server/lib/filter.ts` with resource-specific typed predicates; services pass search/filter values without constructing database queries.
 
 ## Validation versus conditions
 
@@ -68,7 +68,7 @@ ESLint enforces snake_case for named functions and object methods in the three b
 
 ## Current operation exports
 
-- Users controllers/services: `list_user`, `create_user`, `get_user_option`, `get_user_filter_option`; repository eligibility lookup: `assignable_user`.
+- Users controllers/services: `list_user`, `create_user`, `get_user_option`, `get_user_filter_option`; user CRUD repository: `list_user`, `list_by_id_user`, `create_user`, `update_user`, `delete_user`. Dropdown and eligibility queries also live in `users_repository.ts`.
 - Roles controllers/services: `create_role`, `update_role`, `delete_role`, `list_by_id_role`, `list_role`. The controller keeps validation and HTTP error handling inline; static form choices are returned by the `/options` route.
 - Companies controllers/services: `list_company`, `create_company`, `list_by_id_company`, `update_company`, `delete_company`.
 - Authentication: `login_user`, `logout_user`, `get_user_session`, `start_google_login`, `finish_google_login`; service access checks: `require_user_access`, `require_super_admin`.

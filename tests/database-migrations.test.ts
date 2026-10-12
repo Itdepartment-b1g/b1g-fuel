@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { createEmbeddedPrisma } from "./prisma-pglite";
 import { seed_records } from "../scripts/database/seed-records";
-import type { Database } from "../src/server/utils/database";
+import type { Database } from "../src/server/lib/database";
 import { verify_repository_database } from "./database-scenarios";
 import * as usersRepository from "../src/server/repositories/users_repository";
 import * as companiesRepository from "../src/server/repositories/companies_repository";

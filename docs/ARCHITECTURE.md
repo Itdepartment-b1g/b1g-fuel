@@ -29,7 +29,7 @@ flowchart LR
 | Controllers | `src/server/controllers/` | Async resource operation handlers matching services; validate input, translate errors and send HTTP responses |
 | Services | `src/server/services/` | Business conditions/reasons, workflows and transactions; no HTTP statuses |
 | Repositories | `src/server/repositories/` | Database queries; no HTTP code |
-| Database client | `src/server/utils/database.ts` | Lazy Prisma singleton with pg pool |
+| Database client | `src/server/lib/database.ts` | Lazy Prisma singleton with pg pool |
 | Database schema | `prisma/schema.prisma`, `prisma/migrations/` | Prisma models and committed SQL, including custom constraints and RLS |
 | Migrations / seed | `prisma/`, `scripts/database/` | Prisma migrations and Prisma seed orchestration through the auth repository |
 | Authentication | `src/server/auth/` | Cookie adapter and verified Supabase user |

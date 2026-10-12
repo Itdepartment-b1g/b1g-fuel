@@ -1,11 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { getDatabase, type DatabaseExecutor } from "@/server/utils/database";
+import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type {
   CreateCompanyInput,
   UpdateCompanyInput,
   CompanySummary,
 } from "@/server/schema/companies_schema";
-import { paginationMetadata, type Pagination } from "@/server/utils/pagination";
+import { build_filter } from "@/server/lib/filter";
+import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 
 const company_include = {
   _count: { select: { user_companies: true } },
@@ -14,6 +15,7 @@ type CompanyRecord = Prisma.companyGetPayload<{
   include: typeof company_include;
 }>;
 
+/** Convert company timestamps to ISO strings and expose the membership count as member_count in the API summary. */
 function serialize_company(company: CompanyRecord): CompanySummary {
   const { _count, ...record } = company;
   return {
@@ -24,10 +26,11 @@ function serialize_company(company: CompanyRecord): CompanySummary {
   };
 }
 
+/** Return a page of companies matching a literal, case-insensitive name search, including their membership counts. Read the rows and matching total from the same database snapshot. */
 export async function list_company(pagination: Pagination, search: string) {
-  const where: Prisma.companyWhereInput = search
-    ? { name: literal_contains(search) }
-    : {};
+  const where = build_filter<Prisma.companyWhereInput>(undefined, {
+    search: { value: search, fields: [(filter) => ({ name: filter })] },
+  });
   return getDatabase().$transaction(
     async (tx) => {
       const companies = await tx.company.findMany({
@@ -47,6 +50,7 @@ export async function list_company(pagination: Pagination, search: string) {
   );
 }
 
+/** Find a company by ID with its membership count, returning null when it does not exist. When requested, acquire a row lock through the supplied client before reading the count. */
 export async function list_by_id_company(
   id: string,
   client: DatabaseExecutor = getDatabase(),
@@ -62,6 +66,7 @@ export async function list_by_id_company(
   return company ? serialize_company(company) : null;
 }
 
+/** Insert a company with the supplied name and return its API summary, including timestamps and membership count. */
 export async function create_company(input: CreateCompanyInput) {
   return serialize_company(
     await getDatabase().company.create({
@@ -71,6 +76,7 @@ export async function create_company(input: CreateCompanyInput) {
   );
 }
 
+/** Update the company name through the supplied database client and return the updated summary. The service supplies its transaction client to keep the write within its business checks. */
 export async function update_company(
   input: UpdateCompanyInput,
   client: DatabaseExecutor,
@@ -84,11 +90,7 @@ export async function update_company(
   );
 }
 
+/** Delete a company by ID through the supplied database client. The service checks membership and controls the transaction before calling this query. */
 export async function delete_company(id: string, client: DatabaseExecutor) {
   await client.company.delete({ where: { id } });
-}
-
-// Prisma contains uses LIKE; escape wildcards so searches retain literal substring behavior.
-function literal_contains(value: string): Prisma.StringFilter {
-  return { contains: value.replace(/[\\%_]/g, "\\$&"), mode: "insensitive" };
 }

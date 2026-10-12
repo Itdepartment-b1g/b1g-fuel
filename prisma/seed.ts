@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { createClient, type User } from "@supabase/supabase-js";
-import { getDatabase, closeDatabase } from "../src/server/utils/database";
+import { getDatabase, closeDatabase } from "../src/server/lib/database";
 import { authRepository } from "../src/server/repositories/auth_repository";
 import { seed_records, SeedError } from "../scripts/database/seed-records";
 
