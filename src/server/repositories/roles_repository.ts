@@ -11,12 +11,19 @@ import { paginationMetadata, type Pagination } from "@/server/utils/pagination";
 const role_include = {
   pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
   permissions: {
-    select: { permission_key: true },
-    orderBy: { permission_key: "asc" },
+    select: { 
+      permission_key: true
+     },
+    orderBy: {
+       permission_key: "asc"
+       },
   },
   _count: { select: { user_roles: true, company_roles: true } },
 } satisfies Prisma.rolesInclude;
-type RoleRecord = Prisma.rolesGetPayload<{ include: typeof role_include }>;
+
+type RoleRecord = Prisma.rolesGetPayload<{
+   include: typeof role_include 
+  }>;
 type ExpectedRole = Pick<RoleSummary, "is_system" | "slug" | "scope">;
 
 function serialize_role(role: RoleRecord): RoleSummary {
