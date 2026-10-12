@@ -56,7 +56,7 @@ At `sm` (640px) and above, show the optional Rows per page select on the left an
 
 **Server-backed Users:** `src/components/users/list.tsx` uses backend-filtered records, adapts total/page/limit metadata, and renders the new controls. Search, Quick Filter and limit changes reset the page to 1. A completed response with a smaller total clamps parent-owned page state and refetches that valid page. Canceled/stale requests cannot change it. Users explicitly passes its existing API options, 10/20/50/100; the reusable component's defaults remain 5/10/20/50.
 
-**Client-side Users:** `src/components/users/table-view/paginated-users-table.tsx` exports `PaginatedUsersTable`. Supply a complete `UserSummary[]` dataset:
+**Client-side Users:** `src/components/users/table-view/users-table-view.tsx` exports `PaginatedUsersTable`. Supply a complete `UserSummary[]` dataset:
 
 ```tsx
 <PaginatedUsersTable users={allUsers} />

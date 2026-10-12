@@ -29,7 +29,7 @@ import {
   paginationFromApi,
 } from "@/lib/pagination";
 import { CreateUserDialog } from "./dialog/create-user-dialog";
-import { UsersTable } from "./table-view/users-table";
+import { UsersTable } from "./table-view/users-table-view";
 import { UsersCards } from "./card-views/users-cards";
 
 export default function UsersList() {
