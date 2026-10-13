@@ -40,7 +40,7 @@ type QuickFilterProps = {
   onOpenChange?: (open: boolean) => void;
   maxConditions?: number;
 };
-const selectClass = "h-10 w-full rounded-md border bg-white px-3 text-sm";
+const selectClass = "h-10 w-full rounded-[4px] border border-gray-200 bg-white px-3 text-sm";
 export function QuickFilter({
   value,
   onChange,

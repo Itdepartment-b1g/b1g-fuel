@@ -199,7 +199,7 @@ export default function CompaniesList() {
               aria-label="Table view"
               aria-pressed={view === "table"}
               onClick={() => setView("table")}
-              className={`rounded-md p-2 ${view === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+              className={`rounded-md p-2 ${view === "table" ? "bg-gray-50": "text-muted-foreground"}`}
             >
               <List className="size-4" />
             </button>
@@ -208,7 +208,7 @@ export default function CompaniesList() {
               aria-label="Card view"
               aria-pressed={view === "cards"}
               onClick={() => setView("cards")}
-              className={`rounded-md p-2 ${view === "cards" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+              className={`rounded-md p-2 ${view === "cards" ? "bg-gray-50": "text-muted-foreground"}`}
             >
               <LayoutGrid className="size-4" />
             </button>

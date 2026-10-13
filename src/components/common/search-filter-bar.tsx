@@ -65,7 +65,6 @@ export function SearchFilterBar({
   return (
     <div
       className={cn(
-        "rounded-lg border border-gray-200 bg-white px-2 py-2 sm:px-4",
         className,
       )}
     >
