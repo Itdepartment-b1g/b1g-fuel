@@ -109,15 +109,17 @@ const columns: DataTableColumn<UserSummary>[] = [
     width: 170,
     freezable: true,
     value: (user) => user.created_by,
-    cell: (user) => <UserAvatar name={user.created_by} />,
-    cell: (user) => (
-      <div className="flex items-center gap-3">
-        <UserAvatar name={user.created_by} />
-        <div>
-          <p className="font-medium">{user.created_by}</p>
+    cell: (user) => {
+      const createdBy = user.created_by ?? "Unknown";
+      return (
+        <div className="flex items-center gap-3">
+          <UserAvatar name={createdBy} />
+          <div>
+            <p className="font-medium">{createdBy}</p>
+          </div>
         </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     id: "created_at",
