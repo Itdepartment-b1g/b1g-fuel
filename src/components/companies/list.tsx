@@ -166,8 +166,9 @@ export default function CompaniesList() {
             </Button>
           )}
         </header>
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <SearchFilterBar
+            className="min-w-0 w-full flex-1"
             search={search}
             onSearch={(value) => {
               setSearch(value);
@@ -190,7 +191,7 @@ export default function CompaniesList() {
             quickFilterActive={activeFilters > 0}
           />
           <div
-            className="flex rounded-lg border p-1"
+            className="flex w-fit shrink-0 self-end rounded-lg border p-1 sm:self-auto"
             role="group"
             aria-label="User display"
           >
@@ -199,7 +200,7 @@ export default function CompaniesList() {
               aria-label="Table view"
               aria-pressed={view === "table"}
               onClick={() => setView("table")}
-              className={`rounded-md p-2 ${view === "table" ? "bg-gray-50": "text-muted-foreground"}`}
+              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
             >
               <List className="size-4" />
             </button>
@@ -208,7 +209,7 @@ export default function CompaniesList() {
               aria-label="Card view"
               aria-pressed={view === "cards"}
               onClick={() => setView("cards")}
-              className={`rounded-md p-2 ${view === "cards" ? "bg-gray-50": "text-muted-foreground"}`}
+              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
             >
               <LayoutGrid className="size-4" />
             </button>
