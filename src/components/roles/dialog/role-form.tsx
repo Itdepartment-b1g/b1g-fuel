@@ -134,7 +134,6 @@ export function RoleForm({
               onChange={(event) => {
                 const next = event.target.value as RoleScope;
                 setScope(next);
-                if (next === "company") setPermissionScopes((current) => Object.fromEntries(Object.entries(current).map(([key, value]) => [key, value === "all" ? "company" : value])));
               }}
             >
               <option value="company">Company</option>
@@ -174,7 +173,7 @@ export function RoleForm({
                 {selected && (
                   <details open className="border-t px-3 py-2">
                     <summary className="cursor-pointer text-sm text-muted-foreground">Permissions for {page.label}</summary>
-                    <div className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-5">
                       {choices.map((choice) => (
                         <div key={choice.key} className="space-y-2">
                         <label key={choice.key} className="flex items-center gap-2 text-sm">
@@ -193,12 +192,28 @@ export function RoleForm({
                             onChange={(event) => setPermissionScopes((current) => ({ ...current, [choice.key]: event.target.value as AccessScope }))}
                             className="h-9 w-full rounded-md border bg-white px-2 text-xs"
                           >
-                            {ACCESS_SCOPES.filter((value) => scope === "global" || value !== "all").map((value) => <option key={value} value={value}>{ACCESS_SCOPE_LABELS[value]}</option>)}
+                            {ACCESS_SCOPES.map((value) => <option key={value} value={value}>{ACCESS_SCOPE_LABELS[value]}</option>)}
                           </select>
                         )}
                         {choice.action === "add" && permissions.includes(choice.key) && <p className="text-xs text-muted-foreground">Creator is set to the signed-in user.</p>}
                         </div>
                       ))}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={choices.length > 0 && choices.every((choice) => permissions.includes(choice.key))}
+                            onChange={(event) => {
+                              const keys = choices.map((choice) => choice.key);
+                              setPermissions((current) => event.target.checked
+                                ? [...new Set([...current, ...keys])]
+                                : current.filter((key) => !keys.includes(key)));
+                            }}
+                            className="size-4 accent-primary"
+                          />
+                          All
+                        </label>
+                      </div>
                     </div>
                   </details>
                 )}

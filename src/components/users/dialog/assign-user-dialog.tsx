@@ -7,8 +7,33 @@ import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { ACCESS_SCOPE_LABELS, type AccessScope } from "@/lib/auth/access-scope";
+import { PAGE_CATALOG } from "@/lib/auth/catalog";
+import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import { assignUser, getUserOption, selectUser } from "@/lib/store/users-slice";
-import type { UserSummary } from "@/server/schema/users_schema";
+import type { AssignableRole, UserSummary } from "@/server/schema/users_schema";
+
+function RoleAccess({ role }: { role: AssignableRole }) {
+  const pages = PAGE_CATALOG.filter((page) => role.pages.includes(page.key));
+  if (!pages.length) return <p className="ml-6 text-xs text-muted-foreground">This role has no pages or permissions.</p>;
+  return (
+    <ul className="ml-6 mt-1 space-y-1 text-xs text-muted-foreground">
+      {pages.map((page) => {
+        const actions = PERMISSION_CATALOG.filter((item) => item.page_key === page.key && role.permissions.includes(item.key));
+        const labels = actions.map((item) => {
+          const scope = role.permission_scopes[item.key];
+          return item.action === "add" || !scope ? item.label : `${item.label} (${ACCESS_SCOPE_LABELS[scope as AccessScope]})`;
+        });
+        return (
+          <li key={page.key}>
+            <span className="font-medium text-foreground">{page.label}</span>
+            {labels.length ? ` · ${labels.join(", ")}` : ""}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export function AssignUserDialog({
   user,
@@ -90,18 +115,21 @@ export function AssignUserDialog({
             <fieldset>
               <legend className="mb-2 text-sm font-medium">Roles <span className="text-destructive">*</span></legend>
               {companyRoles.length ? (
-                <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border bg-white p-3">
+                <div className="max-h-64 space-y-3 overflow-y-auto rounded-md border bg-white p-3">
                   {companyRoles.map((role) => (
-                    <label key={role.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={roleIds.includes(role.id)}
-                        disabled={pending}
-                        onChange={(event) => setRoleIds((current) => event.target.checked ? [...current, role.id] : current.filter((id) => id !== role.id))}
-                        className="size-4 accent-primary"
-                      />
-                      {role.name}
-                    </label>
+                    <div key={role.id}>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={roleIds.includes(role.id)}
+                          disabled={pending}
+                          onChange={(event) => setRoleIds((current) => event.target.checked ? [...current, role.id] : current.filter((id) => id !== role.id))}
+                          className="size-4 accent-primary"
+                        />
+                        {role.name}
+                      </label>
+                      {roleIds.includes(role.id) && <RoleAccess role={role} />}
+                    </div>
                   ))}
                 </div>
               ) : (

@@ -1,6 +1,13 @@
+import type { AccessScope } from "@/lib/auth/access-scope";
+
 export const USER_SORT_FIELDS = ["id","name","email","created_at","updated_at"] as const;
 
 export type RoleOption = { id: string; name: string; slug: string; company_id?: string | null };
+export type AssignableRole = RoleOption & {
+  pages: string[];
+  permissions: string[];
+  permission_scopes: Partial<Record<string, AccessScope>>;
+};
 export type CompanyOption = { id: string; name: string };
 export type UserSummary = {
   created_by: string | null;
@@ -18,7 +25,7 @@ export type UsersPage = {
   page: number;
   page_size: number;
 };
-export type UserOptions = { companies: CompanyOption[]; roles: RoleOption[] };
+export type UserOptions = { companies: CompanyOption[]; roles: AssignableRole[] };
 export type CreateUserInput = {
   name: string;
   email: string;

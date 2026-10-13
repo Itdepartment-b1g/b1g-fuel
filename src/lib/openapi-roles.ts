@@ -34,7 +34,7 @@ const permissions = {
     enum: PERMISSION_CATALOG.map((permission) => permission.key),
   },
 };
-const permissionScopes = { type: "object", additionalProperties: { type: "string", enum: ["all", "company", "own"] }, description: "Access scope per selected View/Edit/Delete permission; defaults to company. All is global roles only. Add is enabled/disabled and has no scope." };
+const permissionScopes = { type: "object", additionalProperties: { type: "string", enum: ["all", "company", "own"] }, description: "Access scope per selected View, Edit, or Delete permission; defaults to company. All covers every record. Create is enabled or disabled and has no scope." };
 const editable = {
   permission_scopes: permissionScopes,
   company_id: { type: ["string", "null"], format: "uuid", description: "Company scope only. A role belongs to one company; assigned roles cannot change company." },

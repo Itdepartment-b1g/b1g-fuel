@@ -4,7 +4,9 @@ import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type { QuickFilterState } from "@/lib/quick-filter";
 import { build_filter } from "@/server/lib/filter";
+import type { AccessScope } from "@/lib/auth/access-scope";
 import type {
+  AssignableRole,
   CreateUserInput,
   UpdateUserInput,
   UserSummary,
@@ -287,11 +289,21 @@ export async function get_user_option(access?: RecordAccess) {
     }),
     db.roles.findMany({
       where: { scope: "company", ...(access && !access.superAdmin ? { id: { in: [] } } : {}) },
-      select: role_select,
+      select: {
+        ...role_select,
+        pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
+        permissions: { select: { permission_key: true, access_scope: true }, orderBy: { permission_key: "asc" } },
+      },
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
   ]);
-  return { companies, roles };
+  const assignable: AssignableRole[] = roles.map(({ pages, permissions, ...role }) => ({
+    ...role,
+    pages: pages.map((page) => page.page_key),
+    permissions: permissions.map((permission) => permission.permission_key),
+    permission_scopes: Object.fromEntries(permissions.filter((permission) => !permission.permission_key.endsWith(".add")).map((permission) => [permission.permission_key, permission.access_scope as AccessScope])),
+  }));
+  return { companies, roles: assignable };
 }
 
 /** Look up an existing account by email without case sensitivity, the selected company, and the number of selected company-scoped roles that exist. The service uses these results to check creation eligibility before provisioning the Auth account. */

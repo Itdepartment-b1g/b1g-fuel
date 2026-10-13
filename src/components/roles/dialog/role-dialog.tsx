@@ -13,7 +13,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editRole, getRoleOption, selectRole } from "@/lib/store/roles-slice";
 import type { RoleSummary } from "@/server/schema/roles_schema";
 import { RoleForm } from "./role-form";
-import { ListPlaceholder } from "@/components/common/list-placeholder";
+import { Loading } from "@/components/common/loading";
 
 export function RoleDialog({
   roleId,
@@ -98,7 +98,7 @@ export function RoleDialog({
             </Button>
           </div>
         ) : (
-          <ListPlaceholder loading title="" description="" />
+          <Loading />
         )}
         {optionsError && (
           <Button

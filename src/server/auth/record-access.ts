@@ -25,8 +25,7 @@ export async function get_record_access(userId: string, client: DatabaseExecutor
     for (const page of role.pages) pages.add(page.page_key);
     for (const permission of role.permissions) {
       if (!role.pages.some((page) => page.page_key === permission.permission_key.split(".")[0])) continue;
-      if (companyId && permission.access_scope === "all") continue;
-      grants.push({ permission: permission.permission_key, scope: permission.access_scope as AccessScope, companyId });
+      grants.push({ permission: permission.permission_key, scope: permission.access_scope as AccessScope, companyId: permission.access_scope === "all" ? null : companyId });
     }
   }
   return { userId, superAdmin: (profile?.user_roles ?? []).some(({ role }) => role.slug === "super_admin"), companyIds: (profile?.user_companies ?? []).map((membership) => membership.company_id), pages: [...pages], grants };

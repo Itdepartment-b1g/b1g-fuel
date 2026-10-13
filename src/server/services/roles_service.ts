@@ -15,12 +15,10 @@ import type { Pagination } from "@/server/lib/pagination";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import { ACCESS_SCOPES, type AccessScope } from "@/lib/auth/access-scope";
 
-function require_permission_scopes(scope: RoleScope, permissions: string[], scopes: Record<string, AccessScope>) {
+function require_permission_scopes(permissions: string[], scopes: Record<string, AccessScope>) {
   for (const [key, value] of Object.entries(scopes)) {
     if (!permissions.includes(key) || key.endsWith(".add") || !ACCESS_SCOPES.includes(value))
-      throw new RoleError("invalid_input", "Access scopes must belong to selected View, Edit or Delete permissions.");
-    if (scope !== "global" && value === "all")
-      throw new RoleError("invalid_input", "All records is available only to global roles.");
+      throw new RoleError("invalid_input", "Access scopes must belong to selected View, Edit, or Delete permissions.");
   }
 }
 
@@ -42,7 +40,7 @@ function require_editable_role(role: RoleSummary | null): RoleSummary {
 }
 export async function create_role(input: Required<CreateRoleInput>, repository = rolesRepository, createdBy?: string) {
   require_page_permissions(input.pages, input.permissions);
-  require_permission_scopes(input.scope, input.permissions, input.permission_scopes);
+  require_permission_scopes(input.permissions, input.permission_scopes);
   if (input.scope === "global" && input.company_id)
     throw new RoleError("invalid_input", "Global roles cannot belong to a company.");
   if (input.slug === "super_admin")
@@ -115,8 +113,8 @@ export async function update_role(input: UpdateRoleInput, repository = rolesRepo
     if (input.permission_scopes !== undefined || input.permissions !== undefined) {
       const permissions = input.permissions ?? current.permissions;
       const scopes = Object.fromEntries(permissions.filter((key) => !key.endsWith(".add")).map((key) => [key, input.permission_scopes?.[key] ?? current.permission_scopes[key] ?? "company"]));
-      require_permission_scopes(current.scope, permissions, input.permission_scopes ?? {});
-      require_permission_scopes(current.scope, permissions, scopes);
+      require_permission_scopes(permissions, input.permission_scopes ?? {});
+      require_permission_scopes(permissions, scopes);
       input = { ...input, permission_scopes: scopes };
     }
     if (current.scope === "global" && input.company_id)

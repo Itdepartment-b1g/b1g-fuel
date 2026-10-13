@@ -30,6 +30,7 @@ export const openapi = {
         role_ids: { type: "array", minItems: 1, maxItems: 50, uniqueItems: true, items: { type: "string", format: "uuid" } },
       } },
       RoleOption: { type: "object", required: ["id", "name", "slug"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" }, slug: { type: "string" }, company_id: { type: "string", format: "uuid", nullable: true } } },
+      AssignableRole: { allOf: [{ $ref: "#/components/schemas/RoleOption" }, { type: "object", required: ["pages", "permissions", "permission_scopes"], properties: { pages: { type: "array", items: { type: "string" } }, permissions: { type: "array", items: { type: "string" } }, permission_scopes: { type: "object", additionalProperties: { type: "string", enum: ["all", "company", "own"] } } } }] },
       CompanyOption: { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } },
       User: { type: "object", required: ["id", "name", "email", "created_at", "global_roles", "companies"], properties: {
         created_by: { type: "string", format: "uuid", nullable: true, readOnly: true },
@@ -43,7 +44,7 @@ export const openapi = {
         users: { type: "array", items: { $ref: "#/components/schemas/User" } }, total: { type: "integer" }, page: { type: "integer" }, page_size: { type: "integer" },
       } },
       UserOptions: { type: "object", required: ["companies", "roles"], properties: {
-        companies: { type: "array", items: { $ref: "#/components/schemas/CompanyOption" } }, roles: { type: "array", items: { $ref: "#/components/schemas/RoleOption" } },
+        companies: { type: "array", items: { $ref: "#/components/schemas/CompanyOption" } }, roles: { type: "array", items: { $ref: "#/components/schemas/AssignableRole" } },
       } },
       SessionUser: { type: "object", required: ["id", "email", "name"], properties: {
         id: { type: "string", format: "uuid" }, email: { type: "string", nullable: true }, name: { type: "string", nullable: true, maxLength: 250, description: "Database profile name when available; session lookup falls back to Auth metadata." },
