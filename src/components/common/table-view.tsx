@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Fragment,
   useEffect,
   useId,
   useMemo,
@@ -10,45 +9,19 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronDown,
-  ChevronRight,
-  Clock3,
-  Pin,
-  PinOff,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Clock3, Pin, PinOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sortTableRows, type SortValue, type TableSort } from "@/lib/table";
-import { TableMenu, type TableMenuItem } from "./table-menu";
+import type { TableMenuItem } from "./table-menu";
+import { TableColumnHeader, type TableColumn } from "./table-column";
+import { TableActionsHeader, TableRow, type TableAction } from "./table-row";
 
-export interface DataTableColumn<T> {
-  id: string;
-  header: string;
-  width?: number;
-  value?: (row: T) => SortValue;
-  cell?: (row: T) => ReactNode;
-  sortable?: boolean;
-  sortField?: string;
-  compare?: (a: T, b: T) => number;
-  freezable?: boolean;
-  className?: string;
-}
-export interface DataTableAction<T> {
-  id: string;
-  label: string;
-  icon?: ReactNode;
-  onSelect: (row: T) => void;
-  hidden?: (row: T) => boolean;
-  disabled?: boolean | ((row: T) => boolean);
-  description?: string | ((row: T) => string | undefined);
-  destructive?: boolean;
-}
-export interface DataTableProps<T> {
+export type { TableColumn } from "./table-column";
+export type { TableAction } from "./table-row";
+
+export interface TableViewProps<T> {
   data: readonly T[];
-  columns: readonly DataTableColumn<T>[];
+  columns: readonly TableColumn<T>[];
   rowKey: (row: T) => string;
   caption: string;
   loading?: boolean;
@@ -65,14 +38,14 @@ export interface DataTableProps<T> {
   expandedRow?: (row: T) => ReactNode;
   expansionMode?: "single" | "multiple";
   actions?:
-    | readonly DataTableAction<T>[]
-    | ((row: T) => readonly DataTableAction<T>[]);
+    | readonly TableAction<T>[]
+    | ((row: T) => readonly TableAction<T>[]);
   actionsDisabled?: boolean;
   className?: string;
 }
 
-/** Configurable table with independent sorting, pinned columns, row details and actions; pagination stays with its parent. */
-export function DataTable<T>({
+/** Combines table columns, rows, and the header menu. Pagination stays with the list. */
+export function TableView<T>({
   data,
   columns,
   rowKey,
@@ -93,7 +66,7 @@ export function DataTable<T>({
   actions,
   actionsDisabled = false,
   className,
-}: DataTableProps<T>) {
+}: TableViewProps<T>) {
   const id = useId();
   const [localSort, setLocalSort] = useState<TableSort | null>(null);
   const activeSort = sorting === undefined ? localSort : sorting;
@@ -118,6 +91,7 @@ export function DataTable<T>({
     ],
     [columns, frozen],
   );
+  const showActions = Boolean(actions);
   useEffect(() => {
     if (!table.current) return;
     const observer = new ResizeObserver(() => {
@@ -179,7 +153,7 @@ export function DataTable<T>({
           : [key],
     );
   }
-  function cellStyle(column: DataTableColumn<T>): CSSProperties {
+  function cellStyle(column: TableColumn<T>): CSSProperties {
     if (!column.freezable || !frozen.includes(column.id)) return {};
     const before = ordered.slice(0, ordered.indexOf(column));
     return {
@@ -194,9 +168,10 @@ export function DataTable<T>({
           ),
     };
   }
-  const span = columns.length + (expandedRow ? 1 : 0) + (actions ? 1 : 0);
+  const span = columns.length + (expandedRow ? 1 : 0) + (showActions ? 1 : 0);
   const defaultLabel =
-    defaultSorting.field === "created_at" && defaultSorting.direction === "desc"
+    defaultSorting.field === "created_at" &&
+    defaultSorting.direction === "desc"
       ? "Default (Latest First)"
       : "Default";
   return (
@@ -280,71 +255,28 @@ export function DataTable<T>({
                   separatorBefore: Boolean(column.sortable),
                   onSelect: () => toggleFrozen(column.id),
                 });
-              const heading = (
-                <>
-                  <span className="truncate">{column.header}</span>
-                  {pinned && (
-                    <Pin
-                      className="size-3.5 shrink-0 text-gray-400"
-                      aria-label="Frozen column"
-                    />
-                  )}
-                  {column.sortable &&
-                    (selected ? (
-                      activeSort?.direction === "asc" ? (
-                        <ArrowUp className="size-3.5 text-gray-400" />
-                      ) : (
-                        <ArrowDown className="size-3.5 text-gray-400" />
-                      )
-                    ) : (
-                      <ArrowUpDown className="size-3.5 text-gray-400" />
-                    ))}
-                </>
-              );
               return (
-                <th
+                <TableColumnHeader
                   key={column.id}
-                  scope="col"
-                  ref={(node) => {
+                  column={column}
+                  pinned={pinned}
+                  sorted={
+                    selected
+                      ? activeSort?.direction === "asc"
+                        ? "asc"
+                        : "desc"
+                      : null
+                  }
+                  style={cellStyle(column)}
+                  headerRef={(node) => {
                     if (node) headers.current.set(column.id, node);
                     else headers.current.delete(column.id);
                   }}
-                  aria-sort={
-                    selected
-                      ? activeSort?.direction === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : "none"
-                  }
-                  style={cellStyle(column)}
-                  className={cn(
-                    "border-b bg-white px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500",
-                    pinned &&
-                      "sticky z-20 border-r bg-white shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
-                  )}
-                >
-                  {menu.length ? (
-                    <TableMenu
-                      label={`${column.header} column options`}
-                      items={menu}
-                      className="-ml-2 max-w-full uppercase tracking-wider"
-                    >
-                      {heading}
-                    </TableMenu>
-                  ) : (
-                    heading
-                  )}
-                </th>
+                  menu={menu}
+                />
               );
             })}
-            {actions && (
-              <th
-                scope="col"
-                className="border-b bg-white px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
-              >
-                Actions
-              </th>
-            )}
+            {showActions && <TableActionsHeader />}
           </tr>
         </thead>
         <tbody>
@@ -369,105 +301,29 @@ export function DataTable<T>({
             </tr>
           ) : (
             sorted.map((row) => {
-              const key = rowKey(row),
-                isExpanded = expanded.includes(key),
-                detailsId = `${id}-details-${encodeURIComponent(key)}`;
+              const key = rowKey(row);
               const available = (
                 typeof actions === "function" ? actions(row) : (actions ?? [])
               ).filter((action) => !action.hidden?.(row));
               return (
-                <Fragment key={key}>
-                  <tr className="group">
-                    {expandedRow && (
-                      <td className="sticky left-0 z-20 border-b bg-white px-2 group-hover:bg-slate-50">
-                        <button
-                          type="button"
-                          aria-label={`${isExpanded ? "Collapse" : "Expand"} row ${key}`}
-                          aria-expanded={isExpanded}
-                          aria-controls={detailsId}
-                          onClick={() => toggleExpanded(key)}
-                          className="rounded p-1.5 focus-visible:outline-2 focus-visible:outline-primary"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="size-4" />
-                          ) : (
-                            <ChevronRight className="size-4" />
-                          )}
-                        </button>
-                      </td>
-                    )}
-                    {ordered.map((column) => (
-                      <td
-                        key={column.id}
-                        style={cellStyle(column)}
-                        className={cn(
-                          "border-b bg-white px-4 py-3.5 align-middle text-foreground group-hover:bg-gray-50",
-                          column.freezable &&
-                            frozen.includes(column.id) &&
-                            "sticky z-10 border-r shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
-                          column.className,
-                        )}
-                      >
-                        {column.cell
-                          ? column.cell(row)
-                          : column.value?.(row) instanceof Date
-                            ? String(column.value(row))
-                            : String(column.value?.(row) ?? "—")}
-                      </td>
-                    ))}
-                    {actions && (
-                      <td className="border-b bg-white px-4 py-3.5 text-right whitespace-nowrap group-hover:bg-gray-50">
-                        <div className="flex items-center justify-end gap-4">
-                          {available.map((action) => {
-                            const disabled =
-                              actionsDisabled ||
-                              (typeof action.disabled === "function"
-                                ? action.disabled(row)
-                                : action.disabled);
-                            const description =
-                              typeof action.description === "function"
-                                ? action.description(row)
-                                : action.description;
-                            return (
-                              <button
-                                key={action.id}
-                                type="button"
-                                disabled={disabled}
-                                title={description}
-                                onClick={() => action.onSelect(row)}
-                                className={cn(
-                                  "inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
-                                  action.destructive && "text-destructive",
-                                )}
-                              >
-                                {action.icon && (
-                                  <span className="[&_svg]:size-3.5">
-                                    {action.icon}
-                                  </span>
-                                )}
-                                {action.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                  {expandedRow && (
-                    <tr hidden={!isExpanded}>
-                      <td colSpan={span} className="border-b bg-blue-50/60 p-0">
-                        <div
-                          id={detailsId}
-                          role="region"
-                          aria-label={`Details for row ${key}`}
-                          className="p-4 motion-safe:animate-[fade-in_150ms_ease-out]"
-                        >
-                          {isExpanded && expandedRow(row)}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <TableRow
+                  key={key}
+                  row={row}
+                  rowKey={key}
+                  columns={ordered}
+                  pinned={(column) =>
+                    Boolean(column.freezable && frozen.includes(column.id))
+                  }
+                  cellStyle={cellStyle}
+                  expandedRow={expandedRow}
+                  isExpanded={expanded.includes(key)}
+                  onToggleExpanded={() => toggleExpanded(key)}
+                  detailsId={`${id}-details-${encodeURIComponent(key)}`}
+                  actions={available}
+                  showActions={showActions}
+                  actionsDisabled={actionsDisabled}
+                  columnSpan={span}
+                />
               );
             })
           )}

@@ -3,7 +3,7 @@
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { LockKeyhole, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/common/data-table";
+import { TableView } from "@/components/common/table-view";
 import type { TableSort } from "@/lib/table";
 import type { RoleSummary } from "@/server/schema/roles_schema";
 export type RoleActionProps = {
@@ -88,7 +88,7 @@ export function RolesTableView(props: Props) {
   const protectedRole = (role: RoleSummary) =>
     !access?.superAdmin || role.is_system || role.slug === "super_admin";
   return (
-    <DataTable
+    <TableView
       data={props.roles}
       rowKey={(role) => role.id}
       caption="Role definitions and assignments"

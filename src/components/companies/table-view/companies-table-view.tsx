@@ -4,7 +4,7 @@ import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/common/data-table";
+import { TableView } from "@/components/common/table-view";
 import type { TableSort } from "@/lib/table";
 import type { CompanySummary } from "@/server/schema/companies_schema";
 
@@ -28,7 +28,7 @@ export function CompanyActions({ company, onEdit, onDelete, disabled }: CompanyA
 export function CompanyDate({ value }: { value: string }) { return <time dateTime={value}>{new Date(value).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric", timeZone: "Asia/Manila" })}</time>; }
 export function CompaniesTableView(props: Props) {
   const access = useRecordAccess();
-  return <DataTable data={props.companies} rowKey={company => company.id} caption="Organization companies and membership counts"
+  return <TableView data={props.companies} rowKey={company => company.id} caption="Organization companies and membership counts"
     sortingMode={props.onSortingChange ? "server" : "client"} sorting={props.sorting} onSortingChange={props.onSortingChange} loading={props.loading} multipleFrozenColumns actionsDisabled={props.disabled}
     columns={[
       { id: "name", header: "Company", sortable: true, freezable: true, value: company => company.name, cell: company => company.name },

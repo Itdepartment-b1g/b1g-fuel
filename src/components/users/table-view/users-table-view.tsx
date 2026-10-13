@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { Pencil } from "lucide-react";
 import {
-  DataTable,
-  type DataTableColumn,
-} from "@/components/common/data-table";
+  TableView,
+  type TableColumn,
+} from "@/components/common/table-view";
 import { Pagination } from "@/components/common/pagination";
 import { Input } from "@/components/ui/input";
 import { paginateItems } from "@/lib/pagination";
@@ -65,7 +65,7 @@ export function UserAvatar({ name }: { name: string }) {
   );
 }
 
-const columns: DataTableColumn<UserSummary>[] = [
+const columns: TableColumn<UserSummary>[] = [
   {
     id: "name",
     header: "Name",
@@ -145,7 +145,7 @@ export function UsersTable({
   onAssign?: (user: UserSummary) => void;
 }) {
   return (
-    <DataTable
+    <TableView
       data={users}
       columns={columns}
       rowKey={(user) => user.id}
