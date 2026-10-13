@@ -6,22 +6,15 @@ import { cn } from "@/lib/utils";
 import type { SortValue } from "@/lib/table";
 import { TableMenu, type TableMenuItem } from "./table-menu";
 
-/** Left and right space inside each column. */
-export const columnPadding = "px-2";
-/** Header row height. */
-export const columnHeaderHeight = "py-2";
-/** Data column height. */
-export const columnCellHeight = "py-1.5";
+/** Left and right space inside each header. */
+export const columnPadding = "px-3";
+/** Header height. */
+export const columnHeaderHeight = "py-2.5";
 
 export const columnHeaderClass = cn(
-  "border-b bg-white text-xs font-medium uppercase tracking-wider text-gray-500",
+  "border-b bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 font-bold",
   columnPadding,
   columnHeaderHeight,
-);
-export const columnCellClass = cn(
-  "border-b bg-white align-middle text-foreground group-hover:bg-gray-50",
-  columnPadding,
-  columnCellHeight,
 );
 
 export interface TableColumn<T> {
@@ -39,18 +32,20 @@ export interface TableColumn<T> {
 
 export function TableColumnHeader<T>({
   column,
-  pinned,
-  sorted,
+  pinned = false,
+  sorted = null,
   style,
   headerRef,
-  menu,
+  menu = [],
+  align = "left",
 }: {
   column: TableColumn<T>;
-  pinned: boolean;
-  sorted: "asc" | "desc" | null;
+  pinned?: boolean;
+  sorted?: "asc" | "desc" | null;
   style?: CSSProperties;
-  headerRef: (node: HTMLTableCellElement | null) => void;
-  menu: TableMenuItem[];
+  headerRef?: (node: HTMLTableCellElement | null) => void;
+  menu?: TableMenuItem[];
+  align?: "left" | "right";
 }) {
   const heading = (
     <>
@@ -81,7 +76,7 @@ export function TableColumnHeader<T>({
       style={style}
       className={cn(
         columnHeaderClass,
-        "text-left",
+        align === "right" ? "text-right" : "text-left",
         pinned &&
           "sticky z-20 border-r bg-white shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
       )}
@@ -98,34 +93,5 @@ export function TableColumnHeader<T>({
         heading
       )}
     </th>
-  );
-}
-
-export function TableColumnCell<T>({
-  column,
-  row,
-  pinned,
-  style,
-}: {
-  column: TableColumn<T>;
-  row: T;
-  pinned: boolean;
-  style?: CSSProperties;
-}) {
-  return (
-    <td
-      style={style}
-      className={cn(
-        columnCellClass,
-        pinned && "sticky z-10 border-r shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
-        column.className,
-      )}
-    >
-      {column.cell
-        ? column.cell(row)
-        : column.value?.(row) instanceof Date
-          ? String(column.value(row))
-          : String(column.value?.(row) ?? "—")}
-    </td>
   );
 }

@@ -98,7 +98,7 @@ export function TableMenu({
         aria-controls={open ? id : undefined}
         className={cn(
           "inline-flex min-h-9 items-center gap-2 rounded-md px-2 text-left focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50",
-          open && "bg-primary/10",
+          open,
           className,
         )}
         onClick={() => {
@@ -179,7 +179,7 @@ export function TableMenu({
                     item.onSelect();
                   }}
                   className={cn(
-                    "flex w-full items-start gap-3 rounded-md p-2.5 text-left hover:bg-primary/5 focus:bg-primary/10 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40",
+                    "flex w-full items-start gap-3 rounded-md p-2.5 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40",
                     item.destructive && "text-destructive",
                   )}
                 >

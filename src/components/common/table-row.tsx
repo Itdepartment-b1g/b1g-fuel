@@ -3,13 +3,47 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  columnCellHeight,
-  columnHeaderClass,
-  columnPadding,
-  TableColumnCell,
-  type TableColumn,
-} from "./table-column";
+import type { TableColumn } from "./table-column";
+
+/** Left and right space inside each data cell. */
+export const rowPadding = "px-4";
+/** Data row height. */
+export const rowHeight = "py-3.5";
+
+export const rowCellClass = cn(
+  "border-b bg-white align-middle text-sm text-foreground group-hover:bg-gray-50",
+  rowPadding,
+  rowHeight,
+);
+
+function TableRowCell<T>({
+  column,
+  row,
+  pinned,
+  style,
+}: {
+  column: TableColumn<T>;
+  row: T;
+  pinned: boolean;
+  style?: CSSProperties;
+}) {
+  return (
+    <td
+      style={style}
+      className={cn(
+        rowCellClass,
+        pinned && "sticky z-10 border-r",
+        column.className,
+      )}
+    >
+      {column.cell
+        ? column.cell(row)
+        : column.value?.(row) instanceof Date
+          ? String(column.value(row))
+          : String(column.value?.(row) ?? "—")}
+    </td>
+  );
+}
 
 export interface TableAction<T> {
   id: string;
@@ -20,14 +54,6 @@ export interface TableAction<T> {
   disabled?: boolean | ((row: T) => boolean);
   description?: string | ((row: T) => string | undefined);
   destructive?: boolean;
-}
-
-export function TableActionsHeader() {
-  return (
-    <th scope="col" className={cn(columnHeaderClass, "text-right")}>
-      Actions
-    </th>
-  );
 }
 
 export function TableRow<T>({
@@ -81,7 +107,7 @@ export function TableRow<T>({
           </td>
         )}
         {columns.map((column) => (
-          <TableColumnCell
+          <TableRowCell
             key={column.id}
             column={column}
             row={row}
@@ -91,11 +117,7 @@ export function TableRow<T>({
         ))}
         {showActions && (
           <td
-            className={cn(
-              "border-b bg-white text-right whitespace-nowrap group-hover:bg-gray-50",
-              columnPadding,
-              columnCellHeight,
-            )}
+            className={cn(rowCellClass, "text-right whitespace-nowrap")}
           >
             <div className="flex items-center justify-end gap-4">
               {actions.map((action) => {
@@ -116,12 +138,12 @@ export function TableRow<T>({
                     title={description}
                     onClick={() => action.onSelect(row)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
-                      action.destructive && "text-destructive",
+                      "inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-md px-2 py-1 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
+                      action.destructive,
                     )}
                   >
                     {action.icon && (
-                      <span className="[&_svg]:size-3.5">{action.icon}</span>
+                      <span className="[&_svg]:size-3">{action.icon}</span>
                     )}
                     {action.label}
                   </button>

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { sortTableRows, type SortValue, type TableSort } from "@/lib/table";
 import type { TableMenuItem } from "./table-menu";
 import { TableColumnHeader, type TableColumn } from "./table-column";
-import { TableActionsHeader, TableRow, type TableAction } from "./table-row";
+import { TableRow, type TableAction } from "./table-row";
 
 export type { TableColumn } from "./table-column";
 export type { TableAction } from "./table-row";
@@ -276,7 +276,12 @@ export function TableView<T>({
                 />
               );
             })}
-            {showActions && <TableActionsHeader />}
+            {showActions && (
+              <TableColumnHeader
+                column={{ id: "actions", header: "Actions" }}
+                align="right"
+              />
+            )}
           </tr>
         </thead>
         <tbody>
