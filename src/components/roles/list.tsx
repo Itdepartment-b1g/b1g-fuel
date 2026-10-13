@@ -1,4 +1,5 @@
 "use client";
+import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,7 @@ import { RolesCards } from "./card-views/roles-cards";
 
 export default function RolesList() {
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const router = useRouter();
   const { roles, total, listStatus, listError, mutationStatus, mutationError } =
     useAppSelector(selectRole);
@@ -37,7 +39,6 @@ export default function RolesList() {
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<{ id: string | null } | null>(null);
   const [removing, setRemoving] = useState<RoleSummary | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pending = mutationStatus === "loading";
   const metadata = paginationFromApi({ page, page_size: limit, total });
@@ -77,11 +78,11 @@ export default function RolesList() {
     if (!removing) return;
     try {
       await dispatch(deleteRole(removing.id)).unwrap();
-      setSuccess(`${removing.name} was deleted.`);
+      toast.success(`${removing.name} was deleted.`);
       setRemoving(null);
       setRevision((value) => value + 1);
-    } catch {
-      /* Redux keeps the error in the confirmation dialog. */
+    } catch (error) {
+      toast.error(toastErrorMessage(error, "Could not delete the role."));
     }
   }
   if (listError?.status === 403)
@@ -156,8 +157,6 @@ export default function RolesList() {
         loading={loading}
         error={listError?.message}
         onRefresh={() => setRevision((value) => value + 1)}
-        success={success}
-        onDismissSuccess={() => setSuccess(null)}
         metadata={metadata}
         onPage={setPage}
         onLimitChange={(value) => {
@@ -188,7 +187,7 @@ export default function RolesList() {
           roleId={editor.id}
           onClose={() => setEditor(null)}
           onSaved={(role) => {
-            setSuccess(
+            toast.success(
               `${role.name} was ${editor.id ? "updated" : "created"} successfully.`,
             );
             if (!editor.id) setPage(1);

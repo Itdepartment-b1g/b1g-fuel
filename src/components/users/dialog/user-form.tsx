@@ -1,4 +1,5 @@
 "use client";
+import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import type { CreateUserInput, UserSummary } from "@/server/schema/users_schema"
 
 export function UserForm({ onCreated, onCancel }: { onCreated: (user: UserSummary) => void; onCancel: () => void }) {
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const router = useRouter();
   const { options, optionsStatus, optionsError, createStatus, createError } = useAppSelector(selectUser);
   const pending = createStatus === "loading";
@@ -42,6 +44,7 @@ export function UserForm({ onCreated, onCancel }: { onCreated: (user: UserSummar
     };
     try { onCreated(await dispatch(createUser(input))); }
     catch (error) {
+      toast.error(toastErrorMessage(error, "Could not create the user."));
       if (error && typeof error === "object" && "status" in error && error.status === 401) router.replace("/login");
     } finally { busy.current = false; }
   }

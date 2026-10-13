@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ReduxProvider } from "@/components/providers/redux-provider";
+import { ToastProvider } from "@/components/providers/toast-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ReduxProvider>{children}</ReduxProvider>
+        <ReduxProvider><ToastProvider>{children}</ToastProvider></ReduxProvider>
       </body>
     </html>
   );

@@ -1,13 +1,11 @@
 "use client";
 import type { ReactNode } from "react";
 import {
-  CheckCircle2,
   LayoutGrid,
   List,
   LoaderCircle,
   RefreshCw,
   Search,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +30,6 @@ type Props = {
   loading: boolean;
   error?: string | null;
   onRefresh: () => void;
-  success?: string | null;
-  onDismissSuccess: () => void;
   metadata: PaginationMetadata;
   onPage: (page: number) => void;
   onLimitChange: (limit: number) => void;
@@ -55,23 +51,6 @@ export function ManagementList(props: Props) {
         </div>
         {props.action}
       </header>
-      {props.success && (
-        <div
-          role="status"
-          className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
-        >
-          <CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
-          <span className="flex-1">{props.success}</span>
-          <button
-            type="button"
-            aria-label="Dismiss success message"
-            onClick={props.onDismissSuccess}
-            className="rounded p-1"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      )}
       <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-5 sm:px-6">
           <div className="flex items-center gap-2">

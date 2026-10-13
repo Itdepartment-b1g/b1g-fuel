@@ -1,16 +1,14 @@
 "use client";
 
+import { useToast } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CheckCircle2,
   LayoutGrid,
   List,
   LoaderCircle,
-  RefreshCw,
   UsersRound,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
@@ -34,6 +32,7 @@ import { UsersCards } from "./card-views/users-cards";
 
 export default function UsersList() {
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const router = useRouter();
   const {
     users,
@@ -53,7 +52,6 @@ export default function UsersList() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [success, setSuccess] = useState<string | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pagination = paginationFromApi({ page, page_size: pageSize, total });
   useEffect(() => {
@@ -129,29 +127,12 @@ export default function UsersList() {
         </div>
         <CreateUserDialog
           onCreated={(user) => {
-            setSuccess(`${user.name} was created successfully.`);
+            toast.success(`${user.name} was created successfully.`);
             setPage(1);
             setRevision((value) => value + 1);
           }}
         />
       </header>
-      {success && (
-        <div
-          role="status"
-          className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-        >
-          <CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
-          <span className="flex-1">{success}</span>
-          <button
-            type="button"
-            aria-label="Dismiss success message"
-            onClick={() => setSuccess(null)}
-            className="rounded p-1"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      )}
       <SearchFilterBar
         search={search}
         onSearch={(value) => {

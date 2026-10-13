@@ -1,4 +1,5 @@
 "use client";
+import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { useRef, useState, type FormEvent } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export function RoleForm({
   onCancel: () => void;
 }) {
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const {
     options,
     optionsStatus,
@@ -71,8 +73,8 @@ export function RoleForm({
             }),
           ).unwrap();
       onSaved(response.role);
-    } catch {
-      /* Redux retains the server error for retry. */
+    } catch (error) {
+      toast.error(toastErrorMessage(error, role ? "Could not update the role." : "Could not create the role."));
     } finally {
       busy.current = false;
     }
