@@ -214,7 +214,7 @@ export default function CompaniesList() {
             </button>
           </div>
         </div>
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
           {listError && (
             <div
               role="alert"

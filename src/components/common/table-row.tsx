@@ -54,6 +54,7 @@ export interface TableAction<T> {
   disabled?: boolean | ((row: T) => boolean);
   description?: string | ((row: T) => string | undefined);
   destructive?: boolean;
+  className?: string;
 }
 
 export function TableRow<T>({
@@ -140,6 +141,7 @@ export function TableRow<T>({
                     className={cn(
                       "inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-[4px] px-2 py-1 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
                       action.destructive,
+                      action.className,
                     )}
                   >
                     {action.icon && (

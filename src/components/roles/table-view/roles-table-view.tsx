@@ -103,12 +103,13 @@ export function RolesTableView(props: Props) {
           id: "name",
           header: "Role",
           width: 250,
+          
           sortable: true,
           freezable: true,
           value: (role) => role.name,
           cell: (role) => (
             <>
-              <p className="font-medium">{role.name}</p>
+              <p className="font-bold uppercase">{role.name}</p>
             </>
           ),
         },
@@ -167,12 +168,14 @@ export function RolesTableView(props: Props) {
           id: "edit",
           label: "Edit",
           icon: <Pencil />,
+       
           disabled: protectedRole,
           onSelect: props.onEdit,
         },
         {
           id: "delete",
           label: "Delete",
+          className: "border-gray-200 text-destructive",
           icon: <Trash2 />,
           destructive: true,
           disabled: (role) => protectedRole(role) || role.assignment_count > 0,

@@ -89,6 +89,7 @@ export function CompaniesTableView(props: Props) {
         {
           id: "name",
           header: "Company",
+          className:"font-bold",
           sortable: true,
           freezable: true,
           value: (company) => company.name,
@@ -97,12 +98,14 @@ export function CompaniesTableView(props: Props) {
         {
           id: "member_count",
           header: "Members",
+          className:"text-xs text-gray-500",
           freezable: true,
           value: (company) => company.member_count,
         },
         {
           id: "created_at",
           header: "Created",
+          className:"text-sm text-gray-500",
           sortable: true,
           freezable: true,
           cell: (company) => <CompanyDate value={company.created_at} />,
@@ -120,6 +123,7 @@ export function CompaniesTableView(props: Props) {
         {
           id: "delete",
           label: "Delete",
+          className: "border-gray-200 text-destructive",
           icon: <Trash2 />,
           destructive: true,
           disabled: (company) =>

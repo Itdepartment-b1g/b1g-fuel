@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil } from "lucide-react";
+import { UserCheck2 } from "lucide-react";
 import {
   TableView,
   type TableColumn,
@@ -69,6 +69,7 @@ const columns: TableColumn<UserSummary>[] = [
   {
     id: "name",
     header: "Name",
+    className:"font-bold",
     sortable: true,
     freezable: true,
     value: (user) => user.name,
@@ -95,6 +96,7 @@ const columns: TableColumn<UserSummary>[] = [
     id: "roles",
     header: "Roles",
     freezable: true,
+    className:"font-bold uppercase",
     cell: (user) => {
       const names = [
         ...user.global_roles.map((role) => role.name),
@@ -161,8 +163,9 @@ export function UsersTable({
               {
                 id: "assign",
                 label: "Assign",
-                icon: <Pencil />,
+                icon: <UserCheck2 />,
                 description: "Assign company and roles",
+                className: "border-gray-200 text-[#4338CA]",
                 onSelect: onAssign,
               },
             ]
