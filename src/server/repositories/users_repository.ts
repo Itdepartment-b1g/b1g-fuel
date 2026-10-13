@@ -51,10 +51,11 @@ const user_select = {
 type UserRecord = Prisma.userGetPayload<{ select: typeof user_select }>;
 
 /** Convert a selected user record into the API summary, with an ISO creation date and flattened role and company assignments. */
-function serialize_user(user: UserRecord): UserSummary {
+function serialize_user(user: UserRecord, createdByName: string | null): UserSummary {
   const { user_roles, user_companies, ...record } = user;
   return {
     ...record,
+    created_by_name: createdByName,
     created_at: record.created_at.toISOString(),
     global_roles: user_roles.map((assignment) => assignment.role),
     companies: user_companies.map((membership) => ({
@@ -62,6 +63,16 @@ function serialize_user(user: UserRecord): UserSummary {
       roles: membership.roles.map((assignment) => assignment.role),
     })),
   };
+}
+
+/** Resolve creator ids to display names. Missing or deleted creators stay unnamed. */
+async function serialize_users(users: UserRecord[], client: DatabaseExecutor) {
+  const ids = [...new Set(users.flatMap((user) => user.created_by ? [user.created_by] : []))];
+  const creators = ids.length
+    ? await client.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+    : [];
+  const names = new Map(creators.map((creator) => [creator.id, creator.name]));
+  return users.map((user) => serialize_user(user, user.created_by ? names.get(user.created_by) ?? null : null));
 }
 
 /** Return a sorted page of users matching text search, column conditions, creation dates and assignment filters. Rows and the matching total are read from the same database snapshot before returning pagination metadata. */
@@ -134,7 +145,7 @@ export async function list_user(
       });
       const total = await tx.user.count({ where });
       return {
-        users: users.map(serialize_user),
+        users: await serialize_users(users, tx),
         ...paginationMetadata(total, pagination),
       };
     },
@@ -151,7 +162,7 @@ export async function list_by_id_user(
     where: { id },
     select: user_select,
   });
-  return user ? serialize_user(user) : null;
+  return user ? (await serialize_users([user], client))[0] : null;
 }
 
 /** Create the user profile using the Auth account ID, optionally creating a company membership and company role assignments in the same transaction. Return the saved user summary. */
@@ -185,7 +196,7 @@ export async function create_user(id: string, input: CreateUserInput, createdBy?
       },
       select: user_select,
     });
-    return serialize_user(user);
+    return (await serialize_users([user], tx))[0];
   });
 }
 
@@ -199,7 +210,7 @@ export async function update_user(
     data: { name: input.name, email: input.email },
     select: user_select,
   });
-  return serialize_user(user);
+  return (await serialize_users([user], client))[0];
 }
 
 /** Delete the user profile by ID; database cascades remove its role and company assignments. This query does not delete the separate Supabase Auth account. */

@@ -29,6 +29,7 @@ export const openapi = {
       CompanyOption: { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } },
       User: { type: "object", required: ["id", "name", "email", "created_at", "global_roles", "companies"], properties: {
         created_by: { type: "string", format: "uuid", nullable: true, readOnly: true },
+        created_by_name: { type: "string", nullable: true, readOnly: true, description: "Display name of the user who created this record." },
         name: { type: "string", maxLength: 250 },
         id: { type: "string", format: "uuid" }, email: { type: "string", nullable: true }, created_at: { type: "string", format: "date-time" },
         global_roles: { type: "array", items: { $ref: "#/components/schemas/RoleOption" } },

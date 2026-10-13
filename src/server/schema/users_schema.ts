@@ -4,6 +4,7 @@ export type RoleOption = { id: string; name: string; slug: string; company_id?: 
 export type CompanyOption = { id: string; name: string };
 export type UserSummary = {
   created_by: string | null;
+  created_by_name: string | null;
   id: string;
   name: string;
   email: string | null;
