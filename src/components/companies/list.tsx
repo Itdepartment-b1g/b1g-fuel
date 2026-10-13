@@ -10,8 +10,9 @@ import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { listCompany, deleteCompany, clearCompanyMutation, selectCompany } from "@/lib/store/companies-slice";
 import { DEFAULT_PAGE_SIZE, paginationFromApi } from "@/lib/pagination";
 import type { CompanySummary } from "@/server/schema/companies_schema";
-import { CompanyDialog } from "./dialog";
-import { CompaniesTable, CompaniesCards } from "./table";
+import { CompanyDialog } from "./dialog/company-dialog";
+import { CompaniesTableView } from "./table-view/companies-table-view";
+import { CompaniesCards } from "./card-views/companies-cards";
 
 export default function CompaniesList() {
   const dispatch = useAppDispatch(); const router = useRouter();
@@ -35,7 +36,7 @@ export default function CompaniesList() {
     <ManagementList title="Companies" description="Organize your companies and view their team memberships." total={total} action={<Button disabled={pending} onClick={() => openCompany()}><Plus className="size-4" aria-hidden="true" />Add company</Button>}
       searchDraft={draft} onSearchDraft={setDraft} searchMaxLength={160} onSearch={() => { setSearch(draft.trim()); setPage(1); }} searchActive={Boolean(search)} onClearSearch={() => { setDraft(""); setSearch(""); setPage(1); }}
       view={view} onView={setView} loading={loading} error={listError?.message} onRefresh={() => setRevision(value => value + 1)} success={success} onDismissSuccess={() => setSuccess(null)} metadata={metadata} onPage={setPage} onLimitChange={value => { setLimit(value); setPage(1); }}>
-      {view === "table" ? <CompaniesTable {...actions} /> : !companies.length ? <ListPlaceholder loading={loading} title={search ? "No matching companies" : "No companies yet"} description={search ? "Try another company name." : "Add your first company to organize memberships."} /> : <CompaniesCards {...actions} />}
+      {view === "table" ? <CompaniesTableView {...actions} /> : !companies.length ? <ListPlaceholder loading={loading} title={search ? "No matching companies" : "No companies yet"} description={search ? "Try another company name." : "Add your first company to organize memberships."} /> : <CompaniesCards {...actions} />}
     </ManagementList>
     {editor && <CompanyDialog companyId={editor.id} onClose={() => setEditor(null)} onSaved={company => { setSuccess(`${company.name} was ${editor.id ? "updated" : "created"} successfully.`); if (!editor.id) setPage(1); setEditor(null); setRevision(value => value + 1); }} />}
     <DeleteDialog open={Boolean(removing)} onOpenChange={open => { if (!open) setRemoving(null); }} title="Delete company?" description={`Delete ${removing?.name ?? "this company"}? Only companies without members can be deleted. This cannot be undone.`} onConfirm={() => { void removeCompany(); }} pending={pending} error={mutationError?.message} />

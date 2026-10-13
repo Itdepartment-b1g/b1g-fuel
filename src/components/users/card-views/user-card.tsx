@@ -1,6 +1,6 @@
 import { Building2, Mail } from "lucide-react";
 import type { UserSummary } from "@/server/schema/users_schema";
-import { UserAssignments, UserAvatar } from "../user-details";
+import { UserAssignments, UserAvatar } from "../table-view/users-table-view";
 
 export function UserCard({ user }: { user: UserSummary }) {
   return <article className="rounded-xl border bg-white p-5">

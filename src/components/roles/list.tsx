@@ -19,7 +19,7 @@ import {
 import { DEFAULT_PAGE_SIZE, paginationFromApi } from "@/lib/pagination";
 import type { RoleSummary, RoleScope } from "@/server/schema/roles_schema";
 import { RoleDialog } from "./dialog/role-dialog";
-import { RolesTable } from "./table-view/roles-table-view";
+import { RolesTableView } from "./table-view/roles-table-view";
 import { RolesCards } from "./card-views/roles-cards";
 
 export default function RolesList() {
@@ -166,7 +166,7 @@ export default function RolesList() {
         }}
       >
         {view === "table" ? (
-          <RolesTable {...actions} />
+          <RolesTableView {...actions} />
         ) : !roles.length ? (
           <ListPlaceholder
             loading={loading}

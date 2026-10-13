@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editCompany, selectCompany } from "@/lib/store/companies-slice";
 import type { CompanySummary } from "@/server/schema/companies_schema";
-import { CompanyForm } from "./form";
+import { CompanyForm } from "./company-form";
 import { ListPlaceholder } from "@/components/common/management-list";
 
 export function CompanyDialog({ companyId, onClose, onSaved }: { companyId: string | null; onClose: () => void; onSaved: (company: CompanySummary) => void }) {
