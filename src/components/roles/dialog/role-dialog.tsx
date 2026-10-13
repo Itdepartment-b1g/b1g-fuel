@@ -13,7 +13,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editRole, getRoleOption, selectRole } from "@/lib/store/roles-slice";
 import type { RoleSummary } from "@/server/schema/roles_schema";
 import { RoleForm } from "./role-form";
-import { ListPlaceholder } from "@/components/common/management-list";
+import { ListPlaceholder } from "@/components/common/list-placeholder";
 
 export function RoleDialog({
   roleId,

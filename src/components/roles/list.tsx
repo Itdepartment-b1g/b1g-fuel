@@ -1,28 +1,31 @@
 "use client";
-import { SearchFilterBar } from "@/components/common/search-filter-bar";
-import { countActiveFilters, createQuickFilterState } from "@/lib/quick-filter";
-import { ROLE_FILTER_DEFAULTS } from "@/lib/management-filters";
+
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { LayoutGrid, List, LoaderCircle, Plus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  ManagementList,
-  ListPlaceholder,
-} from "@/components/common/management-list";
+import { Pagination } from "@/components/common/pagination";
+import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { DeleteDialog } from "@/components/common/delete-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
-  listRole, getRoleFilterOption,
+  listRole,
+  getRoleFilterOption,
   deleteRole,
   clearRoleMutation,
   selectRole,
 } from "@/lib/store/roles-slice";
-import { DEFAULT_PAGE_SIZE, paginationFromApi } from "@/lib/pagination";
+import { countActiveFilters, createQuickFilterState } from "@/lib/quick-filter";
+import { ROLE_FILTER_DEFAULTS } from "@/lib/management-filters";
+import {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  paginationFromApi,
+} from "@/lib/pagination";
 import type { RoleSummary } from "@/server/schema/roles_schema";
 import { RoleDialog } from "./dialog/role-dialog";
 import { RolesTableView } from "./table-view/roles-table-view";
@@ -33,13 +36,23 @@ export default function RolesList() {
   const access = useRecordAccess();
   const toast = useToast();
   const router = useRouter();
-  const { roles, total, listStatus, listError, mutationStatus, mutationError, filterOptions, filterOptionsError } =
-    useAppSelector(selectRole);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState(() => createQuickFilterState(ROLE_FILTER_DEFAULTS));
+  const {
+    roles,
+    total,
+    listStatus,
+    listError,
+    mutationStatus,
+    mutationError,
+    filterOptions,
+    filterOptionsError,
+  } = useAppSelector(selectRole);
+  const [filters, setFilters] = useState(() =>
+    createQuickFilterState(ROLE_FILTER_DEFAULTS),
+  );
   const activeFilters = countActiveFilters(filters, ROLE_FILTER_DEFAULTS);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
@@ -47,13 +60,13 @@ export default function RolesList() {
   const [removing, setRemoving] = useState<RoleSummary | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pending = mutationStatus === "loading";
-  const metadata = paginationFromApi({ page, page_size: limit, total });
+  const pagination = paginationFromApi({ page, page_size: pageSize, total });
   useEffect(() => {
     let current = true;
     const request = dispatch(
       listRole({
         page,
-        page_size: limit,
+        page_size: pageSize,
         search,
         ...(sorting
           ? { sort_by: sorting.field, sort_order: sorting.direction }
@@ -63,23 +76,32 @@ export default function RolesList() {
     );
     request.then((action) => {
       if (current && listRole.fulfilled.match(action)) {
-        const valid = paginationFromApi(action.payload).page;
-        if (valid !== page) setPage(valid);
+        const validPage = paginationFromApi(action.payload).page;
+        if (validPage !== page) setPage(validPage);
       }
     });
     return () => {
       current = false;
       request.abort();
     };
-  }, [dispatch, page, limit, search, filters, activeFilters, revision, sorting]);
-  useEffect(() => {
-    if ([listError, mutationError].some((error) => error?.status === 401))
-      router.replace("/login");
-  }, [listError, mutationError, router]);
+  }, [
+    dispatch,
+    page,
+    pageSize,
+    search,
+    revision,
+    filters,
+    activeFilters,
+    sorting,
+  ]);
   useEffect(() => {
     const request = dispatch(getRoleFilterOption());
     return () => request.abort();
   }, [dispatch, revision]);
+  useEffect(() => {
+    if ([listError, mutationError].some((error) => error?.status === 401))
+      router.replace("/login");
+  }, [listError, mutationError, router]);
   function openRole(role?: RoleSummary) {
     dispatch(clearRoleMutation());
     setEditor({ id: role?.id ?? null });
@@ -121,67 +143,163 @@ export default function RolesList() {
   };
   return (
     <>
-      <ManagementList
-        title="Roles"
-        description="Define role access, pages, permissions and company defaults."
-        total={total}
-        action={
-          canPerform(access, "roles", "add") ? <Button disabled={pending} onClick={() => openRole()}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add role
-          </Button> : null
-        }
-        filterBar={
-          <>
-            <SearchFilterBar
-              search={search}
-              onSearch={(value) => { setSearch(value); setPage(1); }}
-              filters={filters}
-              onFiltersChange={(next) => { setFilters(next); setPage(1); }}
-              fields={filterOptions.fields}
-              statusOptions={filterOptions.statusOptions}
-              additionalFilters={filterOptions.additionalFilters}
-              filterLabels={{ date: "Creation date", status: "Assignment status" }}
-              maxConditions={50}
-              loading={loading}
-              searchLabel="Search roles by name or slug"
-              placeholder="Search by name or slug"
-              maxLength={100}
-              quickFilterActive={activeFilters > 0}
-            />
-            {filterOptionsError && <div role="alert" className="flex items-center justify-between gap-2 text-xs text-destructive"><span>Filter choices could not be loaded.</span><Button variant="ghost" size="sm" onClick={() => dispatch(getRoleFilterOption())}>Retry</Button></div>}
-          </>
-        }
-        view={view}
-        onView={setView}
-        loading={loading}
-        error={listError?.message}
-        onRefresh={() => setRevision((value) => value + 1)}
-        metadata={metadata}
-        onPage={setPage}
-        onLimitChange={(value) => {
-          setLimit(value);
-          setPage(1);
-        }}
-      >
-        {view === "table" ? (
-          <RolesTableView {...actions} />
-        ) : !roles.length ? (
-          <ListPlaceholder
-            loading={loading}
-            title={
-              search || activeFilters > 0 ? "No matching roles" : "No roles yet"
-            }
-            description={
-              search || activeFilters > 0
-                ? "Try another search or clear your filters."
-                : "Add a role to define access for your team."
-            }
+      <section className="mx-auto max-w-7xl space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Organization
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">
+              Roles
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Define role access, pages, permissions and company defaults.
+            </p>
+          </div>
+          {canPerform(access, "roles", "add") && (
+            <Button disabled={pending} onClick={() => openRole()}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add role
+            </Button>
+          )}
+        </header>
+        <SearchFilterBar
+          search={search}
+          onSearch={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          filters={filters}
+          onFiltersChange={(next) => {
+            setFilters(next);
+            setPage(1);
+          }}
+          fields={filterOptions.fields}
+          statusOptions={filterOptions.statusOptions}
+          additionalFilters={filterOptions.additionalFilters}
+          filterLabels={{ date: "Creation date", status: "Assignment status" }}
+          maxConditions={50}
+          loading={loading}
+          searchLabel="Search roles by name or slug"
+          placeholder="Search by name or slug"
+          maxLength={100}
+          quickFilterActive={activeFilters > 0}
+        />
+        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b px-4 py-5 sm:px-6">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold">All roles</h2>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {total}
+              </span>
+            </div>
+            <div
+              className="flex rounded-lg border p-1"
+              role="group"
+              aria-label="Role display"
+            >
+              <button
+                type="button"
+                aria-label="Table view"
+                aria-pressed={view === "table"}
+                onClick={() => setView("table")}
+                className={`rounded-md p-2 ${view === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+              >
+                <List className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Card view"
+                aria-pressed={view === "cards"}
+                onClick={() => setView("cards")}
+                className={`rounded-md p-2 ${view === "cards" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+              >
+                <LayoutGrid className="size-4" />
+              </button>
+            </div>
+          </div>
+          {listError && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 border-b bg-red-50 px-6 py-4 text-sm text-destructive"
+            >
+              <span>{listError.message}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRevision((value) => value + 1)}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
+          {filterOptionsError && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-2 px-6 py-2 text-xs text-destructive"
+            >
+              <span>Filter choices could not be loaded.</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => dispatch(getRoleFilterOption())}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          <div
+            aria-busy={loading}
+            className={loading && roles.length ? "opacity-60" : ""}
+          >
+            {view === "table" ? (
+              <RolesTableView {...actions} />
+            ) : !roles.length && loading ? (
+              <div
+                role="status"
+                className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground"
+              >
+                <LoaderCircle
+                  className="size-5 animate-spin"
+                  aria-hidden="true"
+                />
+                Loading roles…
+              </div>
+            ) : !roles.length && !listError ? (
+              <div className="px-6 py-16 text-center">
+                <Shield
+                  className="mx-auto mb-4 size-10 text-primary/40"
+                  aria-hidden="true"
+                />
+                <h3 className="font-semibold">
+                  {search || activeFilters
+                    ? "No matching roles"
+                    : "No roles yet"}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {search || activeFilters
+                    ? "Try another search or clear your filters."
+                    : "Add a role to define access for your team."}
+                </p>
+              </div>
+            ) : roles.length ? (
+              <RolesCards {...actions} />
+            ) : null}
+          </div>
+          <Pagination
+            metadata={pagination}
+            disabled={loading}
+            onPrev={() => setPage(pagination.page - 1)}
+            onNext={() => setPage(pagination.page + 1)}
+            onPage={setPage}
+            onLimitChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+            limitOptions={PAGE_SIZE_OPTIONS}
           />
-        ) : (
-          <RolesCards {...actions} />
-        )}
-      </ManagementList>
+        </div>
+      </section>
       {editor && (
         <RoleDialog
           roleId={editor.id}

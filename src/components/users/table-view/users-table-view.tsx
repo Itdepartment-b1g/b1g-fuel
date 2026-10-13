@@ -104,6 +104,22 @@ const columns: DataTableColumn<UserSummary>[] = [
     cell: (user) => <UserAssignments user={user} />,
   },
   {
+    id: "created_by",
+    header: "Created by",
+    width: 170,
+    freezable: true,
+    value: (user) => user.created_by,
+    cell: (user) => <UserAvatar name={user.created_by} />,
+    cell: (user) => (
+      <div className="flex items-center gap-3">
+        <UserAvatar name={user.created_by} />
+        <div>
+          <p className="font-medium">{user.created_by}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
     id: "created_at",
     header: "Created",
     width: 170,

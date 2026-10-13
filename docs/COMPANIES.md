@@ -2,7 +2,7 @@
 
 Open `/companies` as a global super-admin. The screen supports table/card views, name search, refresh, responsive pagination, and create/edit/delete dialogs. Default page size is 10; choices are 10/20/50/100. Search and page-size changes reset to page 1. When results shrink, the screen requests a valid page.
 
-Components live directly in `src/components/companies`: `list.tsx`, `table.tsx`, `form.tsx`, and `dialog.tsx`. They reuse the shared management-list controls, pagination and deletion confirmation in `src/components/common`. Edits fetch fresh company details. Errors keep forms open, and pending mutations block repeated submission and dismissal.
+Components live directly in `src/components/companies`: `list.tsx`, `table.tsx`, `form.tsx`, and `dialog.tsx`. They reuse the shared pagination and deletion confirmation in `src/components/common`. Edits fetch fresh company details. Errors keep forms open, and pending mutations block repeated submission and dismissal.
 
 Company request and response types live in `src/server/schema/companies_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
 

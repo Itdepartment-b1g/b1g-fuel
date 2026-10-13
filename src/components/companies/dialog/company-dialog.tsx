@@ -13,7 +13,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editCompany, selectCompany } from "@/lib/store/companies-slice";
 import type { CompanySummary } from "@/server/schema/companies_schema";
 import { CompanyForm } from "./company-form";
-import { ListPlaceholder } from "@/components/common/management-list";
+import { ListPlaceholder } from "@/components/common/list-placeholder";
 
 export function CompanyDialog({
   companyId,
