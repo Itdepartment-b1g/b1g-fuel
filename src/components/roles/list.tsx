@@ -18,8 +18,9 @@ import {
 } from "@/lib/store/roles-slice";
 import { DEFAULT_PAGE_SIZE, paginationFromApi } from "@/lib/pagination";
 import type { RoleSummary, RoleScope } from "@/server/schema/roles_schema";
-import { RoleDialog } from "./dialog";
-import { RolesTable, RolesCards } from "./table";
+import { RoleDialog } from "./dialog/role-dialog";
+import { RolesTable } from "./table-view/roles-table-view";
+import { RolesCards } from "./card-views/roles-cards";
 
 export default function RolesList() {
   const dispatch = useAppDispatch();

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editRole, getRoleOption, selectRole } from "@/lib/store/roles-slice";
 import type { RoleSummary } from "@/server/schema/roles_schema";
-import { RoleForm } from "./form";
+import { RoleForm } from "./role-form";
 import { ListPlaceholder } from "@/components/common/management-list";
 
 export function RoleDialog({ roleId, onClose, onSaved }: { roleId: string | null; onClose: () => void; onSaved: (role: RoleSummary) => void }) {
