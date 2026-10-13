@@ -29,6 +29,8 @@ import {
   paginationFromApi,
 } from "@/lib/pagination";
 import { CreateUserDialog } from "./dialog/create-user-dialog";
+import { AssignUserDialog } from "./dialog/assign-user-dialog";
+import type { UserSummary } from "@/server/schema/users_schema";
 import { UsersTable } from "./table-view/users-table-view";
 import { UsersCards } from "./card-views/users-cards";
 
@@ -55,6 +57,7 @@ export default function UsersList() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
+  const [assigning, setAssigning] = useState<UserSummary | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pagination = paginationFromApi({ page, page_size: pageSize, total });
   useEffect(() => {
@@ -115,6 +118,7 @@ export default function UsersList() {
       </section>
     );
   return (
+    <>
     <section className="mx-auto max-w-7xl space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -125,7 +129,7 @@ export default function UsersList() {
             Users
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create accounts and view company and role assignments.
+            Create accounts, then assign a company and roles.
           </p>
         </div>
         {canPerform(access, "users", "add") && <CreateUserDialog
@@ -248,6 +252,7 @@ export default function UsersList() {
                 setPage(1);
               }}
               loading={loading}
+              onAssign={canPerform(access, "users", "edit") ? setAssigning : undefined}
             />
           ) : !users.length && loading ? (
             <div
@@ -276,7 +281,7 @@ export default function UsersList() {
               </p>
             </div>
           ) : users.length ? (
-            <UsersCards users={users} />
+            <UsersCards users={users} onAssign={canPerform(access, "users", "edit") ? setAssigning : undefined} />
           ) : null}
         </div>
         <Pagination
@@ -293,5 +298,17 @@ export default function UsersList() {
         />
       </div>
     </section>
+      {assigning && (
+        <AssignUserDialog
+          user={assigning}
+          onClose={() => setAssigning(null)}
+          onSaved={(user) => {
+            toast.success(`${user.name} was assigned successfully.`);
+            setAssigning(null);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+    </>
   );
 }

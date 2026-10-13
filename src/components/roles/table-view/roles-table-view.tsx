@@ -114,13 +114,6 @@ export function RolesTableView(props: Props) {
           ),
         },
         {
-          id: "company",
-          header: "Company",
-          width: 220,
-          freezable: true,
-          cell: (role) => role.company?.name ?? (role.scope === "global" ? "Global" : "Not assigned"),
-        },
-        {
           id: "scope",
           header: "Scope / type",
           width: 220,

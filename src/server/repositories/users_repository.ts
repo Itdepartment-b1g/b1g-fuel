@@ -314,8 +314,41 @@ export async function assignable_user(input: CreateUserInput): Promise<{
           select: { id: true },
         }),
     roleIds.length
-      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company", OR: [{ company_id: null }, { company_id: input.company_id }] } })
+      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company" } })
       : 0,
   ]);
   return { existingUser, company, roleCount };
+}
+
+/** Confirm the company exists and every selected role is a company role that can be used there. */
+export async function available_assignment(companyId: string, roleIds: string[]) {
+  const db = getDatabase();
+  const [company, roleCount] = await Promise.all([
+    db.company.findUnique({ where: { id: companyId }, select: { id: true } }),
+    roleIds.length
+      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company" } })
+      : 0,
+  ]);
+  return { company, roleCount };
+}
+
+/** Add or update one company membership and replace its company roles. Returns the refreshed user, or null when the user does not exist. */
+export async function assign_user(userId: string, companyId: string, roleIds: string[]) {
+  return getDatabase().$transaction(async (tx) => {
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) return null;
+    const membership = await tx.user_company.upsert({
+      where: { user_id_company_id: { user_id: userId, company_id: companyId } },
+      create: { user_id: userId, company_id: companyId },
+      update: {},
+      select: { id: true },
+    });
+    await tx.user_company_role.deleteMany({ where: { user_company_id: membership.id } });
+    if (roleIds.length) {
+      await tx.user_company_role.createMany({
+        data: roleIds.map((role_id) => ({ user_company_id: membership.id, role_id, scope: "company" as const })),
+      });
+    }
+    return list_by_id_user(userId, tx);
+  });
 }

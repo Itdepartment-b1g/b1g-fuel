@@ -32,6 +32,7 @@ const user_error_status: Partial<Record<UserError["code"], number>> = {
   invalid_input: 400,
   company_required: 400,
   assignments_unavailable: 400,
+  user_not_found: 404,
   invalid_account_details: 400,
   email_exists: 409,
   auth_creation_failed: 502,
@@ -476,6 +477,56 @@ if (
       : undefined;
     if (databaseError) {
       res.status(databaseError.status).json({ error: databaseError.message });
+      return;
+    }
+    console.error("Users request failed:", error);
+    res.status(500).json({ error: "The request could not be completed." });
+  }
+}
+
+export async function assign_user(
+  req: Request,
+  res: Response,
+  _next?: NextFunction,
+  service = userService,
+) {
+  try {
+    const id = req.params.id;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof id !== "string" || !uuid.test(id))
+      throw new UserError("invalid_input", "Provide a valid user.");
+    const body: unknown = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      throw new UserError("invalid_input", "Provide a company and roles.");
+    const { company_id, role_ids } = body as Record<string, unknown>;
+    if (typeof company_id !== "string" || !uuid.test(company_id))
+      throw new UserError("invalid_input", "Select a valid company.");
+    if (
+      !Array.isArray(role_ids) ||
+      !role_ids.length ||
+      role_ids.length > 50 ||
+      role_ids.some((roleId) => typeof roleId !== "string" || !uuid.test(roleId)) ||
+      new Set(role_ids).size !== role_ids.length
+    )
+      throw new UserError("invalid_input", "Select distinct company roles (maximum 50).");
+    if (Object.keys(body).some((key) => !["company_id", "role_ids"].includes(key)))
+      throw new UserError("invalid_input", "Unknown assignment field.");
+    if (res.locals.access && !res.locals.access.superAdmin) {
+      const companyIds = allowed_company_ids(res.locals.access, "users", "edit") ?? [];
+      if (!companyIds.includes(company_id.toLowerCase())) {
+        res.status(403).json({ error: "Select one of your permitted companies." });
+        return;
+      }
+    }
+    const user = await service.assign_user(
+      id.toLowerCase(),
+      company_id.toLowerCase(),
+      role_ids.map((roleId: string) => roleId.toLowerCase()),
+    );
+    res.status(200).json({ user });
+  } catch (error) {
+    if (error instanceof UserError && user_error_status[error.code]) {
+      res.status(user_error_status[error.code]!).json({ error: error.message });
       return;
     }
     console.error("Users request failed:", error);

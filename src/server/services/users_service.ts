@@ -155,7 +155,19 @@ export async function create_user(
   }
 }
 
-export type UserErrorCode = "invalid_input" | "invalid_session" | "invalid_credentials" | "account_not_provisioned" | "super_admin_required" | "logout_failed" | "company_required" | "assignments_unavailable" | "email_exists" | "invalid_account_details" | "auth_creation_failed" | "google_start_failed" | "google_exchange_failed";
+/** Attach a user to a company and replace that membership's company roles. Shared role templates apply to any company. */
+export async function assign_user(userId: string, companyId: string, roleIds: string[], repository = usersRepository) {
+  if (!roleIds.length)
+    throw new UserError("company_required", "Select a company and at least one role.");
+  const available = await repository.available_assignment(companyId, roleIds);
+  if (!available.company || available.roleCount !== roleIds.length)
+    throw new UserError("assignments_unavailable", "Company or company roles are no longer available.");
+  const user = await repository.assign_user(userId, companyId, roleIds);
+  if (!user) throw new UserError("user_not_found", "User not found.");
+  return user;
+}
+
+export type UserErrorCode = "invalid_input" | "invalid_session" | "invalid_credentials" | "account_not_provisioned" | "super_admin_required" | "logout_failed" | "company_required" | "assignments_unavailable" | "email_exists" | "invalid_account_details" | "auth_creation_failed" | "google_start_failed" | "google_exchange_failed" | "user_not_found";
 
 export class UserError extends Error {
   constructor(public code: UserErrorCode, message: string) { super(message); }

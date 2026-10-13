@@ -17,7 +17,7 @@ export async function get_record_access(userId: string, client: DatabaseExecutor
   });
   const assignments = [
     ...(profile?.user_roles ?? []).map(({ role }) => ({ role, companyId: null as string | null })),
-    ...(profile?.user_companies ?? []).flatMap((membership) => membership.roles.filter(({ role }) => !role.company_id || role.company_id === membership.company_id).map(({ role }) => ({ role, companyId: membership.company_id }))),
+    ...(profile?.user_companies ?? []).flatMap((membership) => membership.roles.map(({ role }) => ({ role, companyId: membership.company_id }))),
   ];
   const pages = new Set<string>();
   const grants: AccessGrant[] = [];

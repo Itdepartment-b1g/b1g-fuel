@@ -2,7 +2,7 @@ import { loadRecordAccess, requirePermission } from "@/server/auth/record-access
 import { rateLimit } from "express-rate-limit";
 import { Router } from "express";
 import { requireAuthUser } from "@/server/auth/session";
-import { create_user, get_user_option, get_user_filter_option, list_user } from "@/server/controllers/users_controller";
+import { assign_user, create_user, get_user_option, get_user_filter_option, list_user } from "@/server/controllers/users_controller";
 
 const create_user_limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -23,3 +23,4 @@ usersRouter.get("/", requirePermission("users", "view"), list_user);
 usersRouter.get("/options", requirePermission("users", "add"), get_user_option);
 usersRouter.get("/filter-options", requirePermission("users", "view"), get_user_filter_option);
 usersRouter.post("/", requirePermission("users", "add"), create_user_limiter, create_user);
+usersRouter.post("/:id/assignments", requirePermission("users", "edit"), assign_user);

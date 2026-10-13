@@ -31,8 +31,6 @@ export function RoleForm({
   const readOnly = Boolean(role?.is_system || role?.slug === "super_admin");
   const busy = useRef(false);
   const [scope, setScope] = useState<RoleScope>(role?.scope ?? "company");
-  const [companyId, setCompanyId] = useState(role?.company_id ?? "");
-  const [isDefault, setIsDefault] = useState(role?.is_default_role ?? false);
   const [pages, setPages] = useState(role?.pages ?? []);
   const [permissions, setPermissions] = useState(role?.permissions ?? []);
   const [permissionScopes, setPermissionScopes] = useState<Record<string, AccessScope>>(role?.permission_scopes ?? {});
@@ -48,10 +46,6 @@ export function RoleForm({
       setError("Enter a role name.");
       return;
     }
-    if (!role && scope === "company" && !companyId) {
-      setError("Select a company for this role.");
-      return;
-    }
     busy.current = true;
     setError(null);
     const selectedScopes = Object.fromEntries(permissions.filter((key) => !key.endsWith(".add")).map((key) => [key, permissionScopes[key] ?? "company"]));
@@ -61,9 +55,7 @@ export function RoleForm({
             updateRole({
               id: role.id,
               name,
-              is_default_role: isDefault,
               permission_scopes: selectedScopes,
-              ...(companyId !== (role.company_id ?? "") ? { company_id: companyId || null } : {}),
               ...(!sameKeys(pages, role.pages) ? { pages } : {}),
               ...(!sameKeys(permissions, role.permissions)
                 ? { permissions }
@@ -77,8 +69,7 @@ export function RoleForm({
                 ? { slug: String(form.get("slug")).trim() }
                 : {}),
               scope,
-              company_id: scope === "company" ? companyId || null : null,
-              is_default_role: isDefault,
+              company_id: null,
               pages,
               permissions,
               permission_scopes: selectedScopes,
@@ -143,7 +134,6 @@ export function RoleForm({
               onChange={(event) => {
                 const next = event.target.value as RoleScope;
                 setScope(next);
-                if (next === "global") { setIsDefault(false); setCompanyId(""); }
                 if (next === "company") setPermissionScopes((current) => Object.fromEntries(Object.entries(current).map(([key, value]) => [key, value === "all" ? "company" : value])));
               }}
             >
@@ -153,46 +143,10 @@ export function RoleForm({
             <span className="block text-xs font-normal text-muted-foreground">
               {role
                 ? "Scope stays fixed after creation."
-                : "Company roles belong to company memberships."}
+                : "Company roles are assigned on a user's company membership."}
             </span>
           </label>
         </div>
-        {scope === "company" && (
-          <label className="block space-y-2 text-sm font-medium">
-            Company {!role && <span className="text-destructive">*</span>}
-            <select
-              aria-label="Role company"
-              value={companyId}
-              required={!role}
-              disabled={optionsStatus !== "succeeded" || Boolean(role?.assignment_count)}
-              onChange={(event) => setCompanyId(event.target.value)}
-              className="h-10 w-full rounded-md border bg-white px-3 text-sm disabled:opacity-50"
-            >
-              <option value="">{role ? "No company assigned" : "Select a company"}</option>
-              {role?.company && !options.companies.some((company) => company.id === role.company_id) && (
-                <option value={role.company.id}>{role.company.name}</option>
-              )}
-              {options.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-            </select>
-            <span className="block text-xs font-normal text-muted-foreground">
-              {role?.assignment_count ? "Remove user assignments before changing this role's company." : "This role will be available to users in the selected company."}
-            </span>
-          </label>
-        )}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isDefault}
-            onChange={(event) => setIsDefault(event.target.checked)}
-            disabled={scope !== "company"}
-            className="size-4 accent-primary"
-          />
-          Default company role
-        </label>
-        <p className="-mt-3 text-xs text-muted-foreground">
-          Only one company role can be the default. Clear the current default
-          before choosing another.
-        </p>
         <fieldset className="space-y-3">
           <legend className="mb-2 text-sm font-medium">Pages and permissions</legend>
           <p className="text-xs text-muted-foreground">Select a page, then choose what this role can do on that page.</p>
@@ -277,7 +231,7 @@ export function RoleForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={pending || readOnly || (!role && scope === "company" && optionsStatus !== "succeeded")}>
+        <Button type="submit" disabled={pending || readOnly}>
           {pending && (
             <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
           )}

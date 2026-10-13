@@ -27,4 +27,5 @@ export type CreateUserInput = {
   role_ids?: string[];
 };
 export type UpdateUserInput = { id: string; name?: string; email?: string | null };
+export type AssignUserInput = { id: string; company_id: string; role_ids: string[] };
 export type CreateUserResponse = { user: UserSummary };

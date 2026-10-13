@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { UserCog } from "lucide-react";
 import {
   DataTable,
   type DataTableColumn,
@@ -144,11 +145,13 @@ export function UsersTable({
   sorting,
   onSortingChange,
   loading,
+  onAssign,
 }: {
   users: UserSummary[];
   sorting?: TableSort | null;
   onSortingChange?: (sorting: TableSort | null) => void;
   loading?: boolean;
+  onAssign?: (user: UserSummary) => void;
 }) {
   return (
     <DataTable
@@ -161,6 +164,7 @@ export function UsersTable({
       onSortingChange={onSortingChange}
       multipleFrozenColumns
       loading={loading}
+      actions={onAssign ? [{ id: "assign", label: "Assign company and roles", icon: <UserCog />, onSelect: onAssign }] : undefined}
     />
   );
 }

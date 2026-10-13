@@ -25,6 +25,10 @@ export const openapi = {
         email: { type: "string", format: "email", maxLength: 254 }, password: { type: "string", minLength: 8, maxLength: 128, writeOnly: true },
         company_id: { type: "string", format: "uuid", description: "Delegated creators must select a permitted company. Super-admins may omit company_id." }, role_ids: { type: "array", maxItems: 50, uniqueItems: true, items: { type: "string", format: "uuid" }, description: "Optional company-scoped roles; defaults to an empty array. Nonempty role_ids require company_id and super-admin access." },
       } },
+      AssignUser: { type: "object", additionalProperties: false, required: ["company_id", "role_ids"], properties: {
+        company_id: { type: "string", format: "uuid" },
+        role_ids: { type: "array", minItems: 1, maxItems: 50, uniqueItems: true, items: { type: "string", format: "uuid" } },
+      } },
       RoleOption: { type: "object", required: ["id", "name", "slug"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" }, slug: { type: "string" }, company_id: { type: "string", format: "uuid", nullable: true } } },
       CompanyOption: { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } },
       User: { type: "object", required: ["id", "name", "email", "created_at", "global_roles", "companies"], properties: {
@@ -79,6 +83,7 @@ export const openapi = {
         "400": errorResponse, "401": errorResponse, "403": errorResponse, "409": errorResponse, "429": errorResponse, "500": errorResponse, "502": errorResponse,
       } },
     },
+    "/api/users/{id}/assignments": { post: { tags: ["Users"], summary: "Assign a company and company roles to a user", description: "Creates or updates one membership and replaces that membership's roles. Roles are shared templates; their pages and permissions come from the role.", security: [{ session: [] }], parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }], requestBody: jsonBody({ $ref: "#/components/schemas/AssignUser" }), responses: { "200": { description: "Updated user", content: { "application/json": { schema: { $ref: "#/components/schemas/CreateUserResponse" } } } }, "400": errorResponse, "401": errorResponse, "403": errorResponse, "404": errorResponse, "500": errorResponse } } },
     "/api/users/filter-options": { get: { tags: ["Users"], summary: "Get Quick Filter choices from visible users", security: [{ session: [] }], responses: { "200": { description: "Fields, role-status and membership choices. Counts describe all visible records before the current search filters.", content: { "application/json": { schema: { $ref: "#/components/schemas/UserFilterOptions" } } } }, "401": errorResponse, "403": errorResponse, "500": errorResponse } } },
     "/api/users/options": { get: { tags: ["Users"], summary: "Get companies and company roles (permission required)", security: [{ session: [] }], responses: {
       "200": { description: "Creation options", content: { "application/json": { schema: { $ref: "#/components/schemas/UserOptions" } } } }, "401": errorResponse, "403": errorResponse, "500": errorResponse,

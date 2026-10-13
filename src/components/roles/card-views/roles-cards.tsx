@@ -24,9 +24,6 @@ export function RoleCard({
         </div>
       </div>
       <RoleLabels role={role} />
-      {role.company && (
-        <p className="mt-3 text-sm text-muted-foreground">{role.company.name}</p>
-      )}
       <p className="mt-4 text-sm text-muted-foreground">
         {role.slug === "super_admin"
           ? "Full dashboard access"

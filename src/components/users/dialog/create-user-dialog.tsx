@@ -22,7 +22,7 @@ export function CreateUserDialog({ onCreated }: { onCreated: (user: UserSummary)
   return <Dialog open={open} onOpenChange={changeOpen}>
     <DialogTrigger asChild><Button><UserPlus className="size-4" aria-hidden="true" />Add user</Button></DialogTrigger>
     <DialogContent className={`max-h-[90svh] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto ${pending ? "[&>button]:hidden" : ""}`} onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }} onPointerDownOutside={(event) => { if (pending) event.preventDefault(); }}>
-      <DialogHeader><DialogTitle>Create a user</DialogTitle><DialogDescription>Add an account to your organization. Company and role assignments are optional.</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>Create a user</DialogTitle><DialogDescription>Add an account. Assign a company and roles after the user is created.</DialogDescription></DialogHeader>
       {open && <UserForm onCancel={() => changeOpen(false)} onCreated={(user) => { setOpen(false); onCreated(user); }} />}
     </DialogContent>
   </Dialog>;

@@ -1,8 +1,9 @@
 import { Building2, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { UserSummary } from "@/server/schema/users_schema";
 import { UserAssignments, UserAvatar } from "../table-view/users-table-view";
 
-export function UserCard({ user }: { user: UserSummary }) {
+export function UserCard({ user, onAssign }: { user: UserSummary; onAssign?: (user: UserSummary) => void }) {
   return (
     <article className="rounded-xl border bg-white p-5">
       <div className="mb-5 flex items-center gap-3">
@@ -23,15 +24,20 @@ export function UserCard({ user }: { user: UserSummary }) {
         </span>
       </p>
       <UserAssignments user={user} />
+      {onAssign && (
+        <div className="mt-4 border-t pt-3">
+          <Button type="button" variant="outline" size="sm" onClick={() => onAssign(user)}>Assign company and roles</Button>
+        </div>
+      )}
     </article>
   );
 }
 
-export function UsersCards({ users }: { users: UserSummary[] }) {
+export function UsersCards({ users, onAssign }: { users: UserSummary[]; onAssign?: (user: UserSummary) => void }) {
   return (
     <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
       {users.map((user) => (
-        <UserCard key={user.id} user={user} />
+        <UserCard key={user.id} user={user} onAssign={onAssign} />
       ))}
     </div>
   );

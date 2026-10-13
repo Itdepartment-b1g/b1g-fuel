@@ -7,6 +7,7 @@ import {
 } from "@reduxjs/toolkit";
 import type { AppDispatch, RootState } from "./store";
 import type {
+  AssignUserInput,
   CreateUserInput,
   CreateUserResponse,
   UserOptions,
@@ -233,6 +234,23 @@ export const selectUser = (state: RootState) => state.users;
 
 // A manual thunk keeps passwords out of Redux actions, async-thunk metadata and state.
 // Await dispatch(createUser(input)); failures reject with { status, message }.
+export const assignUser = createAsyncThunk<
+  UserSummary,
+  AssignUserInput,
+  { rejectValue: ApiFailure }
+>("users/assign", async (input, { rejectWithValue }) => {
+  try {
+    const { user } = await requestUser<CreateUserResponse>(`/api/users/${input.id}/assignments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: input.company_id, role_ids: input.role_ids }),
+    });
+    return user;
+  } catch (error) {
+    return rejectWithValue(getUserError(error));
+  }
+});
+
 export const createUser =
   (input: CreateUserInput) =>
   async (
