@@ -34,7 +34,10 @@ const permissions = {
     enum: PERMISSION_CATALOG.map((permission) => permission.key),
   },
 };
+const permissionScopes = { type: "object", additionalProperties: { type: "string", enum: ["all", "company", "own"] }, description: "Access scope per selected View/Edit/Delete permission; defaults to company. All is global roles only. Add is enabled/disabled and has no scope." };
 const editable = {
+  permission_scopes: permissionScopes,
+  company_id: { type: ["string", "null"], format: "uuid", description: "Company scope only. A role belongs to one company; assigned roles cannot change company." },
   name,
   is_default_role: {
     type: "boolean",
@@ -69,12 +72,16 @@ export const roleSchemas = {
       "name",
       "slug",
       "scope",
+      "company_id",
+      "company",
       "is_system",
       "is_default_role",
       "created_at",
       "updated_at",
       "pages",
       "permissions",
+      "permission_scopes",
+      "created_by",
       "assignment_count",
     ],
     properties: {
@@ -82,12 +89,16 @@ export const roleSchemas = {
       name,
       slug: { type: "string", maxLength: 100 },
       scope: { type: "string", enum: ["global", "company"] },
+      company_id: { type: ["string", "null"], format: "uuid" },
+      company: { anyOf: [{ type: "null" }, { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } }] },
       is_system: { type: "boolean", readOnly: true },
       is_default_role: { type: "boolean" },
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
       pages,
       permissions,
+      permission_scopes: permissionScopes,
+      created_by: { type: "string", format: "uuid", nullable: true, readOnly: true },
       assignment_count: { type: "integer", minimum: 0, readOnly: true },
     },
   },
@@ -144,8 +155,9 @@ export const roleSchemas = {
   },
   RoleOptions: {
     type: "object",
-    required: ["scopes", "pages", "permissions"],
+    required: ["companies", "scopes", "pages", "permissions"],
     properties: {
+      companies: { type: "array", items: { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } } },
       scopes: {
         type: "array",
         items: { type: "string", enum: ["company", "global"] },
@@ -166,8 +178,8 @@ export const roleSchemas = {
         type: "array",
         items: {
           type: "object",
-          required: ["key", "label"],
-          properties: { key: { type: "string" }, label: { type: "string" } },
+          required: ["key", "label", "page_key", "action"],
+          properties: { key: { type: "string" }, label: { type: "string" }, page_key: { type: "string" }, action: { type: "string", enum: ["view", "edit", "add", "delete"] } },
         },
       },
     },
@@ -179,7 +191,7 @@ export const rolePaths = {
     get: {
       tags: ["Roles"],
       security,
-      summary: "List roles or get a role by ID (super_admin only)",
+      summary: "List roles or get a role within its granted view scope",
       parameters: [
         {
           ...idParameter,
@@ -232,7 +244,7 @@ export const rolePaths = {
       security,
       summary: "Create a custom role (super_admin only)",
       description:
-        "Requires APP_ORIGIN. is_system is server-managed. Page/permission mappings are optional; storing them does not implement company authorization or assign users.",
+        "Requires APP_ORIGIN. is_system is server-managed. Page permissions enforce record access scopes. Company role assignments remain administrator-managed.",
       requestBody: { required: true, ...json(ref("CreateRole")) },
       responses: {
         "201": { description: "Role created", ...json(ref("RoleResponse")) },

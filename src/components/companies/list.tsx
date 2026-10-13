@@ -1,4 +1,6 @@
 "use client";
+import { useRecordAccess } from "@/components/providers/access-provider";
+import { canPerform } from "@/lib/auth/access-scope";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
 import { useEffect, useState } from "react";
@@ -17,6 +19,7 @@ import { CompaniesCards } from "./card-views/companies-cards";
 
 export default function CompaniesList() {
   const dispatch = useAppDispatch();
+  const access = useRecordAccess();
   const toast = useToast(); const router = useRouter();
   const { companies, total, listStatus, listError, mutationStatus, mutationError } = useAppSelector(selectCompany);
   const [page, setPage] = useState(1); const [limit, setLimit] = useState<number>(DEFAULT_PAGE_SIZE); const [search, setSearch] = useState(""); const [draft, setDraft] = useState("");
@@ -32,10 +35,10 @@ export default function CompaniesList() {
   useEffect(() => { if ([listError, mutationError].some(error => error?.status === 401)) router.replace("/login"); }, [listError, mutationError, router]);
   function openCompany(company?: CompanySummary) { dispatch(clearCompanyMutation()); setEditor({ id: company?.id ?? null }); }
   async function removeCompany() { if (!removing) return; try { await dispatch(deleteCompany(removing.id)).unwrap(); toast.success(`${removing.name} was deleted.`); setRemoving(null); setRevision(value => value + 1); } catch (error) { toast.error(toastErrorMessage(error, "Could not delete the company.")); } }
-  if (listError?.status === 403) return <section className="rounded-xl border p-6"><h1 className="text-xl font-semibold">Access restricted</h1><p className="mt-2 text-muted-foreground">Company management is available to super-admins.</p></section>;
+  if (listError?.status === 403) return <section className="rounded-xl border p-6"><h1 className="text-xl font-semibold">Access restricted</h1><p className="mt-2 text-muted-foreground">You do not have permission to view companies.</p></section>;
   const actions = { companies, sorting, loading, onSortingChange: (next: TableSort | null) => { setSorting(next); setPage(1); }, disabled: pending || loading, onEdit: openCompany, onDelete: (company: CompanySummary) => { dispatch(clearCompanyMutation()); setRemoving(company); } };
   return <>
-    <ManagementList title="Companies" description="Organize your companies and view their team memberships." total={total} action={<Button disabled={pending} onClick={() => openCompany()}><Plus className="size-4" aria-hidden="true" />Add company</Button>}
+    <ManagementList title="Companies" description="Organize your companies and view their team memberships." total={total} action={canPerform(access, "companies", "add") ? <Button disabled={pending} onClick={() => openCompany()}><Plus className="size-4" aria-hidden="true" />Add company</Button> : null}
       searchDraft={draft} onSearchDraft={setDraft} searchMaxLength={160} onSearch={() => { setSearch(draft.trim()); setPage(1); }} searchActive={Boolean(search)} onClearSearch={() => { setDraft(""); setSearch(""); setPage(1); }}
       view={view} onView={setView} loading={loading} error={listError?.message} onRefresh={() => setRevision(value => value + 1)} metadata={metadata} onPage={setPage} onLimitChange={value => { setLimit(value); setPage(1); }}>
       {view === "table" ? <CompaniesTableView {...actions} /> : !companies.length ? <ListPlaceholder loading={loading} title={search ? "No matching companies" : "No companies yet"} description={search ? "Try another company name." : "Add your first company to organize memberships."} /> : <CompaniesCards {...actions} />}

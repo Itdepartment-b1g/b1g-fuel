@@ -1,6 +1,6 @@
+import { loadRecordAccess, requirePermission } from "@/server/auth/record-access";
 import { Router } from "express";
 import { requireAuthUser } from "@/server/auth/session";
-import { requireSuperAdmin } from "@/server/auth/authorization";
 import {
   create_company,
   delete_company,
@@ -14,10 +14,10 @@ companiesRouter.use((_req, res, next) => {
   res.set("Cache-Control", "private, no-store");
   next();
 });
-companiesRouter.use(requireAuthUser, requireSuperAdmin);
-companiesRouter.get("/", (req, res, next) =>
+companiesRouter.use(requireAuthUser, loadRecordAccess);
+companiesRouter.get("/", requirePermission("companies", "view"), (req, res, next) =>
   (req.query.id === undefined ? list_company : list_by_id_company)(req, res, next),
 );
-companiesRouter.post("/", create_company);
-companiesRouter.patch("/", update_company);
-companiesRouter.delete("/", delete_company);
+companiesRouter.post("/", requirePermission("companies", "add"), create_company);
+companiesRouter.patch("/", requirePermission("companies", "edit"), update_company);
+companiesRouter.delete("/", requirePermission("companies", "delete"), delete_company);

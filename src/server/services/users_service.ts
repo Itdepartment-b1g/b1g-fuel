@@ -1,3 +1,4 @@
+import type { RecordAccess } from "@/server/auth/record-access";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateUserInput } from "@/server/schema/users_schema";
 import type { UserFilters, UserFilterOptions } from "@/lib/users-filters";
@@ -16,19 +17,21 @@ export async function list_user(
   filters?: UserFilters,
   sorting?: Sorting,
   repository = usersRepository,
+  access?: RecordAccess,
 ) {
-  return repository.list_user(pagination, search, filters, sorting);
+  return repository.list_user(pagination, search, filters, sorting, access);
 }
 
-export async function get_user_option(repository = usersRepository) {
-  return repository.get_user_option();
+export async function get_user_option(repository = usersRepository, access?: RecordAccess) {
+  return repository.get_user_option(access);
 }
 
 export async function get_user_filter_option(
   repository = usersRepository,
+  access?: RecordAccess,
 ): Promise<UserFilterOptions> {
   const { names, emails, companies, roles, total, assigned, members } =
-    await repository.get_user_filter_data();
+    await repository.get_user_filter_data(access);
   const values = {
     name: names.map((row) => ({
       value: row.name,
@@ -83,6 +86,7 @@ export async function create_user(
   input: CreateUserInput,
   repository = usersRepository,
   admin = () => createAdminClient().auth.admin,
+  createdBy?: string,
 ) {
   const roleIds = input.role_ids ?? [];
   if (roleIds.length && input.company_id === undefined)
@@ -133,7 +137,7 @@ export async function create_user(
       "Unable to create the authentication account.",
     );
   try {
-    return await repository.create_user(data.user.id, input);
+    return await repository.create_user(data.user.id, input, createdBy);
   } catch (error) {
     try {
       const cleanup = await client.deleteUser(data.user.id);

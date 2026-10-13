@@ -1,3 +1,4 @@
+import { allowed_company_ids } from "@/server/auth/record-access";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { USER_SORT_FIELDS } from "@/server/schema/users_schema";
 import type { Request, Response, NextFunction } from "express";
@@ -25,6 +26,7 @@ const user_database_errors: Record<string, { status: number; message: string }> 
     status: 400,
     message: "Company or company roles are no longer available.",
   },
+  "23514": { status: 400, message: "The selected role does not belong to this company." },
 };
 const user_error_status: Partial<Record<UserError["code"], number>> = {
   invalid_input: 400,
@@ -155,7 +157,7 @@ try {
     }
     res
       .status(200)
-      .json(await service.list_user(pagination, search.trim(), filters, sorting));
+      .json(await service.list_user(pagination, search.trim(), filters, sorting, undefined, res.locals.access));
   } catch (error) {
     if (error instanceof PaginationError || error instanceof SortingError) {
       res.status(400).json({ error: error.message });
@@ -221,7 +223,7 @@ export async function get_user_filter_option(
   service = userService,
 ) {
   try {
-    res.status(200).json(await service.get_user_filter_option());
+    res.status(200).json(await service.get_user_filter_option(undefined, res.locals.access));
   } catch (error) {
     if (error instanceof PaginationError) {
       res.status(400).json({ error: error.message });
@@ -287,7 +289,7 @@ export async function get_user_option(
   service = userService,
 ) {
   try {
-    res.status(200).json(await service.get_user_option());
+    res.status(200).json(await service.get_user_option(undefined, res.locals.access));
   } catch (error) {
     if (error instanceof PaginationError) {
       res.status(400).json({ error: error.message });
@@ -408,6 +410,13 @@ if (
     )
   )
     throw new UserError("invalid_input", "Unknown user field.");
+    if (res.locals.access && !res.locals.access.superAdmin) {
+      const companyIds = allowed_company_ids(res.locals.access, "users") ?? [];
+      if (typeof company_id !== "string" || !companyIds.includes(company_id.toLowerCase()) || roleIds.length) {
+        res.status(403).json({ error: roleIds.length ? "Role assignments require an administrator." : "Select one of your permitted companies." });
+        return;
+      }
+    }
     const input: CreateUserInput = {
     name: name.trim(),
     email: email.trim().toLowerCase(),
@@ -415,7 +424,7 @@ if (
     company_id,
     role_ids: roleIds,
   };
-    res.status(201).json({ user: await service.create_user(input) });
+    res.status(201).json({ user: await service.create_user(input, undefined, undefined, res.locals.user?.id) });
   } catch (error) {
     if (error instanceof PaginationError) {
       res.status(400).json({ error: error.message });

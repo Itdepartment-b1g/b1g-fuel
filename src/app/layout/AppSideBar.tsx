@@ -8,6 +8,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight, LogOut, X, FlameIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRecordAccess } from "@/components/providers/access-provider";
 import { APP_PATHS } from "@/lib/auth/dashboard";
 import { formatRoleLabel, listSidebarMenu, sideBarMenuItems, type SideBarAccess } from "./sideBarMenuItems";
 
@@ -31,6 +32,7 @@ const noop = () => {};
 
 export default function AppSideBar({ open = false, onClose = noop, pages, permissions, role }: AppSideBarProps = {}) {
   const pathname = usePathname();
+  const access = useRecordAccess();
   const signingOut = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export default function AppSideBar({ open = false, onClose = noop, pages, permis
   const sessionRole = role ?? user?.role;
   const items = pages === undefined && !sessionRole
     ? sideBarMenuItems
-    : listSidebarMenu(pages ?? [], { pages, permissions, role: sessionRole });
+    : listSidebarMenu(access?.pages ?? pages ?? [], { pages: access?.pages ?? pages, permissions: access ? access.grants.map((grant) => grant.permission) : permissions, role: sessionRole });
   const isActive = (href: string) => pathname === href || (href !== APP_PATHS.home && pathname.startsWith(`${href}/`));
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 1024px)");

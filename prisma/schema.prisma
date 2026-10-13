@@ -11,11 +11,13 @@ model user {
   // Same UUID as the Supabase Auth account.
   id             String         @id @db.Uuid
   name           String         @db.VarChar(250)
+  created_by     String?        @db.Uuid
   email          String?        @unique
   created_at     DateTime       @default(now()) @db.Timestamptz(6)
   updated_at     DateTime       @updatedAt @db.Timestamptz(6)
   user_roles     user_role[]
   user_companies user_company[]
+  @@index([created_by])
 }
 
 enum role_scope {
@@ -39,9 +41,12 @@ model user_role {
 model company {
   id             String         @id @default(uuid()) @db.Uuid
   name           String         @db.VarChar(160)
+  created_by     String?        @db.Uuid
   created_at     DateTime       @default(now()) @db.Timestamptz(6)
   updated_at     DateTime       @updatedAt @db.Timestamptz(6)
   user_companies user_company[]
+  roles          roles[]
+  @@index([created_by])
 }
 
 model user_company {
@@ -64,6 +69,9 @@ model roles {
   name            String              @db.VarChar(100)
   slug            String              @unique @db.VarChar(100)
   scope           role_scope          @default(company)
+  company_id      String?             @db.Uuid
+  created_by      String?             @db.Uuid
+  company         company?            @relation(fields: [company_id], references: [id], onDelete: Restrict)
   is_system       Boolean             @default(false)
   is_default_role Boolean             @default(false)
   created_at      DateTime            @default(now()) @db.Timestamptz(6)
@@ -74,6 +82,8 @@ model roles {
   company_roles   user_company_role[] @relation("company_assignments")
 
   @@unique([id, scope])
+  @@index([company_id])
+  @@index([created_by])
 }
 
 // Roles are assigned to memberships; migration CHECK enforces company scope.
@@ -100,6 +110,7 @@ model role_pages {
 model role_permissions {
   role_id        String @db.Uuid
   permission_key String @db.VarChar(120)
+  access_scope   String @default("company") @db.VarChar(16)
   role           roles  @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@id([role_id, permission_key])

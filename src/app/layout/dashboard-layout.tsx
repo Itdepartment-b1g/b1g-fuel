@@ -4,6 +4,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import localFont from "next/font/local";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AccessProvider } from "@/components/providers/access-provider";
 import AppSideBar from "./AppSideBar";
 import type { SideBarAccess } from "./sideBarMenuItems";
 import { PAGE_KEYS } from "@/lib/auth/catalog";
@@ -20,7 +21,7 @@ export default function DashboardLayout({ children, pages = [PAGE_KEYS.home], pe
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-card">
+    <AccessProvider><div className="flex h-dvh overflow-hidden bg-card">
       <AppSideBar pages={pages} permissions={permissions} role={role} open={sidebarOpen} onClose={closeSidebar} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -47,6 +48,6 @@ export default function DashboardLayout({ children, pages = [PAGE_KEYS.home], pe
           {children}
         </main>
       </div>
-    </div>
+    </div></AccessProvider>
   );
 }

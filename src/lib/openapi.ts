@@ -23,11 +23,12 @@ export const openapi = {
       CreateUser: { type: "object", additionalProperties: false, required: ["name", "email", "password"], properties: {
         name: { type: "string", minLength: 1, maxLength: 250, example: "Juan Dela Cruz", description: "Required display name; whitespace is trimmed before saving." },
         email: { type: "string", format: "email", maxLength: 254 }, password: { type: "string", minLength: 8, maxLength: 128, writeOnly: true },
-        company_id: { type: "string", format: "uuid", description: "Optional company membership. Omit to create a user without a company." }, role_ids: { type: "array", maxItems: 50, uniqueItems: true, items: { type: "string", format: "uuid" }, description: "Optional company-scoped roles; defaults to an empty array. Nonempty role_ids require company_id." },
+        company_id: { type: "string", format: "uuid", description: "Delegated creators must select a permitted company. Super-admins may omit company_id." }, role_ids: { type: "array", maxItems: 50, uniqueItems: true, items: { type: "string", format: "uuid" }, description: "Optional company-scoped roles; defaults to an empty array. Nonempty role_ids require company_id and super-admin access." },
       } },
-      RoleOption: { type: "object", required: ["id", "name", "slug"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" }, slug: { type: "string" } } },
+      RoleOption: { type: "object", required: ["id", "name", "slug"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" }, slug: { type: "string" }, company_id: { type: "string", format: "uuid", nullable: true } } },
       CompanyOption: { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } },
       User: { type: "object", required: ["id", "name", "email", "created_at", "global_roles", "companies"], properties: {
+        created_by: { type: "string", format: "uuid", nullable: true, readOnly: true },
         name: { type: "string", maxLength: 250 },
         id: { type: "string", format: "uuid" }, email: { type: "string", nullable: true }, created_at: { type: "string", format: "date-time" },
         global_roles: { type: "array", items: { $ref: "#/components/schemas/RoleOption" } },
@@ -43,6 +44,7 @@ export const openapi = {
         id: { type: "string", format: "uuid" }, email: { type: "string", nullable: true }, name: { type: "string", nullable: true, maxLength: 250, description: "Database profile name when available; session lookup falls back to Auth metadata." },
       } },
       Session: { type: "object", required: ["user", "global_roles"], properties: {
+        access: { type: "object", description: "Current server-computed pages, permission grants, company IDs and super-admin flag." },
         user: { $ref: "#/components/schemas/SessionUser" }, global_roles: { type: "array", items: { type: "string" } },
       } },
       LoginResponse: { type: "object", required: ["user", "message"], properties: {
@@ -63,7 +65,7 @@ export const openapi = {
       { name: "error", in: "query", schema: { type: "string" }, description: "Provider failure or cancellation." },
     ], responses: { "303": { description: "Redirect to /dashboard on success, or /login with a fixed auth_error code on failure", headers: { Location: { schema: { type: "string", format: "uri" } } } }, "429": errorResponse } } },
     "/api/users": {
-      get: { tags: ["Users"], summary: "List users (global super_admin only)", security: [{ session: [] }], parameters: [
+      get: { tags: ["Users"], summary: "List users (permission required)", security: [{ session: [] }], parameters: [
         { name: "page", in: "query", schema: { type: "integer", minimum: 1, maximum: 1000000, default: 1 } },
         { name: "sort_by", in: "query", description: "Sort before pagination; defaults to created_at.", schema: { type: "string", enum: [...USER_SORT_FIELDS] } },
         { name: "sort_order", in: "query", description: "asc or desc; defaults to desc for created_at and asc for other fields.", schema: { type: "string", enum: ["asc", "desc"] } },
@@ -71,13 +73,13 @@ export const openapi = {
         { name: "search", in: "query", description: "Case-insensitive name or email search", schema: { type: "string", maxLength: 254 } },
         { name: "filters", in: "query", description: "JSON-encoded QuickFilters. Same-field conditions use OR; different fields, date, role status, membership and search combine with AND. Applied before pagination; company/role values are UUIDs.", schema: { type: "string", maxLength: 12000 } },
       ], responses: { "200": { description: "Paginated users", content: { "application/json": { schema: { $ref: "#/components/schemas/UsersPage" } } } }, "400": errorResponse, "401": errorResponse, "403": errorResponse, "500": errorResponse } },
-      post: { tags: ["Users"], summary: "Create an email-confirmed account with optional company roles (global super_admin only)", description: "Requires the application's Origin header. Admin sets the initial password; no invitation email is sent. Company and roles may be omitted. Roles require a company; a company can have no roles.", security: [{ session: [] }], requestBody: jsonBody({ $ref: "#/components/schemas/CreateUser" }), responses: {
+      post: { tags: ["Users"], summary: "Create an email-confirmed account with optional company roles (permission required)", description: "Requires the application's Origin header. Admin sets the initial password; no invitation email is sent. Company and roles may be omitted. Roles require a company; a company can have no roles.", security: [{ session: [] }], requestBody: jsonBody({ $ref: "#/components/schemas/CreateUser" }), responses: {
         "201": { description: "User created", content: { "application/json": { schema: { $ref: "#/components/schemas/CreateUserResponse" } } } },
         "400": errorResponse, "401": errorResponse, "403": errorResponse, "409": errorResponse, "429": errorResponse, "500": errorResponse, "502": errorResponse,
       } },
     },
-    "/api/users/filter-options": { get: { tags: ["Users"], summary: "Get Quick Filter choices from the full user dataset (super_admin only)", security: [{ session: [] }], responses: { "200": { description: "Fields, role-status and membership choices. Counts describe the full dataset, not the current filtered result.", content: { "application/json": { schema: { $ref: "#/components/schemas/UserFilterOptions" } } } }, "401": errorResponse, "403": errorResponse, "500": errorResponse } } },
-    "/api/users/options": { get: { tags: ["Users"], summary: "Get companies and company roles (global super_admin only)", security: [{ session: [] }], responses: {
+    "/api/users/filter-options": { get: { tags: ["Users"], summary: "Get Quick Filter choices from visible users", security: [{ session: [] }], responses: { "200": { description: "Fields, role-status and membership choices. Counts describe all visible records before the current search filters.", content: { "application/json": { schema: { $ref: "#/components/schemas/UserFilterOptions" } } } }, "401": errorResponse, "403": errorResponse, "500": errorResponse } } },
+    "/api/users/options": { get: { tags: ["Users"], summary: "Get companies and company roles (permission required)", security: [{ session: [] }], responses: {
       "200": { description: "Creation options", content: { "application/json": { schema: { $ref: "#/components/schemas/UserOptions" } } } }, "401": errorResponse, "403": errorResponse, "500": errorResponse,
     } } },
     "/api/health": { get: { tags: ["Health"], summary: "API liveness", responses: { "200": { description: "API is running" } } } },

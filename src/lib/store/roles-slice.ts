@@ -17,7 +17,7 @@ export type RolesState = {
 };
 const initialState: RolesState = {
   roles: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE,
-  selectedRole: null, options: { scopes: [], pages: [], permissions: [] }, lastChangedRole: null,
+  selectedRole: null, options: { companies: [], scopes: [], pages: [], permissions: [] }, lastChangedRole: null,
   listStatus: "idle", detailStatus: "idle", optionsStatus: "idle", mutationStatus: "idle", mutationOperation: null,
   listError: null, detailError: null, optionsError: null, mutationError: null,
   listRequestId: null, detailRequestId: null, optionsRequestId: null, mutationRequestId: null,

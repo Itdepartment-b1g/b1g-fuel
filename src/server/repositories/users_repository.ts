@@ -1,3 +1,4 @@
+import { record_where, allowed_company_ids, type RecordAccess } from "@/server/auth/record-access";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
@@ -14,6 +15,7 @@ const role_select = {
   id: true,
   name: true,
   slug: true,
+  company_id: true,
 } satisfies Prisma.rolesSelect;
 const user_has_membership: Prisma.userWhereInput = {
   user_companies: { some: {} },
@@ -29,6 +31,7 @@ const user_select = {
   id: true,
   name: true,
   email: true,
+  created_by: true,
   created_at: true,
   user_roles: {
     select: { role: { select: role_select } },
@@ -67,8 +70,10 @@ export async function list_user(
   search: string,
   filters?: QuickFilterState,
   sorting?: Sorting,
+  access?: RecordAccess,
 ) {
   const where = build_filter<Prisma.userWhereInput>(filters, {
+    where: record_where(access, "users"),
     search: {
       value: search,
       fields: [(filter) => ({ name: filter }), (filter) => ({ email: filter })],
@@ -150,13 +155,14 @@ export async function list_by_id_user(
 }
 
 /** Create the user profile using the Auth account ID, optionally creating a company membership and company role assignments in the same transaction. Return the saved user summary. */
-export async function create_user(id: string, input: CreateUserInput) {
+export async function create_user(id: string, input: CreateUserInput, createdBy?: string) {
   return getDatabase().$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         id,
         name: input.name,
         email: input.email,
+        created_by: createdBy,
         ...(input.company_id !== undefined
           ? {
               user_companies: {
@@ -205,35 +211,39 @@ export async function delete_user(
 }
 
 /** Load distinct names and non-null emails, company and role choices, and overall role and membership counts for the filter panel. These values describe the full dataset and are read from one consistent snapshot. */
-export async function get_user_filter_data() {
+export async function get_user_filter_data(access?: RecordAccess) {
+  const visible = record_where(access, "users");
   return getDatabase().$transaction(
     async (tx) => {
       const names = await tx.user.groupBy({
         by: ["name"],
+        where: visible,
         _count: { _all: true },
         orderBy: { name: "asc" },
       });
       const emails = await tx.user.groupBy({
         by: ["email"],
-        where: { email: { not: null } },
+        where: { AND: [visible, { email: { not: null } }] },
         _count: { _all: true },
         orderBy: { email: "asc" },
       });
       const companies = await tx.company.findMany({
+        where: access && !access.superAdmin ? { user_companies: { some: { user: visible } } } : {},
         select: {
           id: true,
           name: true,
-          _count: { select: { user_companies: true } },
+          _count: { select: { user_companies: { where: { user: visible } } } },
         },
         orderBy: { name: "asc" },
       });
       const roles = await tx.roles.findMany({
+        where: access && !access.superAdmin ? { OR: [{ user_roles: { some: { user: visible } } }, { company_roles: { some: { membership: { user: visible } } } }] } : {},
         select: { id: true, name: true, scope: true },
         orderBy: { name: "asc" },
       });
-      const total = await tx.user.count();
-      const assigned = await tx.user.count({ where: user_has_role });
-      const members = await tx.user.count({ where: user_has_membership });
+      const total = await tx.user.count({ where: visible });
+      const assigned = await tx.user.count({ where: { AND: [visible, user_has_role] } });
+      const members = await tx.user.count({ where: { AND: [visible, user_has_membership] } });
       return {
         names: names.map((row) => ({ name: row.name, count: row._count._all })),
         emails: emails.map((row) => ({
@@ -255,15 +265,17 @@ export async function get_user_filter_data() {
 }
 
 /** Load all companies and company-scoped roles for the user creation form. Sort both choice lists by name and ID for stable ordering. */
-export async function get_user_option() {
+export async function get_user_option(access?: RecordAccess) {
+  const companyIds = allowed_company_ids(access, "users");
   const db = getDatabase();
   const [companies, roles] = await Promise.all([
     db.company.findMany({
+      where: companyIds ? { id: { in: companyIds } } : {},
       select: { id: true, name: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
     db.roles.findMany({
-      where: { scope: "company" },
+      where: { scope: "company", ...(access && !access.superAdmin ? { id: { in: [] } } : {}) },
       select: role_select,
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
@@ -291,7 +303,7 @@ export async function assignable_user(input: CreateUserInput): Promise<{
           select: { id: true },
         }),
     roleIds.length
-      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company" } })
+      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company", OR: [{ company_id: null }, { company_id: input.company_id }] } })
       : 0,
   ]);
   return { existingUser, company, roleCount };

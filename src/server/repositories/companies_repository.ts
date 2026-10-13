@@ -1,3 +1,4 @@
+import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
@@ -28,8 +29,9 @@ function serialize_company(company: CompanyRecord): CompanySummary {
 }
 
 /** Return a sorted page of companies matching a literal, case-insensitive name search, including their membership counts. Read the rows and matching total from the same database snapshot. */
-export async function list_company(pagination: Pagination, search: string, sorting?: Sorting) {
+export async function list_company(pagination: Pagination, search: string, sorting?: Sorting, access?: RecordAccess) {
   const where = build_filter<Prisma.companyWhereInput>(undefined, {
+    where: record_where(access, "companies"),
     search: { value: search, fields: [(filter) => ({ name: filter })] },
   });
   const orderBy = build_sort<Prisma.companyOrderByWithRelationInput>(sorting, {
@@ -66,22 +68,24 @@ export async function list_by_id_company(
   id: string,
   client: DatabaseExecutor = getDatabase(),
   lock = false,
+  access?: RecordAccess,
+  action = "view",
 ) {
   // Keep the row lock before reading membership counts to protect against concurrent inserts.
   if (lock)
     await client.$queryRaw`select id from "company" where id = ${id}::uuid for update`;
-  const company = await client.company.findUnique({
-    where: { id },
+  const company = await client.company.findFirst({
+    where: { AND: [{ id }, record_where(access, "companies", action)] },
     include: company_include,
   });
   return company ? serialize_company(company) : null;
 }
 
 /** Insert a company with the supplied name and return its API summary, including timestamps and membership count. */
-export async function create_company(input: CreateCompanyInput) {
+export async function create_company(input: CreateCompanyInput, createdBy?: string) {
   return serialize_company(
     await getDatabase().company.create({
-      data: input,
+      data: { ...input, created_by: createdBy },
       include: company_include,
     }),
   );
@@ -91,10 +95,11 @@ export async function create_company(input: CreateCompanyInput) {
 export async function update_company(
   input: UpdateCompanyInput,
   client: DatabaseExecutor,
+  access?: RecordAccess,
 ) {
   return serialize_company(
     await client.company.update({
-      where: { id: input.id },
+      where: { id: input.id, AND: [record_where(access, "companies", "edit")] },
       data: { name: input.name },
       include: company_include,
     }),
@@ -102,6 +107,6 @@ export async function update_company(
 }
 
 /** Delete a company by ID through the supplied database client. The service checks membership and controls the transaction before calling this query. */
-export async function delete_company(id: string, client: DatabaseExecutor) {
-  await client.company.delete({ where: { id } });
+export async function delete_company(id: string, client: DatabaseExecutor, access?: RecordAccess) {
+  await client.company.delete({ where: { id, AND: [record_where(access, "companies", "delete")] } });
 }

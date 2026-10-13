@@ -48,6 +48,7 @@ export function UserForm({ onCreated, onCancel }: { onCreated: (user: UserSummar
       if (error && typeof error === "object" && "status" in error && error.status === 401) router.replace("/login");
     } finally { busy.current = false; }
   }
+  const companyRoles = options.roles.filter((role) => !role.company_id || role.company_id === companyId);
   const field = "space-y-2";
   const label = "block text-sm font-medium";
   return <form onSubmit={submit} className="space-y-5" aria-busy={pending}>
@@ -65,7 +66,7 @@ export function UserForm({ onCreated, onCancel }: { onCreated: (user: UserSummar
         {optionsStatus === "loading" && <p role="status" className="mt-3 text-xs text-muted-foreground">Loading companies and roles…</p>}
         {optionsError && <div className="mt-3"><p role="alert" className="text-xs text-destructive">Assignments could not be loaded. You can still create an unassigned account.</p><Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => dispatch(getUserOption())}>Retry loading assignments</Button></div>}
         {optionsStatus === "succeeded" && !options.companies.length && <p className="mt-3 text-xs text-muted-foreground">No companies have been created yet.</p>}
-        {companyId && <fieldset className="mt-4"><legend className="mb-2 text-sm font-medium">Company roles</legend>{options.roles.length ? <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border bg-white p-3">{options.roles.map((role) => <label key={role.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={roleIds.includes(role.id)} onChange={(event) => setRoleIds((current) => event.target.checked ? [...current, role.id] : current.filter((id) => id !== role.id))} className="size-4 accent-primary" />{role.name}</label>)}</div> : <p className="text-xs text-muted-foreground">No company roles are available. The membership can be created without roles.</p>}</fieldset>}
+        {companyId && <fieldset className="mt-4"><legend className="mb-2 text-sm font-medium">Company roles</legend>{companyRoles.length ? <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border bg-white p-3">{companyRoles.map((role) => <label key={role.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={roleIds.includes(role.id)} onChange={(event) => setRoleIds((current) => event.target.checked ? [...current, role.id] : current.filter((id) => id !== role.id))} className="size-4 accent-primary" />{role.name}</label>)}</div> : <p className="text-xs text-muted-foreground">No company roles are available. The membership can be created without roles.</p>}</fieldset>}
       </div>
     </fieldset>
     {(formError || createError) && <p role="alert" className="text-sm text-destructive">{formError ?? createError?.message}</p>}

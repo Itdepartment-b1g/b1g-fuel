@@ -1,4 +1,6 @@
 "use client";
+import { useRecordAccess } from "@/components/providers/access-provider";
+import { canPerform } from "@/lib/auth/access-scope";
 
 import { useToast } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
@@ -32,6 +34,7 @@ import { UsersCards } from "./card-views/users-cards";
 
 export default function UsersList() {
   const dispatch = useAppDispatch();
+  const access = useRecordAccess();
   const toast = useToast();
   const router = useRouter();
   const {
@@ -100,7 +103,7 @@ export default function UsersList() {
       <section className="rounded-xl border p-6">
         <h1 className="text-xl font-semibold">Access restricted</h1>
         <p className="mt-2 text-muted-foreground">
-          User management is available to super-admins.
+          You do not have permission to view users.
         </p>
         <Button
           variant="outline"
@@ -125,13 +128,13 @@ export default function UsersList() {
             Create accounts and view company and role assignments.
           </p>
         </div>
-        <CreateUserDialog
+        {canPerform(access, "users", "add") && <CreateUserDialog
           onCreated={(user) => {
             toast.success(`${user.name} was created successfully.`);
             setPage(1);
             setRevision((value) => value + 1);
           }}
-        />
+        />}
       </header>
       <SearchFilterBar
         search={search}

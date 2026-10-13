@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { createRole, updateRole, selectRole } from "@/lib/store/roles-slice";
 import type { RoleSummary, RoleScope } from "@/server/schema/roles_schema";
+import { ACCESS_SCOPES, ACCESS_SCOPE_LABELS, type AccessScope } from "@/lib/auth/access-scope";
 
 export function RoleForm({
   role,
@@ -30,9 +31,11 @@ export function RoleForm({
   const readOnly = Boolean(role?.is_system || role?.slug === "super_admin");
   const busy = useRef(false);
   const [scope, setScope] = useState<RoleScope>(role?.scope ?? "company");
+  const [companyId, setCompanyId] = useState(role?.company_id ?? "");
   const [isDefault, setIsDefault] = useState(role?.is_default_role ?? false);
   const [pages, setPages] = useState(role?.pages ?? []);
   const [permissions, setPermissions] = useState(role?.permissions ?? []);
+  const [permissionScopes, setPermissionScopes] = useState<Record<string, AccessScope>>(role?.permission_scopes ?? {});
   const [error, setError] = useState<string | null>(null);
   const sameKeys = (left: string[], right: string[]) =>
     left.length === right.length && left.every((key) => right.includes(key));
@@ -45,8 +48,13 @@ export function RoleForm({
       setError("Enter a role name.");
       return;
     }
+    if (!role && scope === "company" && !companyId) {
+      setError("Select a company for this role.");
+      return;
+    }
     busy.current = true;
     setError(null);
+    const selectedScopes = Object.fromEntries(permissions.filter((key) => !key.endsWith(".add")).map((key) => [key, permissionScopes[key] ?? "company"]));
     try {
       const response = role
         ? await dispatch(
@@ -54,6 +62,8 @@ export function RoleForm({
               id: role.id,
               name,
               is_default_role: isDefault,
+              permission_scopes: selectedScopes,
+              ...(companyId !== (role.company_id ?? "") ? { company_id: companyId || null } : {}),
               ...(!sameKeys(pages, role.pages) ? { pages } : {}),
               ...(!sameKeys(permissions, role.permissions)
                 ? { permissions }
@@ -67,9 +77,11 @@ export function RoleForm({
                 ? { slug: String(form.get("slug")).trim() }
                 : {}),
               scope,
+              company_id: scope === "company" ? companyId || null : null,
               is_default_role: isDefault,
               pages,
               permissions,
+              permission_scopes: selectedScopes,
             }),
           ).unwrap();
       onSaved(response.role);
@@ -131,7 +143,8 @@ export function RoleForm({
               onChange={(event) => {
                 const next = event.target.value as RoleScope;
                 setScope(next);
-                if (next === "global") setIsDefault(false);
+                if (next === "global") { setIsDefault(false); setCompanyId(""); }
+                if (next === "company") setPermissionScopes((current) => Object.fromEntries(Object.entries(current).map(([key, value]) => [key, value === "all" ? "company" : value])));
               }}
             >
               <option value="company">Company</option>
@@ -144,6 +157,28 @@ export function RoleForm({
             </span>
           </label>
         </div>
+        {scope === "company" && (
+          <label className="block space-y-2 text-sm font-medium">
+            Company {!role && <span className="text-destructive">*</span>}
+            <select
+              aria-label="Role company"
+              value={companyId}
+              required={!role}
+              disabled={optionsStatus !== "succeeded" || Boolean(role?.assignment_count)}
+              onChange={(event) => setCompanyId(event.target.value)}
+              className="h-10 w-full rounded-md border bg-white px-3 text-sm disabled:opacity-50"
+            >
+              <option value="">{role ? "No company assigned" : "Select a company"}</option>
+              {role?.company && !options.companies.some((company) => company.id === role.company_id) && (
+                <option value={role.company.id}>{role.company.name}</option>
+              )}
+              {options.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+            <span className="block text-xs font-normal text-muted-foreground">
+              {role?.assignment_count ? "Remove user assignments before changing this role's company." : "This role will be available to users in the selected company."}
+            </span>
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -158,54 +193,65 @@ export function RoleForm({
           Only one company role can be the default. Clear the current default
           before choosing another.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(["pages", "permissions"] as const).map((kind) => {
-            const selected = kind === "pages" ? pages : permissions;
-            const setSelected = kind === "pages" ? setPages : setPermissions;
-            const choices = options[kind];
+        <fieldset className="space-y-3">
+          <legend className="mb-2 text-sm font-medium">Pages and permissions</legend>
+          <p className="text-xs text-muted-foreground">Select a page, then choose what this role can do on that page.</p>
+          {optionsStatus === "loading" ? (
+            <p role="status" className="text-sm text-muted-foreground">Loading pages?</p>
+          ) : options.pages.length ? options.pages.map((page) => {
+            const selected = pages.includes(page.key);
+            const choices = options.permissions.filter((permission) => permission.page_key === page.key);
             return (
-              <fieldset key={kind} className="rounded-lg border p-3">
-                <legend className="px-1 text-sm font-medium">
-                  {kind === "pages" ? "Pages" : "Permissions"}
-                </legend>
-                {optionsStatus === "loading" ? (
-                  <p className="text-xs text-muted-foreground">
-                    Loading choices…
-                  </p>
-                ) : choices.length ? (
-                  <div className="max-h-48 space-y-3 overflow-y-auto">
-                    {choices.map((choice) => (
-                      <label
-                        key={choice.key}
-                        className="flex items-start gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(choice.key)}
-                          onChange={(event) =>
-                            setSelected((current) =>
-                              toggleKey(
-                                current,
-                                choice.key,
-                                event.target.checked,
-                              ),
-                            )
-                          }
-                          className="mt-0.5 size-4 accent-primary"
-                        />
-                        <span>{choice.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No choices available.
-                  </p>
+              <div key={page.key} className="rounded-lg border">
+                <label className="flex cursor-pointer items-center gap-3 p-3 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={(event) => {
+                      setPages((current) => toggleKey(current, page.key, event.target.checked));
+                      if (!event.target.checked) {
+                        setPermissions((current) => current.filter((key) => !choices.some((choice) => choice.key === key)));
+                      }
+                    }}
+                    className="size-4 accent-primary"
+                  />
+                  {page.label}
+                </label>
+                {selected && (
+                  <details open className="border-t px-3 py-2">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">Permissions for {page.label}</summary>
+                    <div className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-4">
+                      {choices.map((choice) => (
+                        <div key={choice.key} className="space-y-2">
+                        <label key={choice.key} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={permissions.includes(choice.key)}
+                            onChange={(event) => setPermissions((current) => toggleKey(current, choice.key, event.target.checked))}
+                            className="size-4 accent-primary"
+                          />
+                          {choice.label}
+                        </label>
+                        {choice.action !== "add" && permissions.includes(choice.key) && (
+                          <select
+                            aria-label={`${page.label} ${choice.label} access scope`}
+                            value={permissionScopes[choice.key] ?? "company"}
+                            onChange={(event) => setPermissionScopes((current) => ({ ...current, [choice.key]: event.target.value as AccessScope }))}
+                            className="h-9 w-full rounded-md border bg-white px-2 text-xs"
+                          >
+                            {ACCESS_SCOPES.filter((value) => scope === "global" || value !== "all").map((value) => <option key={value} value={value}>{ACCESS_SCOPE_LABELS[value]}</option>)}
+                          </select>
+                        )}
+                        {choice.action === "add" && permissions.includes(choice.key) && <p className="text-xs text-muted-foreground">Creator is set to the signed-in user.</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
-              </fieldset>
+              </div>
             );
-          })}
-        </div>
+          }) : <p className="text-sm text-muted-foreground">No pages available.</p>}
+        </fieldset>
         <p className="text-xs leading-relaxed text-muted-foreground">
           These selections define the role’s access settings. Administrative
           pages currently require a global super-admin role.
@@ -231,7 +277,7 @@ export function RoleForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={pending || readOnly}>
+        <Button type="submit" disabled={pending || readOnly || (!role && scope === "company" && optionsStatus !== "succeeded")}>
           {pending && (
             <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
           )}

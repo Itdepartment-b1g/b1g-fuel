@@ -1,3 +1,4 @@
+import { ACCESS_SCOPES, type AccessScope } from "@/lib/auth/access-scope";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";
 import type { Request, Response, NextFunction } from "express";
@@ -13,6 +14,13 @@ import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 
 const role_id_pattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parse_role_company(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string" || !role_id_pattern.test(value))
+    throw new RoleError("invalid_input", "Provide a valid company ID.");
+  return value.toLowerCase();
+}
 const role_mapping_rules: ReadonlyArray<
   readonly ["pages" | "permissions", string, readonly string[]]
 > = [
@@ -23,6 +31,20 @@ const role_mapping_rules: ReadonlyArray<
     PERMISSION_CATALOG.map((permission) => permission.key),
   ],
 ];
+function parse_permission_scopes(value: unknown): Record<string, AccessScope> {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 200)
+    throw new RoleError("invalid_input", "Provide permission access scopes.");
+  const result: Record<string, AccessScope> = {};
+  for (const [key, scope] of Object.entries(value)) {
+    const choice = PERMISSION_CATALOG.find((permission) => permission.key === key);
+    if (!choice || choice.action === "add" || !ACCESS_SCOPES.includes(scope as AccessScope))
+      throw new RoleError("invalid_input", "Provide a registered View, Edit or Delete permission and a valid access scope.");
+    result[key] = scope as AccessScope;
+  }
+  return result;
+}
+
 const role_error_status: Partial<Record<RoleError["code"], number>> = {
   invalid_input: 400,
   role_not_found: 404,
@@ -42,7 +64,7 @@ const role_database_errors: Record<
   },
   "23503": {
     status: 409,
-    message: "This role is assigned to users and cannot be deleted.",
+    message: "The company is unavailable or this role is still assigned to users.",
   },
   "23514": {
     status: 400,
@@ -73,9 +95,11 @@ export async function create_role(
             "name",
             "slug",
             "scope",
+            "company_id",
             "is_default_role",
             "pages",
             "permissions",
+            "permission_scopes",
           ].includes(key),
       )
     )
@@ -147,10 +171,12 @@ export async function create_role(
       name,
       slug,
       scope,
+      company_id: parse_role_company(body.company_id),
       is_default_role,
       ...mappings,
+      permission_scopes: parse_permission_scopes(body.permission_scopes),
     };
-    res.status(201).json({ role: await service.create_role(input) });
+    res.status(201).json({ role: await service.create_role(input, undefined, res.locals.user?.id) });
   } catch (error) {
     if (error instanceof PaginationError) {
       res.status(400).json({ error: error.message });
@@ -223,7 +249,7 @@ export async function update_role(
     if (
       Object.keys(body).some(
         (key) =>
-          !["id", "name", "is_default_role", "pages", "permissions"].includes(
+          !["id", "name", "company_id", "is_default_role", "pages", "permissions", "permission_scopes"].includes(
             key,
           ),
       )
@@ -237,6 +263,8 @@ export async function update_role(
     if (typeof body.id !== "string" || !role_id_pattern.test(body.id))
       throw new RoleError("invalid_input", "Provide a valid role ID.");
     const input: UpdateRoleInput = { id: body.id.toLowerCase() };
+    if (body.permission_scopes !== undefined) input.permission_scopes = parse_permission_scopes(body.permission_scopes);
+    if (body.company_id !== undefined) input.company_id = parse_role_company(body.company_id);
     if (body.name !== undefined) {
       if (
         typeof body.name !== "string" ||
@@ -412,7 +440,7 @@ export async function list_by_id_role(
       throw new RoleError("invalid_input", "Provide a valid role ID.");
     res
       .status(200)
-      .json({ role: await service.list_by_id_role(id.toLowerCase()) });
+      .json({ role: await service.list_by_id_role(id.toLowerCase(), undefined, res.locals.access) });
   } catch (error) {
     if (error instanceof PaginationError) {
       res.status(400).json({ error: error.message });
@@ -494,7 +522,7 @@ export async function list_role(
       );
     res
       .status(200)
-      .json(await service.list_role(pagination, search.trim(), scope, sorting));
+      .json(await service.list_role(pagination, search.trim(), scope, sorting, undefined, res.locals.access));
   } catch (error) {
     if (error instanceof PaginationError || error instanceof SortingError) {
       res.status(400).json({ error: error.message });

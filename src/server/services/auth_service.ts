@@ -3,6 +3,7 @@ import type { createAuthClient } from "@/server/auth/supabase";
 import { authRepository } from "@/server/repositories/auth_repository";
 import { UserError } from "@/server/services/users_service";
 import { verifyUserToken } from "@/server/security/jwt";
+import { get_record_access } from "@/server/auth/record-access";
 
 type Auth = ReturnType<typeof createAuthClient>["auth"];
 type Profile = Awaited<ReturnType<typeof authRepository.get_user_profile>>;
@@ -10,7 +11,8 @@ export const authService = {
   async get_user_session(user: User, suppliedProfile?: Profile) {
     const [roles, profile] = await Promise.all([authRepository.list_user_global_role(user.id), suppliedProfile ?? authRepository.get_user_profile(user.id)]);
     const name = [user.user_metadata?.full_name, user.user_metadata?.name].find(value => typeof value === "string" && value.trim());
-    return { user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null }, global_roles: roles.map(({ role }) => role.slug) };
+    const access = await get_record_access(user.id);
+    return { user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null }, global_roles: roles.map(({ role }) => role.slug), access };
   },
   async login_user(auth: Pick<Auth, "signInWithPassword">, input: { email: string; password: string }) {
     const { data, error } = await auth.signInWithPassword(input);

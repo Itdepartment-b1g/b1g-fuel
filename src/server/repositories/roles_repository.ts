@@ -1,3 +1,4 @@
+import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
@@ -7,14 +8,17 @@ import type {
   RoleSummary,
   RoleScope,
 } from "@/server/schema/roles_schema";
+import type { AccessScope } from "@/lib/auth/access-scope";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 
 const role_include = {
+  company: { select: { id: true, name: true } },
   pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
   permissions: {
     select: {
       permission_key: true,
+      access_scope: true,
     },
     orderBy: {
       permission_key: "asc",
@@ -37,6 +41,7 @@ function serialize_role(role: RoleRecord): RoleSummary {
     updated_at: record.updated_at.toISOString(),
     pages: pages.map((page) => page.page_key),
     permissions: permissions.map((permission) => permission.permission_key),
+    permission_scopes: Object.fromEntries(permissions.filter((permission) => !permission.permission_key.endsWith(".add")).map((permission) => [permission.permission_key, permission.access_scope as AccessScope])),
     assignment_count: _count.user_roles + _count.company_roles,
   };
 }
@@ -47,9 +52,10 @@ export async function list_role(
   search: string,
   scope?: RoleScope,
   sorting?: Sorting,
+  access?: RecordAccess,
 ) {
   const where = build_filter<Prisma.rolesWhereInput>(undefined, {
-    where: scope ? { scope } : undefined,
+    where: { AND: [scope ? { scope } : {}, record_where(access, "roles")] },
     search: {
       value: search,
       fields: [(filter) => ({ name: filter }), (filter) => ({ slug: filter })],
@@ -91,28 +97,32 @@ export async function list_role(
 export async function list_by_id_role(
   id: string,
   client: DatabaseExecutor = getDatabase(),
+  access?: RecordAccess,
 ) {
-  const role = await client.roles.findUnique({
-    where: { id },
+  const role = await client.roles.findFirst({
+    where: { AND: [{ id }, record_where(access, "roles")] },
     include: role_include,
   });
   return role ? serialize_role(role) : null;
 }
 
 /** Create a non-system role with the supplied scope and default setting, plus its page and permission mappings in one transaction. Return the saved role summary. */
-export async function create_role(input: Required<CreateRoleInput>) {
+export async function create_role(input: Required<CreateRoleInput>, createdBy?: string) {
   return getDatabase().$transaction(async (tx) => {
     const role = await tx.roles.create({
       data: {
         name: input.name,
+        created_by: createdBy,
         slug: input.slug,
         scope: input.scope,
+        company_id: input.company_id,
         is_system: false,
         is_default_role: input.is_default_role,
         pages: { create: input.pages.map((page_key) => ({ page_key })) },
         permissions: {
           create: input.permissions.map((permission_key) => ({
             permission_key,
+            access_scope: input.permission_scopes[permission_key] ?? "company",
           })),
         },
       },
@@ -132,6 +142,7 @@ export async function update_role(
     where: { id: input.id, ...expected },
     data: {
       ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.company_id !== undefined ? { company_id: input.company_id } : {}),
       ...(input.is_default_role !== undefined
         ? { is_default_role: input.is_default_role }
         : {}),
@@ -153,8 +164,14 @@ export async function update_role(
         data: input.permissions.map((permission_key) => ({
           role_id: input.id,
           permission_key,
+          access_scope: input.permission_scopes?.[permission_key] ?? "company",
         })),
       });
+  }
+  if (input.permission_scopes !== undefined && input.permissions === undefined) {
+    for (const [permission_key, access_scope] of Object.entries(input.permission_scopes)) {
+      await client.role_permissions.updateMany({ where: { role_id: input.id, permission_key }, data: { access_scope } });
+    }
   }
   return list_by_id_role(input.id, client);
 }

@@ -1,7 +1,7 @@
+import { loadRecordAccess, requirePermission } from "@/server/auth/record-access";
 import { rateLimit } from "express-rate-limit";
 import { Router } from "express";
 import { requireAuthUser } from "@/server/auth/session";
-import { requireSuperAdmin } from "@/server/auth/authorization";
 import { create_user, get_user_option, get_user_filter_option, list_user } from "@/server/controllers/users_controller";
 
 const create_user_limiter = rateLimit({
@@ -18,8 +18,8 @@ const create_user_limiter = rateLimit({
 
 export const usersRouter = Router();
 usersRouter.use((_req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
-usersRouter.use(requireAuthUser, requireSuperAdmin);
-usersRouter.get("/", list_user);
-usersRouter.get("/options", get_user_option);
-usersRouter.get("/filter-options", get_user_filter_option);
-usersRouter.post("/", create_user_limiter, create_user);
+usersRouter.use(requireAuthUser, loadRecordAccess);
+usersRouter.get("/", requirePermission("users", "view"), list_user);
+usersRouter.get("/options", requirePermission("users", "add"), get_user_option);
+usersRouter.get("/filter-options", requirePermission("users", "view"), get_user_filter_option);
+usersRouter.post("/", requirePermission("users", "add"), create_user_limiter, create_user);

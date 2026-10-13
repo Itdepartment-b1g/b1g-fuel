@@ -1,4 +1,6 @@
 "use client";
+import { useRecordAccess } from "@/components/providers/access-provider";
+import { canPerform } from "@/lib/auth/access-scope";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
 import { useEffect, useState } from "react";
@@ -25,6 +27,7 @@ import { RolesCards } from "./card-views/roles-cards";
 
 export default function RolesList() {
   const dispatch = useAppDispatch();
+  const access = useRecordAccess();
   const toast = useToast();
   const router = useRouter();
   const { roles, total, listStatus, listError, mutationStatus, mutationError } =
@@ -90,7 +93,7 @@ export default function RolesList() {
       <section className="rounded-xl border p-6">
         <h1 className="text-xl font-semibold">Access restricted</h1>
         <p className="mt-2 text-muted-foreground">
-          Role management is available to super-admins.
+          You do not have permission to view roles.
         </p>
       </section>
     );
@@ -116,10 +119,10 @@ export default function RolesList() {
         description="Define role access, pages, permissions and company defaults."
         total={total}
         action={
-          <Button disabled={pending} onClick={() => openRole()}>
+          canPerform(access, "roles", "add") ? <Button disabled={pending} onClick={() => openRole()}>
             <Plus className="size-4" aria-hidden="true" />
             Add role
-          </Button>
+          </Button> : null
         }
         searchDraft={draft}
         onSearchDraft={setDraft}

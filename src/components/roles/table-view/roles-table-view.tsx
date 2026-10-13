@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecordAccess } from "@/components/providers/access-provider";
 import { LockKeyhole, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/common/data-table";
@@ -17,7 +18,8 @@ export function RoleActions({
   onDelete,
   disabled,
 }: RoleActionProps & { role: RoleSummary }) {
-  const protectedRole = role.is_system || role.slug === "super_admin";
+  const access = useRecordAccess();
+  const protectedRole = !access?.superAdmin || role.is_system || role.slug === "super_admin";
   return (
     <div className="flex items-center justify-end gap-1">
       <Button
@@ -82,8 +84,9 @@ type Props = RoleActionProps & {
 };
 
 export function RolesTableView(props: Props) {
+  const access = useRecordAccess();
   const protectedRole = (role: RoleSummary) =>
-    role.is_system || role.slug === "super_admin";
+    !access?.superAdmin || role.is_system || role.slug === "super_admin";
   return (
     <DataTable
       data={props.roles}
@@ -109,6 +112,13 @@ export function RolesTableView(props: Props) {
               <p className="mt-1 text-xs text-muted-foreground">{role.slug}</p>
             </>
           ),
+        },
+        {
+          id: "company",
+          header: "Company",
+          width: 220,
+          freezable: true,
+          cell: (role) => role.company?.name ?? (role.scope === "global" ? "Global" : "Not assigned"),
         },
         {
           id: "scope",

@@ -11,7 +11,7 @@ const company_error_status: Partial<Record<CompanyError["code"], number>> = {
   invalid_input: 400, company_not_found: 404, company_has_members: 409,
 };
 const company_database_errors: Record<string, { status: number; message: string }> = {
-  "23503": { status: 409, message: "Company memberships changed. Refresh and try again." },
+  "23503": { status: 409, message: "This company has assigned roles or memberships. Remove or reassign them before deleting it." },
 };
 const prisma_error_codes: Record<string, string> = { P2002: "23505", P2003: "23503", P2004: "23514" };
 
@@ -24,7 +24,7 @@ export async function create_company(req: Request, res: Response, _next?: NextFu
     if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
       throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
     const input: CreateCompanyInput = { name: name.trim() };
-    res.status(201).json({ company: await service.create_company(input) });
+    res.status(201).json({ company: await service.create_company(input, undefined, res.locals.user?.id) });
   } catch (error) {
 
     if (error instanceof PaginationError) {
@@ -72,7 +72,7 @@ export async function update_company(req: Request, res: Response, _next?: NextFu
     if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
       throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
     const input: UpdateCompanyInput = { id: id.toLowerCase(), name: name.trim() };
-    res.status(200).json({ company: await service.update_company(input) });
+    res.status(200).json({ company: await service.update_company(input, undefined, res.locals.access) });
   } catch (error) {
 
     if (error instanceof PaginationError) {
@@ -114,7 +114,7 @@ export async function delete_company(req: Request, res: Response, _next?: NextFu
     const id = req.query.id;
     if (typeof id !== "string" || !company_id_pattern.test(id))
       throw new CompanyError("invalid_input", "Provide a valid company ID.");
-    res.status(200).json(await service.delete_company(id.toLowerCase()));
+    res.status(200).json(await service.delete_company(id.toLowerCase(), undefined, res.locals.access));
   } catch (error) {
 
     if (error instanceof PaginationError) {
@@ -156,7 +156,7 @@ export async function list_by_id_company(req: Request, res: Response, _next?: Ne
     const id = req.query.id;
     if (typeof id !== "string" || !company_id_pattern.test(id))
       throw new CompanyError("invalid_input", "Provide a valid company ID.");
-    res.status(200).json({ company: await service.list_by_id_company(id.toLowerCase()) });
+    res.status(200).json({ company: await service.list_by_id_company(id.toLowerCase(), undefined, res.locals.access) });
   } catch (error) {
 
     if (error instanceof PaginationError) {
@@ -199,7 +199,7 @@ export async function list_company(req: Request, res: Response, _next?: NextFunc
     const search = req.query.search ?? "";
     if (typeof search !== "string" || search.length > 160)
       throw new CompanyError("invalid_input", "Search must contain at most 160 characters.");
-    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim(), sorting));
+    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim(), sorting, undefined, res.locals.access));
   } catch (error) {
 
     if (error instanceof PaginationError || error instanceof SortingError) {
