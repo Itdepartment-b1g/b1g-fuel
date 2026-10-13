@@ -138,7 +138,7 @@ export function TableRow<T>({
                     title={description}
                     onClick={() => action.onSelect(row)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-md px-2 py-1 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
+                      "inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-[4px] px-2 py-1 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
                       action.destructive,
                     )}
                   >

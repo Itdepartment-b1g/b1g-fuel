@@ -109,7 +109,19 @@ export function RolesTableView(props: Props) {
           cell: (role) => (
             <>
               <p className="font-medium">{role.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{role.slug}</p>
+            </>
+          ),
+        },
+        {
+          id: "slug",
+          header: "Slug",
+          width: 250,
+          sortable: true,
+          freezable: true,
+          value: (role) => role.name,
+          cell: (role) => (
+            <>
+              <p className="text-gray-500">{role.slug}</p>
             </>
           ),
         },
@@ -133,13 +145,14 @@ export function RolesTableView(props: Props) {
           header: "Access",
           width: 260,
           freezable: true,
+          className:"text-xs text-gray-500",
           cell: (role) =>
             role.slug === "super_admin"
-              ? "Full dashboard access"
+              ? "FULL DASHBOARD ACCESS"
               : role.pages.length +
-                " pages / " +
+                " PAGES / " +
                 role.permissions.length +
-                " permissions",
+                " PERMISSIONS",
         },
         {
           id: "assignment_count",
