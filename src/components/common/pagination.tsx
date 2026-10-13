@@ -44,7 +44,7 @@ export function Pagination({
     else if (action === "next") onNext();
   }
   return (
-    <div className={cn("border-t px-2 py-4 sm:px-6", className)}>
+    <div className={cn("px-1 py-4", className)}>
       <div className="hidden items-center justify-between gap-4 sm:flex">
         {onLimitChange && (
           <label className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -68,32 +68,32 @@ export function Pagination({
             </select>
           </label>
         )}
-        <div className="ml-auto flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="ml-auto flex items-center gap-4 text-sm text-slate-500">
+          <button
+            type="button"
             aria-label="Previous page"
             disabled={!canPrev}
             onClick={() => {
               if (canPrev) onPrev();
             }}
+            className="disabled:opacity-40"
           >
             Previous
-          </Button>
-          <span className="whitespace-nowrap text-sm text-muted-foreground">
+          </button>
+          <span className="whitespace-nowrap">
             Page {page} of {total_pages}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             aria-label="Next page"
             disabled={!canNext}
             onClick={() => {
               if (canNext) onNext();
             }}
+            className="disabled:opacity-40"
           >
             Next
-          </Button>
+          </button>
         </div>
       </div>
       <nav

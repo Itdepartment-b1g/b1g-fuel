@@ -17,8 +17,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
-  MoreVertical,
-  PackageOpen,
   Pin,
   PinOff,
 } from "lucide-react";
@@ -208,22 +206,9 @@ export function DataTable<T>({
     >
       <table
         ref={table}
-        className="w-full table-fixed border-separate border-spacing-0 text-sm"
-        style={{
-          minWidth:
-            columns.reduce((sum, column) => sum + (column.width ?? 180), 0) +
-            (expandedRow ? 44 : 0) +
-            (actions ? 72 : 0),
-        }}
+        className="w-full border-separate border-spacing-0 text-sm"
       >
         <caption className="sr-only">{caption}</caption>
-        <colgroup>
-          {expandedRow && <col style={{ width: 44 }} />}
-          {ordered.map((column) => (
-            <col key={column.id} style={{ width: column.width ?? 180 }} />
-          ))}
-          {actions && <col style={{ width: 72 }} />}
-        </colgroup>
         <thead>
           <tr>
             {expandedRow && (
@@ -295,24 +280,24 @@ export function DataTable<T>({
                   separatorBefore: Boolean(column.sortable),
                   onSelect: () => toggleFrozen(column.id),
                 });
-              const label = (
+              const heading = (
                 <>
                   <span className="truncate">{column.header}</span>
                   {pinned && (
                     <Pin
-                      className="size-3.5 shrink-0 text-blue-600"
+                      className="size-3.5 shrink-0 text-gray-400"
                       aria-label="Frozen column"
                     />
                   )}
                   {column.sortable &&
                     (selected ? (
                       activeSort?.direction === "asc" ? (
-                        <ArrowUp className="size-4 text-blue-600" />
+                        <ArrowUp className="size-3.5 text-gray-400" />
                       ) : (
-                        <ArrowDown className="size-4 text-blue-600" />
+                        <ArrowDown className="size-3.5 text-gray-400" />
                       )
                     ) : (
-                      <ArrowUpDown className="size-3.5 text-muted-foreground" />
+                      <ArrowUpDown className="size-3.5 text-gray-400" />
                     ))}
                 </>
               );
@@ -333,21 +318,21 @@ export function DataTable<T>({
                   }
                   style={cellStyle(column)}
                   className={cn(
-                    "h-12 border-b bg-slate-50 px-3 text-left text-xs font-semibold text-primary",
+                    "border-b bg-white px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500",
                     pinned &&
-                      "z-20 border-r shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
+                      "sticky z-20 border-r bg-white shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
                   )}
                 >
                   {menu.length ? (
                     <TableMenu
                       label={`${column.header} column options`}
                       items={menu}
-                      className="-ml-2 max-w-full"
+                      className="-ml-2 max-w-full uppercase tracking-wider"
                     >
-                      {label}
+                      {heading}
                     </TableMenu>
                   ) : (
-                    label
+                    heading
                   )}
                 </th>
               );
@@ -355,7 +340,7 @@ export function DataTable<T>({
             {actions && (
               <th
                 scope="col"
-                className="border-b bg-slate-50 px-3 text-right text-xs font-semibold text-primary"
+                className="border-b bg-white px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
               >
                 Actions
               </th>
@@ -375,15 +360,11 @@ export function DataTable<T>({
             ))
           ) : !sorted.length ? (
             <tr>
-              <td colSpan={span} className="px-6 py-14 text-center">
-                <PackageOpen
-                  className="mx-auto mb-3 size-10 text-primary/30"
-                  aria-hidden="true"
-                />
-                <p className="font-semibold">{emptyTitle}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {emptyDescription}
-                </p>
+              <td
+                colSpan={span}
+                className="px-6 py-16 text-center text-sm text-muted-foreground"
+              >
+                {emptyDescription || emptyTitle}
               </td>
             </tr>
           ) : (
@@ -420,10 +401,10 @@ export function DataTable<T>({
                         key={column.id}
                         style={cellStyle(column)}
                         className={cn(
-                          "border-b bg-white px-4 py-3 align-middle break-words group-hover:bg-slate-50",
+                          "border-b bg-white px-4 py-3.5 align-middle text-foreground group-hover:bg-gray-50",
                           column.freezable &&
                             frozen.includes(column.id) &&
-                            "z-10 border-r shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
+                            "sticky z-10 border-r shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",
                           column.className,
                         )}
                       >
@@ -435,33 +416,40 @@ export function DataTable<T>({
                       </td>
                     ))}
                     {actions && (
-                      <td className="border-b px-3 py-3 text-right group-hover:bg-slate-50">
-                        {available.length > 0 && (
-                          <TableMenu
-                            label={`Actions for row ${key}`}
-                            disabled={actionsDisabled}
-                            items={available.map((action) => ({
-                              id: action.id,
-                              label: action.label,
-                              icon: action.icon,
-                              destructive: action.destructive,
-                              description:
-                                typeof action.description === "function"
-                                  ? action.description(row)
-                                  : action.description,
-                              disabled:
-                                typeof action.disabled === "function"
-                                  ? action.disabled(row)
-                                  : action.disabled,
-                              onSelect: () => action.onSelect(row),
-                            }))}
-                          >
-                            <MoreVertical
-                              className="size-4"
-                              aria-hidden="true"
-                            />
-                          </TableMenu>
-                        )}
+                      <td className="border-b bg-white px-4 py-3.5 text-right whitespace-nowrap group-hover:bg-gray-50">
+                        <div className="flex items-center justify-end gap-4">
+                          {available.map((action) => {
+                            const disabled =
+                              actionsDisabled ||
+                              (typeof action.disabled === "function"
+                                ? action.disabled(row)
+                                : action.disabled);
+                            const description =
+                              typeof action.description === "function"
+                                ? action.description(row)
+                                : action.description;
+                            return (
+                              <button
+                                key={action.id}
+                                type="button"
+                                disabled={disabled}
+                                title={description}
+                                onClick={() => action.onSelect(row)}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline",
+                                  action.destructive && "text-destructive",
+                                )}
+                              >
+                                {action.icon && (
+                                  <span className="[&_svg]:size-3.5">
+                                    {action.icon}
+                                  </span>
+                                )}
+                                {action.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </td>
                     )}
                   </tr>

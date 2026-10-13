@@ -119,7 +119,7 @@ export default function UsersList() {
     );
   return (
     <>
-    <section className="mx-auto max-w-7xl space-y-6">
+    <section className="w-full space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -140,7 +140,8 @@ export default function UsersList() {
           }}
         />}
       </header>
-      <SearchFilterBar
+   <div className="flex flex-wrap items-center justify-between gap-4">
+   <SearchFilterBar
         search={search}
         onSearch={(value) => {
           setSearch(value);
@@ -162,27 +163,7 @@ export default function UsersList() {
         maxLength={254}
         quickFilterActive={activeFilters > 0}
       />
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b px-4 py-5 sm:px-6">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold">All users</h2>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {total}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Refresh users"
-              disabled={loading}
-              onClick={() => setRevision((value) => value + 1)}
-            >
-              <RefreshCw
-                className={`size-4 ${loading ? "animate-spin" : ""}`}
-              />
-            </Button> */}
-            <div
+         <div
               className="flex rounded-lg border p-1"
               role="group"
               aria-label="User display"
@@ -206,8 +187,8 @@ export default function UsersList() {
                 <LayoutGrid className="size-4" />
               </button>
             </div>
-          </div>
-        </div>
+   </div>
+      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
 
         {listError && (
           <div
@@ -284,19 +265,19 @@ export default function UsersList() {
             <UsersCards users={users} onAssign={canPerform(access, "users", "edit") ? setAssigning : undefined} />
           ) : null}
         </div>
-        <Pagination
-          metadata={pagination}
-          disabled={loading}
-          onPrev={() => setPage(pagination.page - 1)}
-          onNext={() => setPage(pagination.page + 1)}
-          onPage={setPage}
-          onLimitChange={(size) => {
-            setPageSize(size);
-            setPage(1);
-          }}
-          limitOptions={PAGE_SIZE_OPTIONS}
-        />
       </div>
+      <Pagination
+        metadata={pagination}
+        disabled={loading}
+        onPrev={() => setPage(pagination.page - 1)}
+        onNext={() => setPage(pagination.page + 1)}
+        onPage={setPage}
+        onLimitChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        limitOptions={PAGE_SIZE_OPTIONS}
+      />
     </section>
       {assigning && (
         <AssignUserDialog

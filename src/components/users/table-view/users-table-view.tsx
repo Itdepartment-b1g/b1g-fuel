@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { UserCog } from "lucide-react";
+import { Pencil } from "lucide-react";
 import {
   DataTable,
   type DataTableColumn,
@@ -29,7 +29,7 @@ export function UserAssignments({ user }: { user: UserSummary }) {
             title={company.name}
             className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
           >
-            {role.name} · {company.name}
+            {role.name} 
           </span>
         )),
       )}
@@ -68,62 +68,53 @@ export function UserAvatar({ name }: { name: string }) {
 const columns: DataTableColumn<UserSummary>[] = [
   {
     id: "name",
-    header: "User",
-    width: 280,
+    header: "Name",
     sortable: true,
     freezable: true,
     value: (user) => user.name,
-    cell: (user) => (
-      <div className="flex items-center gap-3">
-        <UserAvatar name={user.name} />
-        <div>
-          <p className="font-medium">{user.name}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {user.email ?? "No email"}
-          </p>
-        </div>
-      </div>
-    ),
+    cell: (user) => user.name,
+  },
+  {
+    id: "email",
+    header: "Email",
+    sortable: true,
+    freezable: true,
+    value: (user) => user.email,
+    cell: (user) => user.email ?? "—",
   },
   {
     id: "company",
     header: "Company",
-    width: 220,
     freezable: true,
     cell: (user) =>
-      user.companies.length ? (
-        user.companies.map((company) => company.name).join(", ")
-      ) : (
-        <span className="text-muted-foreground">Not assigned</span>
-      ),
+      user.companies.length
+        ? user.companies.map((company) => company.name).join(", ")
+        : "—",
   },
   {
     id: "roles",
     header: "Roles",
-    width: 260,
     freezable: true,
-    cell: (user) => <UserAssignments user={user} />,
+    cell: (user) => {
+      const names = [
+        ...user.global_roles.map((role) => role.name),
+        ...user.companies.flatMap((company) =>
+          company.roles.map((role) => role.name),
+        ),
+      ];
+      return names.length ? names.join(", ") : "—";
+    },
   },
   {
     id: "created_by",
     header: "Created by",
-    width: 240,
     freezable: true,
     value: (user) => user.created_by_name,
-    cell: (user) => {
-      const createdBy = user.created_by_name ?? "Unknown";
-      return (
-        <div className="flex items-center gap-3">
-          <UserAvatar name={createdBy} />
-          <p className="font-medium">{createdBy}</p>
-        </div>
-      );
-    },
+    cell: (user) => user.created_by_name ?? "—",
   },
   {
     id: "created_at",
     header: "Created",
-    width: 170,
     sortable: true,
     freezable: true,
     value: (user) => new Date(user.created_at),
@@ -164,7 +155,19 @@ export function UsersTable({
       onSortingChange={onSortingChange}
       multipleFrozenColumns
       loading={loading}
-      actions={onAssign ? [{ id: "assign", label: "Assign company and roles", icon: <UserCog />, onSelect: onAssign }] : undefined}
+      actions={
+        onAssign
+          ? [
+              {
+                id: "assign",
+                label: "Assign",
+                icon: <Pencil />,
+                description: "Assign company and roles",
+                onSelect: onAssign,
+              },
+            ]
+          : undefined
+      }
     />
   );
 }
@@ -193,6 +196,7 @@ export function UsersTableView({ users }: { users: UserSummary[] }) {
   const result = paginateItems(records, page, limit);
   if (page !== result.page) setPage(result.page);
   return (
+    <>
     <section className="overflow-hidden rounded-xl border bg-white">
       <div className="flex flex-wrap gap-3 border-b p-4">
         <Input
@@ -215,16 +219,17 @@ export function UsersTableView({ users }: { users: UserSummary[] }) {
           setPage(1);
         }}
       />
-      <Pagination
-        metadata={result}
-        onPrev={() => setPage(result.page - 1)}
-        onNext={() => setPage(result.page + 1)}
-        onPage={setPage}
-        onLimitChange={(value) => {
-          setLimit(value);
-          setPage(1);
-        }}
-      />
     </section>
+    <Pagination
+      metadata={result}
+      onPrev={() => setPage(result.page - 1)}
+      onNext={() => setPage(result.page + 1)}
+      onPage={setPage}
+      onLimitChange={(value) => {
+        setLimit(value);
+        setPage(1);
+      }}
+    />
+    </>
   );
 }

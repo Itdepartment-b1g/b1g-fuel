@@ -115,12 +115,18 @@ export function RolesTableView(props: Props) {
         },
         {
           id: "scope",
-          header: "Scope / type",
-          width: 220,
+          header: "Scope",
           sortable: true,
           freezable: true,
           value: (role) => role.scope,
-          cell: (role) => <RoleLabels role={role} />,
+          cell: (role) =>
+            [
+              role.scope === "global" ? "Global" : "Company",
+              role.is_system ? "System" : null,
+              role.is_default_role ? "Default" : null,
+            ]
+              .filter(Boolean)
+              .join(", "),
         },
         {
           id: "access",

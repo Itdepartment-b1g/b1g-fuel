@@ -2,7 +2,7 @@
 
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
-import { Building2, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/common/data-table";
 import type { TableSort } from "@/lib/table";
@@ -31,10 +31,9 @@ export function CompaniesTableView(props: Props) {
   return <DataTable data={props.companies} rowKey={company => company.id} caption="Organization companies and membership counts"
     sortingMode={props.onSortingChange ? "server" : "client"} sorting={props.sorting} onSortingChange={props.onSortingChange} loading={props.loading} multipleFrozenColumns actionsDisabled={props.disabled}
     columns={[
-      { id: "name", header: "Company", width: 280, sortable: true, freezable: true, value: company => company.name,
-        cell: company => <div className="flex items-center gap-3"><Building2 className="size-5 shrink-0 text-primary" aria-hidden="true" /><span className="font-medium">{company.name}</span></div> },
-      { id: "member_count", header: "Members", width: 140, freezable: true, value: company => company.member_count },
-      { id: "created_at", header: "Created", width: 180, sortable: true, freezable: true, cell: company => <CompanyDate value={company.created_at} /> },
+      { id: "name", header: "Company", sortable: true, freezable: true, value: company => company.name, cell: company => company.name },
+      { id: "member_count", header: "Members", freezable: true, value: company => company.member_count },
+      { id: "created_at", header: "Created", sortable: true, freezable: true, cell: company => <CompanyDate value={company.created_at} /> },
     ]}
     actions={[
       { id: "edit", label: "Edit", icon: <Pencil />, disabled: company => !canPerform(access, "companies", "edit", company), onSelect: props.onEdit },

@@ -2,7 +2,10 @@
 
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
-import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
+import {
+  useToast,
+  toastErrorMessage,
+} from "@/components/providers/toast-provider";
 import type { TableSort } from "@/lib/table";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -143,7 +146,7 @@ export default function CompaniesList() {
   };
   return (
     <>
-      <section className="mx-auto max-w-7xl space-y-6">
+      <section className="w-full space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -163,61 +166,55 @@ export default function CompaniesList() {
             </Button>
           )}
         </header>
-        <SearchFilterBar
-          search={search}
-          onSearch={(value) => {
-            setSearch(value);
-            setPage(1);
-          }}
-          filters={filters}
-          onFiltersChange={(next) => {
-            setFilters(next);
-            setPage(1);
-          }}
-          fields={filterOptions.fields}
-          statusOptions={filterOptions.statusOptions}
-          additionalFilters={filterOptions.additionalFilters}
-          filterLabels={{ date: "Creation date", status: "Membership status" }}
-          maxConditions={50}
-          loading={loading}
-          searchLabel="Search companies by name"
-          placeholder="Search companies"
-          maxLength={160}
-          quickFilterActive={activeFilters > 0}
-        />
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b px-4 py-5 sm:px-6">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold">All companies</h2>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {total}
-              </span>
-            </div>
-            <div
-              className="flex rounded-lg border p-1"
-              role="group"
-              aria-label="Company display"
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <SearchFilterBar
+            search={search}
+            onSearch={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            filters={filters}
+            onFiltersChange={(next) => {
+              setFilters(next);
+              setPage(1);
+            }}
+            fields={filterOptions.fields}
+            statusOptions={filterOptions.statusOptions}
+            additionalFilters={filterOptions.additionalFilters}
+            filterLabels={{ date: "Creation date", status: "Role status" }}
+            maxConditions={50}
+            loading={loading}
+            searchLabel="Search users by name or email"
+            placeholder="Search by name or email"
+            maxLength={254}
+            quickFilterActive={activeFilters > 0}
+          />
+          <div
+            className="flex rounded-lg border p-1"
+            role="group"
+            aria-label="User display"
+          >
+            <button
+              type="button"
+              aria-label="Table view"
+              aria-pressed={view === "table"}
+              onClick={() => setView("table")}
+              className={`rounded-md p-2 ${view === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
             >
-              <button
-                type="button"
-                aria-label="Table view"
-                aria-pressed={view === "table"}
-                onClick={() => setView("table")}
-                className={`rounded-md p-2 ${view === "table" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
-              >
-                <List className="size-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Card view"
-                aria-pressed={view === "cards"}
-                onClick={() => setView("cards")}
-                className={`rounded-md p-2 ${view === "cards" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
-              >
-                <LayoutGrid className="size-4" />
-              </button>
-            </div>
+              <List className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Card view"
+              aria-pressed={view === "cards"}
+              onClick={() => setView("cards")}
+              className={`rounded-md p-2 ${view === "cards" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+            >
+              <LayoutGrid className="size-4" />
+            </button>
           </div>
+        </div>
+        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
           {listError && (
             <div
               role="alert"
@@ -286,19 +283,19 @@ export default function CompaniesList() {
               <CompaniesCards {...actions} />
             ) : null}
           </div>
-          <Pagination
-            metadata={pagination}
-            disabled={loading}
-            onPrev={() => setPage(pagination.page - 1)}
-            onNext={() => setPage(pagination.page + 1)}
-            onPage={setPage}
-            onLimitChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-            limitOptions={PAGE_SIZE_OPTIONS}
-          />
         </div>
+        <Pagination
+          metadata={pagination}
+          disabled={loading}
+          onPrev={() => setPage(pagination.page - 1)}
+          onNext={() => setPage(pagination.page + 1)}
+          onPage={setPage}
+          onLimitChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          limitOptions={PAGE_SIZE_OPTIONS}
+        />
       </section>
       {editor && (
         <CompanyDialog
