@@ -1,3 +1,4 @@
+import type { QuickFilterState } from "@/lib/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
@@ -29,9 +30,12 @@ function serialize_company(company: CompanyRecord): CompanySummary {
 }
 
 /** Return a sorted page of companies matching a literal, case-insensitive name search, including their membership counts. Read the rows and matching total from the same database snapshot. */
-export async function list_company(pagination: Pagination, search: string, sorting?: Sorting, access?: RecordAccess) {
-  const where = build_filter<Prisma.companyWhereInput>(undefined, {
+export async function list_company(pagination: Pagination, search: string, sorting?: Sorting, access?: RecordAccess, filters?: QuickFilterState) {
+  const where = build_filter<Prisma.companyWhereInput>(filters, {
     where: record_where(access, "companies"),
+    fields: { name: (values) => ({ OR: values.map((name) => ({ name: { equals: name, mode: "insensitive" } })) }) },
+    date: (range) => ({ created_at: range }),
+    status: { assigned: { user_companies: { some: {} } }, unassigned: { user_companies: { none: {} } } },
     search: { value: search, fields: [(filter) => ({ name: filter })] },
   });
   const orderBy = build_sort<Prisma.companyOrderByWithRelationInput>(sorting, {
@@ -109,4 +113,12 @@ export async function update_company(
 /** Delete a company by ID through the supplied database client. The service checks membership and controls the transaction before calling this query. */
 export async function delete_company(id: string, client: DatabaseExecutor, access?: RecordAccess) {
   await client.company.delete({ where: { id, AND: [record_where(access, "companies", "delete")] } });
+}
+
+export async function get_company_filter_data(access?: RecordAccess) {
+  return getDatabase().company.findMany({
+    where: record_where(access, "companies"),
+    select: { name: true, _count: { select: { user_companies: true } } },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
 }

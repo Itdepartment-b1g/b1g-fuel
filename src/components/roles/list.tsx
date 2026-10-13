@@ -1,4 +1,7 @@
 "use client";
+import { SearchFilterBar } from "@/components/common/search-filter-bar";
+import { countActiveFilters, createQuickFilterState } from "@/lib/quick-filter";
+import { ROLE_FILTER_DEFAULTS } from "@/lib/management-filters";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
@@ -14,13 +17,13 @@ import {
 import { DeleteDialog } from "@/components/common/delete-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
-  listRole,
+  listRole, getRoleFilterOption,
   deleteRole,
   clearRoleMutation,
   selectRole,
 } from "@/lib/store/roles-slice";
 import { DEFAULT_PAGE_SIZE, paginationFromApi } from "@/lib/pagination";
-import type { RoleSummary, RoleScope } from "@/server/schema/roles_schema";
+import type { RoleSummary } from "@/server/schema/roles_schema";
 import { RoleDialog } from "./dialog/role-dialog";
 import { RolesTableView } from "./table-view/roles-table-view";
 import { RolesCards } from "./card-views/roles-cards";
@@ -30,13 +33,13 @@ export default function RolesList() {
   const access = useRecordAccess();
   const toast = useToast();
   const router = useRouter();
-  const { roles, total, listStatus, listError, mutationStatus, mutationError } =
+  const { roles, total, listStatus, listError, mutationStatus, mutationError, filterOptions, filterOptionsError } =
     useAppSelector(selectRole);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [draft, setDraft] = useState("");
-  const [scope, setScope] = useState<"all" | RoleScope>("all");
+  const [filters, setFilters] = useState(() => createQuickFilterState(ROLE_FILTER_DEFAULTS));
+  const activeFilters = countActiveFilters(filters, ROLE_FILTER_DEFAULTS);
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
@@ -55,7 +58,7 @@ export default function RolesList() {
         ...(sorting
           ? { sort_by: sorting.field, sort_order: sorting.direction }
           : {}),
-        ...(scope === "all" ? {} : { scope }),
+        ...(activeFilters ? { filters } : {}),
       }),
     );
     request.then((action) => {
@@ -68,11 +71,15 @@ export default function RolesList() {
       current = false;
       request.abort();
     };
-  }, [dispatch, page, limit, search, scope, revision, sorting]);
+  }, [dispatch, page, limit, search, filters, activeFilters, revision, sorting]);
   useEffect(() => {
     if ([listError, mutationError].some((error) => error?.status === 401))
       router.replace("/login");
   }, [listError, mutationError, router]);
+  useEffect(() => {
+    const request = dispatch(getRoleFilterOption());
+    return () => request.abort();
+  }, [dispatch, revision]);
   function openRole(role?: RoleSummary) {
     dispatch(clearRoleMutation());
     setEditor({ id: role?.id ?? null });
@@ -124,36 +131,26 @@ export default function RolesList() {
             Add role
           </Button> : null
         }
-        searchDraft={draft}
-        onSearchDraft={setDraft}
-        searchMaxLength={100}
-        onSearch={() => {
-          setSearch(draft.trim());
-          setPage(1);
-        }}
-        searchActive={Boolean(search)}
-        onClearSearch={() => {
-          setDraft("");
-          setSearch("");
-          setPage(1);
-        }}
-        toolbar={
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            Scope
-            <select
-              aria-label="Filter role scope"
-              value={scope}
-              onChange={(event) => {
-                setScope(event.target.value as "all" | RoleScope);
-                setPage(1);
-              }}
-              className="h-10 rounded-md border bg-white px-3 text-sm text-foreground"
-            >
-              <option value="all">All scopes</option>
-              <option value="company">Company</option>
-              <option value="global">Global</option>
-            </select>
-          </label>
+        filterBar={
+          <>
+            <SearchFilterBar
+              search={search}
+              onSearch={(value) => { setSearch(value); setPage(1); }}
+              filters={filters}
+              onFiltersChange={(next) => { setFilters(next); setPage(1); }}
+              fields={filterOptions.fields}
+              statusOptions={filterOptions.statusOptions}
+              additionalFilters={filterOptions.additionalFilters}
+              filterLabels={{ date: "Creation date", status: "Assignment status" }}
+              maxConditions={50}
+              loading={loading}
+              searchLabel="Search roles by name or slug"
+              placeholder="Search by name or slug"
+              maxLength={100}
+              quickFilterActive={activeFilters > 0}
+            />
+            {filterOptionsError && <div role="alert" className="flex items-center justify-between gap-2 text-xs text-destructive"><span>Filter choices could not be loaded.</span><Button variant="ghost" size="sm" onClick={() => dispatch(getRoleFilterOption())}>Retry</Button></div>}
+          </>
         }
         view={view}
         onView={setView}
@@ -173,11 +170,11 @@ export default function RolesList() {
           <ListPlaceholder
             loading={loading}
             title={
-              search || scope !== "all" ? "No matching roles" : "No roles yet"
+              search || activeFilters > 0 ? "No matching roles" : "No roles yet"
             }
             description={
-              search || scope !== "all"
-                ? "Try another search or scope."
+              search || activeFilters > 0
+                ? "Try another search or clear your filters."
                 : "Add a role to define access for your team."
             }
           />

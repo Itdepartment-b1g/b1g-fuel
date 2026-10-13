@@ -7,6 +7,7 @@ import { requireAuthUser } from "@/server/auth/session";
 import { requireSuperAdmin } from "@/server/auth/authorization";
 import { getDatabase } from "@/server/lib/database";
 import {
+  get_role_filter_option,
   create_role,
   delete_role,
   list_by_id_role,
@@ -34,6 +35,7 @@ rolesRouter.get("/options", requireSuperAdmin, async (_req, res) => {
   const companies = await getDatabase().company.findMany({ select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
   res.status(200).json({ companies, scopes: ["company", "global"], pages: PAGE_CATALOG.map(({ key, label, href }) => ({ key, label, href })), permissions: [...PERMISSION_CATALOG] });
 });
+rolesRouter.get("/filter-options", requirePermission("roles", "view"), get_role_filter_option);
 rolesRouter.get("/", requirePermission("roles", "view"), (req, res) =>
   (req.query.id === undefined ? list_role : list_by_id_role)(req, res),
 );

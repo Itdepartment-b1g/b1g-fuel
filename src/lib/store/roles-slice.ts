@@ -1,3 +1,5 @@
+import type { QuickFilterState } from "@/lib/quick-filter";
+import { ROLE_FILTER_OPTIONS, type ManagementFilterOptions } from "@/lib/management-filters";
 import type { TableSort } from "@/lib/table";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
@@ -6,8 +8,9 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type RoleFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type RolesQuery = { page?: number; page_size?: number; search?: string; scope?: RoleScope; sort_by?: string; sort_order?: TableSort["direction"] };
+export type RolesQuery = { page?: number; page_size?: number; search?: string; scope?: RoleScope; sort_by?: string; sort_order?: TableSort["direction"]; filters?: QuickFilterState };
 export type RolesState = {
+  filterOptions: ManagementFilterOptions; filterOptionsStatus: Status; filterOptionsError: RoleFailure | null; filterOptionsRequestId: string | null;
   roles: RoleSummary[]; total: number; page: number; page_size: number;
   selectedRole: RoleSummary | null; options: RoleOptions; lastChangedRole: RoleSummary | null;
   listStatus: Status; detailStatus: Status; optionsStatus: Status; mutationStatus: Status;
@@ -15,7 +18,7 @@ export type RolesState = {
   listError: RoleFailure | null; detailError: RoleFailure | null; optionsError: RoleFailure | null; mutationError: RoleFailure | null;
   listRequestId: string | null; detailRequestId: string | null; optionsRequestId: string | null; mutationRequestId: string | null;
 };
-const initialState: RolesState = {
+const initialState: RolesState = { filterOptions: ROLE_FILTER_OPTIONS, filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null,
   roles: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE,
   selectedRole: null, options: { companies: [], scopes: [], pages: [], permissions: [] }, lastChangedRole: null,
   listStatus: "idle", detailStatus: "idle", optionsStatus: "idle", mutationStatus: "idle", mutationOperation: null,
@@ -37,8 +40,12 @@ async function requestRole<T>(url: string, init: RequestInit = {}): Promise<T> {
 type ThunkConfig = { rejectValue: RoleFailure; state: RootState };
 export const listRole = createAsyncThunk<RolesPage, RolesQuery | undefined, ThunkConfig>("roles/fetch", async (query, { signal, rejectWithValue }) => {
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== "") params.set(key, String(value));
+  for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== "") params.set(key, key === "filters" ? JSON.stringify(value) : String(value));
   try { return await requestRole<RolesPage>(`/api/roles?${params}`, { signal }); }
+  catch (error) { return rejectWithValue(getRoleError(error)); }
+});
+export const getRoleFilterOption = createAsyncThunk<ManagementFilterOptions, void, ThunkConfig>("roles/filter-options", async (_, { signal, rejectWithValue }) => {
+  try { return await requestRole<ManagementFilterOptions>("/api/roles/filter-options", { signal }); }
   catch (error) { return rejectWithValue(getRoleError(error)); }
 });
 export const editRole = createAsyncThunk<RoleResponse, string, ThunkConfig>("roles/detail", async (id, { signal, rejectWithValue }) => {
@@ -73,7 +80,10 @@ const rolesSlice = createSlice({
     },
   },
   extraReducers(builder) {
-    builder.addCase(listRole.pending, (state, action) => { state.listStatus = "loading"; state.listError = null; state.listRequestId = action.meta.requestId; })
+    builder.addCase(getRoleFilterOption.pending, (state, action) => { state.filterOptionsStatus = "loading"; state.filterOptionsError = null; state.filterOptionsRequestId = action.meta.requestId; })
+      .addCase(getRoleFilterOption.fulfilled, (state, action) => { if (state.filterOptionsRequestId !== action.meta.requestId) return; state.filterOptions = action.payload; state.filterOptionsStatus = "succeeded"; state.filterOptionsRequestId = null; })
+      .addCase(getRoleFilterOption.rejected, (state, action) => { if (state.filterOptionsRequestId !== action.meta.requestId) return; state.filterOptionsRequestId = null; state.filterOptionsStatus = action.meta.aborted ? "idle" : "failed"; state.filterOptionsError = action.meta.aborted ? null : action.payload ?? getRoleError(action.error); })
+      .addCase(listRole.pending, (state, action) => { state.listStatus = "loading"; state.listError = null; state.listRequestId = action.meta.requestId; })
       .addCase(listRole.fulfilled, (state, action) => {
         if (state.listRequestId !== action.meta.requestId) return;
         Object.assign(state, action.payload); state.listStatus = "succeeded"; state.listRequestId = null;

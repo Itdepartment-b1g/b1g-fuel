@@ -1,3 +1,6 @@
+import type { QuickFilterState } from "@/lib/quick-filter";
+import { COMPANY_FILTER_OPTIONS } from "@/lib/management-filters";
+import { build_filter_options } from "@/server/lib/quick-filters";
 import type { RecordAccess } from "@/server/auth/record-access";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateCompanyInput, UpdateCompanyInput } from "@/server/schema/companies_schema";
@@ -19,8 +22,9 @@ export async function list_company(
   sorting?: Sorting,
   repository = companiesRepository,
   access?: RecordAccess,
+  filters?: QuickFilterState,
 ) {
-  return repository.list_company(pagination, search, sorting, access);
+  return repository.list_company(pagination, search, sorting, access, filters);
 }
 
 export async function list_by_id_company(id: string, repository = companiesRepository, access?: RecordAccess) {
@@ -59,4 +63,12 @@ export type CompanyErrorCode = "invalid_input" | "company_not_found" | "company_
 
 export class CompanyError extends Error {
   constructor(public code: CompanyErrorCode, message: string) { super(message); }
+}
+
+export async function get_company_filter_option(repository = companiesRepository, access?: RecordAccess) {
+  const records = await repository.get_company_filter_data(access);
+  return build_filter_options(records, COMPANY_FILTER_OPTIONS,
+    (company) => ({ value: company.name, label: company.name }),
+    (company, status) => (company._count.user_companies > 0) === (status === "assigned"),
+  );
 }

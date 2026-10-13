@@ -1,3 +1,4 @@
+import type { QuickFilterState } from "@/lib/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
@@ -53,9 +54,25 @@ export async function list_role(
   scope?: RoleScope,
   sorting?: Sorting,
   access?: RecordAccess,
+  filters?: QuickFilterState,
 ) {
-  const where = build_filter<Prisma.rolesWhereInput>(undefined, {
+  const where = build_filter<Prisma.rolesWhereInput>(filters, {
     where: { AND: [scope ? { scope } : {}, record_where(access, "roles")] },
+    fields: {
+      name: (values) => ({ OR: values.map((name) => ({ name: { equals: name, mode: "insensitive" } })) }),
+      slug: (values) => ({ OR: values.map((slug) => ({ slug: { equals: slug, mode: "insensitive" } })) }),
+      company: (values) => ({ company_id: { in: values } }),
+    },
+    date: (range) => ({ created_at: range }),
+    status: {
+      assigned: { OR: [{ user_roles: { some: {} } }, { company_roles: { some: {} } }] },
+      unassigned: { user_roles: { none: {} }, company_roles: { none: {} } },
+    },
+    additional: {
+      scope: { company: { scope: "company" }, global: { scope: "global" } },
+      type: { system: { is_system: true }, custom: { is_system: false } },
+      default: { default: { is_default_role: true }, other: { is_default_role: false } },
+    },
     search: {
       value: search,
       fields: [(filter) => ({ name: filter }), (filter) => ({ slug: filter })],
@@ -184,4 +201,12 @@ export async function delete_role(
 ) {
   const removed = await client.roles.deleteMany({ where: { id, ...expected } });
   return removed.count > 0;
+}
+
+export async function get_role_filter_data(access?: RecordAccess) {
+  return getDatabase().roles.findMany({
+    where: record_where(access, "roles"),
+    select: { name: true, slug: true, scope: true, is_system: true, is_default_role: true, company: { select: { id: true, name: true } }, _count: { select: { user_roles: true, company_roles: true } } },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
 }

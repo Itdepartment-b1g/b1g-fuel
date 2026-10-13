@@ -2,6 +2,7 @@ import { loadRecordAccess, requirePermission } from "@/server/auth/record-access
 import { Router } from "express";
 import { requireAuthUser } from "@/server/auth/session";
 import {
+  get_company_filter_option,
   create_company,
   delete_company,
   list_by_id_company,
@@ -15,6 +16,7 @@ companiesRouter.use((_req, res, next) => {
   next();
 });
 companiesRouter.use(requireAuthUser, loadRecordAccess);
+companiesRouter.get("/filter-options", requirePermission("companies", "view"), get_company_filter_option);
 companiesRouter.get("/", requirePermission("companies", "view"), (req, res, next) =>
   (req.query.id === undefined ? list_company : list_by_id_company)(req, res, next),
 );

@@ -5,10 +5,8 @@ import {
   List,
   LoaderCircle,
   RefreshCw,
-  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Pagination } from "./pagination";
 import { PAGE_SIZE_OPTIONS, type PaginationMetadata } from "@/lib/pagination";
 
@@ -18,13 +16,7 @@ type Props = {
   action: ReactNode;
   total: number;
   children: ReactNode;
-  toolbar?: ReactNode;
-  searchDraft: string;
-  onSearchDraft: (value: string) => void;
-  onSearch: () => void;
-  searchActive: boolean;
-  onClearSearch: () => void;
-  searchMaxLength: number;
+  filterBar: ReactNode;
   view: "table" | "cards";
   onView: (view: "table" | "cards") => void;
   loading: boolean;
@@ -51,6 +43,7 @@ export function ManagementList(props: Props) {
         </div>
         {props.action}
       </header>
+      {props.filterBar}
       <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b px-4 py-5 sm:px-6">
           <div className="flex items-center gap-2">
@@ -95,39 +88,6 @@ export function ManagementList(props: Props) {
             </div>
           </div>
         </div>
-        <form
-          aria-label={`Search ${props.title.toLowerCase()}`}
-          onSubmit={(event) => {
-            event.preventDefault();
-            props.onSearch();
-          }}
-          className="flex flex-wrap items-center gap-2 border-b p-4 sm:px-6"
-        >
-          <div className="relative min-w-0 flex-1 sm:max-w-sm">
-            <Search
-              className="absolute left-3 top-3 size-4 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              type="search"
-              aria-label={`Search ${props.title.toLowerCase()}`}
-              placeholder={`Search ${props.title.toLowerCase()}`}
-              value={props.searchDraft}
-              maxLength={props.searchMaxLength}
-              onChange={(event) => props.onSearchDraft(event.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Button variant="outline" type="submit">
-            Search
-          </Button>
-          {props.searchActive && (
-            <Button variant="ghost" type="button" onClick={props.onClearSearch}>
-              Clear
-            </Button>
-          )}
-          {props.toolbar}
-        </form>
         {props.error && (
           <div
             role="alert"

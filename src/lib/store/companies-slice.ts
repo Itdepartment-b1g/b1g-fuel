@@ -1,3 +1,5 @@
+import type { QuickFilterState } from "@/lib/quick-filter";
+import { COMPANY_FILTER_OPTIONS, type ManagementFilterOptions } from "@/lib/management-filters";
 import type { TableSort } from "@/lib/table";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
@@ -6,14 +8,15 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type CompanyFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type CompaniesQuery = { page?: number; page_size?: number; search?: string; sort_by?: string; sort_order?: TableSort["direction"] };
+export type CompaniesQuery = { page?: number; page_size?: number; search?: string; sort_by?: string; sort_order?: TableSort["direction"]; filters?: QuickFilterState };
 export type CompaniesState = {
+  filterOptions: ManagementFilterOptions; filterOptionsStatus: Status; filterOptionsError: CompanyFailure | null; filterOptionsRequestId: string | null;
   companies: CompanySummary[]; total: number; page: number; page_size: number; selectedCompany: CompanySummary | null;
   listStatus: Status; detailStatus: Status; mutationStatus: Status; mutationOperation: "create" | "update" | "delete" | null;
   listError: CompanyFailure | null; detailError: CompanyFailure | null; mutationError: CompanyFailure | null;
   listRequestId: string | null; detailRequestId: string | null; mutationRequestId: string | null;
 };
-const initialState: CompaniesState = { companies: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE, selectedCompany: null, listStatus: "idle", detailStatus: "idle", mutationStatus: "idle", mutationOperation: null, listError: null, detailError: null, mutationError: null, listRequestId: null, detailRequestId: null, mutationRequestId: null };
+const initialState: CompaniesState = { filterOptions: COMPANY_FILTER_OPTIONS, filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null, companies: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE, selectedCompany: null, listStatus: "idle", detailStatus: "idle", mutationStatus: "idle", mutationOperation: null, listError: null, detailError: null, mutationError: null, listRequestId: null, detailRequestId: null, mutationRequestId: null };
 function getCompanyError(error: unknown): CompanyFailure {
   if (error && typeof error === "object" && "status" in error && "message" in error && typeof error.status === "number" && typeof error.message === "string") return { status: error.status, message: error.message };
   return { status: 0, message: "Unable to reach the API. Please try again." };
@@ -27,8 +30,12 @@ async function requestCompany<T>(url: string, init: RequestInit = {}): Promise<T
 }
 type Config = { state: RootState; rejectValue: CompanyFailure };
 export const listCompany = createAsyncThunk<CompaniesPage, CompaniesQuery | undefined, Config>("companies/list", async (query, { signal, rejectWithValue }) => {
-  const params = new URLSearchParams(); for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== "") params.set(key, String(value));
+  const params = new URLSearchParams(); for (const [key, value] of Object.entries(query ?? {})) if (value !== undefined && value !== "") params.set(key, key === "filters" ? JSON.stringify(value) : String(value));
   try { return await requestCompany<CompaniesPage>(`/api/companies?${params}`, { signal }); } catch (error) { return rejectWithValue(getCompanyError(error)); }
+});
+export const getCompanyFilterOption = createAsyncThunk<ManagementFilterOptions, void, Config>("companies/filter-options", async (_, { signal, rejectWithValue }) => {
+  try { return await requestCompany<ManagementFilterOptions>("/api/companies/filter-options", { signal }); }
+  catch (error) { return rejectWithValue(getCompanyError(error)); }
 });
 export const editCompany = createAsyncThunk<CompanyResponse, string, Config>("companies/edit", async (id, { signal, rejectWithValue }) => {
   try { return await requestCompany<CompanyResponse>(`/api/companies?id=${encodeURIComponent(id)}`, { signal }); } catch (error) { return rejectWithValue(getCompanyError(error)); }
@@ -50,7 +57,10 @@ const companiesSlice = createSlice({
     clearCompanyMutation(state) { if (state.mutationStatus === "loading") return; state.mutationStatus = "idle"; state.mutationError = null; state.mutationOperation = null; },
   },
   extraReducers(builder) {
-    builder.addCase(listCompany.pending, (state, action) => { state.listStatus = "loading"; state.listError = null; state.listRequestId = action.meta.requestId; })
+    builder.addCase(getCompanyFilterOption.pending, (state, action) => { state.filterOptionsStatus = "loading"; state.filterOptionsError = null; state.filterOptionsRequestId = action.meta.requestId; })
+      .addCase(getCompanyFilterOption.fulfilled, (state, action) => { if (state.filterOptionsRequestId !== action.meta.requestId) return; state.filterOptions = action.payload; state.filterOptionsStatus = "succeeded"; state.filterOptionsRequestId = null; })
+      .addCase(getCompanyFilterOption.rejected, (state, action) => { if (state.filterOptionsRequestId !== action.meta.requestId) return; state.filterOptionsRequestId = null; state.filterOptionsStatus = action.meta.aborted ? "idle" : "failed"; state.filterOptionsError = action.meta.aborted ? null : action.payload ?? getCompanyError(action.error); })
+      .addCase(listCompany.pending, (state, action) => { state.listStatus = "loading"; state.listError = null; state.listRequestId = action.meta.requestId; })
       .addCase(listCompany.fulfilled, (state, action) => { if (state.listRequestId !== action.meta.requestId) return; Object.assign(state, action.payload); state.listStatus = "succeeded"; state.listRequestId = null; })
       .addCase(listCompany.rejected, (state, action) => { if (state.listRequestId !== action.meta.requestId) return; state.listRequestId = null; state.listStatus = action.meta.aborted ? "idle" : "failed"; state.listError = action.meta.aborted ? null : action.payload ?? getCompanyError(action.error); })
       .addCase(editCompany.pending, (state, action) => { state.detailStatus = "loading"; state.detailError = null; state.selectedCompany = null; state.detailRequestId = action.meta.requestId; })

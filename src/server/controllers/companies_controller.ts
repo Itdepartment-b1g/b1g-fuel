@@ -1,3 +1,5 @@
+import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
+import { COMPANY_FILTER_OPTIONS } from "@/lib/management-filters";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { COMPANY_SORT_FIELDS } from "@/server/schema/companies_schema";
 import type { Request, Response, NextFunction } from "express";
@@ -196,13 +198,14 @@ export async function list_by_id_company(req: Request, res: Response, _next?: Ne
 export async function list_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
     const sorting = parse_sort(req.query, COMPANY_SORT_FIELDS);
+    const filters = parse_quick_filters(req.query.filters, COMPANY_FILTER_OPTIONS);
     const search = req.query.search ?? "";
     if (typeof search !== "string" || search.length > 160)
       throw new CompanyError("invalid_input", "Search must contain at most 160 characters.");
-    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim(), sorting, undefined, res.locals.access));
+    res.status(200).json(await service.list_company(parsePagination(req.query), search.trim(), sorting, undefined, res.locals.access, filters));
   } catch (error) {
 
-    if (error instanceof PaginationError || error instanceof SortingError) {
+    if (error instanceof PaginationError || error instanceof SortingError || error instanceof QuickFilterError) {
       res.status(400).json({ error: error.message }); return;
     }
     if (error instanceof CompanyError && company_error_status[error.code]) {
@@ -234,4 +237,9 @@ export async function list_company(req: Request, res: Response, _next?: NextFunc
     console.error("Companies request failed:", error);
     res.status(500).json({ error: "The request could not be completed." });
   }
+}
+
+export async function get_company_filter_option(_req: Request, res: Response) {
+  try { res.status(200).json(await companyService.get_company_filter_option(undefined, res.locals.access)); }
+  catch { res.status(500).json({ error: "Filter choices could not be loaded." }); }
 }

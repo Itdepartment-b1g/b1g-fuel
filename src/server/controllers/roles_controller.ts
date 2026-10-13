@@ -1,3 +1,5 @@
+import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
+import { ROLE_FILTER_OPTIONS } from "@/lib/management-filters";
 import { ACCESS_SCOPES, type AccessScope } from "@/lib/auth/access-scope";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";
@@ -514,6 +516,7 @@ export async function list_role(
         "invalid_input",
         "Search must contain at most 100 characters.",
       );
+    const filters = parse_quick_filters(req.query.filters, ROLE_FILTER_OPTIONS);
     const scope = req.query.scope;
     if (scope !== undefined && scope !== "company" && scope !== "global")
       throw new RoleError(
@@ -522,9 +525,9 @@ export async function list_role(
       );
     res
       .status(200)
-      .json(await service.list_role(pagination, search.trim(), scope, sorting, undefined, res.locals.access));
+      .json(await service.list_role(pagination, search.trim(), scope, sorting, undefined, res.locals.access, filters));
   } catch (error) {
-    if (error instanceof PaginationError || error instanceof SortingError) {
+    if (error instanceof PaginationError || error instanceof SortingError || error instanceof QuickFilterError) {
       res.status(400).json({ error: error.message });
       return;
     }
@@ -579,4 +582,9 @@ export async function list_role(
     console.error("Roles request failed:", error);
     res.status(500).json({ error: "The request could not be completed." });
   }
+}
+
+export async function get_role_filter_option(_req: Request, res: Response) {
+  try { res.status(200).json(await roleService.get_role_filter_option(undefined, res.locals.access)); }
+  catch { res.status(500).json({ error: "Filter choices could not be loaded." }); }
 }

@@ -1,3 +1,6 @@
+import type { QuickFilterState } from "@/lib/quick-filter";
+import { ROLE_FILTER_OPTIONS } from "@/lib/management-filters";
+import { build_filter_options } from "@/server/lib/quick-filters";
 import type { RecordAccess } from "@/server/auth/record-access";
 import type { Sorting } from "@/server/lib/sorting";
 import type {
@@ -62,8 +65,9 @@ export async function list_role(
   sorting?: Sorting,
   repository = rolesRepository,
   access?: RecordAccess,
+  filters?: QuickFilterState,
 ) {
-  return repository.list_role(pagination, search, scope, sorting, access);
+  return repository.list_role(pagination, search, scope, sorting, access, filters);
 }
 
 export async function list_by_id_role(id: string, repository = rolesRepository, access?: RecordAccess) {
@@ -146,4 +150,13 @@ export type RoleErrorCode = "invalid_input" | "role_not_found" | "system_role" |
 
 export class RoleError extends Error {
   constructor(public code: RoleErrorCode, message: string) { super(message); }
+}
+
+export async function get_role_filter_option(repository = rolesRepository, access?: RecordAccess) {
+  const records = await repository.get_role_filter_data(access);
+  return build_filter_options(records, ROLE_FILTER_OPTIONS,
+    (role, field) => field === "company" ? (role.company ? { value: role.company.id, label: role.company.name } : null) : { value: field === "slug" ? role.slug : role.name, label: field === "slug" ? role.slug : role.name },
+    (role, status) => (role._count.user_roles + role._count.company_roles > 0) === (status === "assigned"),
+    (role, key, value) => key === "scope" ? role.scope === value : key === "type" ? role.is_system === (value === "system") : role.is_default_role === (value === "default"),
+  );
 }
