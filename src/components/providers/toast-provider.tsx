@@ -29,7 +29,7 @@ function ToastMessage({ toast, dismiss }: { toast: Toast; dismiss: (id: number) 
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}
-      className={`pointer-events-auto flex items-start gap-3 rounded-xl border bg-white p-4 text-sm shadow-lg ${toast.kind === "success" ? "border-emerald-200 text-emerald-800" : "border-red-200 text-destructive"}`}
+      className={`pointer-events-auto flex max-w-full items-start gap-3 rounded-xl border bg-white p-4 text-sm shadow-lg ${toast.kind === "success" ? "border-emerald-200 text-emerald-800" : "border-red-200 text-destructive"}`}
     >
       <Icon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
       <p className="min-w-0 flex-1 break-words">{toast.message}</p>
@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div aria-label="Notifications" className="pointer-events-none fixed top-4 left-1/2 z-[100] flex w-[calc(100%_-_2rem)] max-w-96 -translate-x-1/2 flex-col gap-3">
+      <div aria-label="Notifications" className="pointer-events-none fixed top-4 left-1/2 z-[100] flex w-max max-w-[calc(100%_-_2rem)] -translate-x-1/2 flex-col items-center gap-3">
         {toasts.map((toast) => <ToastMessage key={toast.id} toast={toast} dismiss={dismiss} />)}
       </div>
     </ToastContext.Provider>
