@@ -16,10 +16,6 @@ const measurement: MeasurementSummary = {
   company: { id: "30000000-0000-4000-8000-000000000002", name: "B1G Fuel" },
   created_by: "creator", created_by_name: "Ada", name: "Dimensions", is_active: true,
   created_at: "2026-10-14T00:00:00Z", updated_at: "2026-10-14T00:00:00Z",
-  fields: [
-    { id: "field-length", key: "length", label: "Length", required: true, is_active: true, position: 0 },
-    { id: "field-width", key: "width", label: "Width", required: true, is_active: false, position: 1 },
-  ],
   units: [{ id: "unit-cm", key: "cm", name: "Centimeter", symbol: "cm", is_active: true, position: 0 }],
 };
 const page = { measurements: [measurement], total: 1, page: 1, page_size: 10 };
@@ -66,7 +62,7 @@ test("thunks use the API with cookies, preserve false filters, and serialize nes
     assert.equal(new URL(calls[0].url, "http://test").searchParams.get("is_active"), "false");
     assert.equal(calls[0].init?.credentials, "include");
     assert.ok(calls[0].init?.signal);
-    const input = { company_id: measurement.company_id, name: measurement.name, fields: measurement.fields, units: measurement.units };
+    const input = { company_id: measurement.company_id, name: measurement.name, units: measurement.units };
     await store.dispatch(createMeasurement(input)).unwrap();
     assert.equal(calls[1].init?.method, "POST");
     assert.deepEqual(JSON.parse(String(calls[1].init?.body)), input);
@@ -93,9 +89,9 @@ test("API errors retain their status and message, and simultaneous mutations are
 });
 test("generated keys remain unique and saved keys survive renaming and reordering", () => {
   const entries = [
-    { key: "length", label: "Renamed length", required: true, is_active: true, position: 0 },
-    { key: "", label: "Length", required: true, is_active: true, position: 1 },
-    { key: "", label: "Length", required: true, is_active: true, position: 2 },
+    { key: "length", name: "Renamed length", symbol: "rl", is_active: true, position: 0 },
+    { key: "", name: "Length", symbol: "l", is_active: true, position: 1 },
+    { key: "", name: "Length", symbol: "l2", is_active: true, position: 2 },
   ];
   const result = prepareMeasurementEntries(moveMeasurementEntry(entries, 0, 1));
   assert.deepEqual(result.map((entry) => entry.key), ["length_2", "length", "length_3"]);

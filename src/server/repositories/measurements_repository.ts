@@ -12,7 +12,6 @@ import { MeasurementError } from "@/server/lib/measurement-input";
 
 const include = {
   company: { select: { id: true, name: true } },
-  fields: { orderBy: [{ position: "asc" }, { key: "asc" }] },
   units: { orderBy: [{ position: "asc" }, { key: "asc" }] },
 } satisfies Prisma.measurementInclude;
 type Record = Prisma.measurementGetPayload<{ include: typeof include }>;
@@ -22,9 +21,6 @@ function serialize(record: Record, createdByName: string | null): MeasurementSum
     created_by_name: createdByName,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
-    fields: record.fields.map(
-      ({ measurement_id: _measurementId, ...field }) => field,
-    ),
     units: record.units.map(
       ({ measurement_id: _measurementId, ...unit }) => unit,
     ),
@@ -101,14 +97,13 @@ export async function create_measurement(
   input: CreateMeasurementInput,
   actor: string,
 ) {
-  const { fields, units, ...data } = input;
+  const { units, ...data } = input;
   const client = getDatabase();
   return (await serialize_measurements([
     await client.measurement.create({
       data: {
         ...data,
         created_by: actor,
-        fields: { create: fields },
         units: { create: units },
       },
       include,
@@ -128,27 +123,17 @@ export async function update_measurement(
     const current = await tx.measurement.findFirst({ where, include });
     if (!current)
       throw new MeasurementError("not_found", "Measurement not found.");
-    const fields = new Map(current.fields.map((field) => [field.key, field]));
     const units = new Map(current.units.map((unit) => [unit.key, unit]));
-    for (const field of input.fields ?? [])
-      fields.set(field.key, {
-        ...field,
-        id: fields.get(field.key)?.id ?? "",
-        measurement_id: current.id,
-      });
     for (const unit of input.units ?? [])
       units.set(unit.key, {
         ...unit,
         id: units.get(unit.key)?.id ?? "",
         measurement_id: current.id,
       });
-    if (
-      !Array.from(fields.values()).some((field) => field.is_active) ||
-      !Array.from(units.values()).some((unit) => unit.is_active)
-    )
+    if (!Array.from(units.values()).some((unit) => unit.is_active))
       throw new MeasurementError(
         "invalid_input",
-        "Keep at least one active field and one active unit.",
+        "Keep at least one active unit.",
       );
     const symbols = Array.from(units.values()).map((unit) =>
       unit.symbol.toLowerCase(),
@@ -158,14 +143,6 @@ export async function update_measurement(
         "conflict",
         "Unit symbols must be unique within the measurement.",
       );
-    for (const field of input.fields ?? [])
-      await tx.measurement_field.upsert({
-        where: {
-          measurement_id_key: { measurement_id: input.id, key: field.key },
-        },
-        create: { ...field, measurement_id: input.id },
-        update: field,
-      });
     for (const unit of input.units ?? [])
       await tx.measurement_unit.upsert({
         where: {

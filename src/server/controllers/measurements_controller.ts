@@ -33,7 +33,7 @@ function failure(res: Response, error: unknown) {
     res
       .status(409)
       .json({
-        error: "A measurement name, field key, or unit symbol already exists.",
+        error: "A measurement name or unit symbol already exists.",
       });
   } else if (
     error &&

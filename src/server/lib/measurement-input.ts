@@ -1,4 +1,4 @@
-import type { CreateMeasurementInput, MeasurementFieldInput, MeasurementUnitInput, UpdateMeasurementInput } from "@/server/schema/measurements_schema";
+import type { CreateMeasurementInput, MeasurementUnitInput, UpdateMeasurementInput } from "@/server/schema/measurements_schema";
 
 export class MeasurementError extends Error {
   constructor(public code: "invalid_input" | "not_found" | "forbidden" | "conflict", message: string) { super(message); }
@@ -39,12 +39,6 @@ function array<T extends { key: string }>(value: unknown, parse: (entry: unknown
   if (new Set(result.map((entry) => entry.key)).size !== result.length) invalid("Entry keys must be unique.");
   return result;
 }
-function fields(value: unknown): MeasurementFieldInput[] {
-  return array(value, (entry, index) => {
-    const row = object(entry, ["key", "label", "required", "is_active", "position"]);
-    return { key: key(row.key), label: text(row.label, "Field label", 100), required: boolean(row.required, true), is_active: boolean(row.is_active, true), position: position(row.position, index) };
-  });
-}
 function units(value: unknown): MeasurementUnitInput[] {
   const result = array(value, (entry, index) => {
     const row = object(entry, ["key", "name", "symbol", "is_active", "position"]);
@@ -58,20 +52,19 @@ function optional_company(value: unknown) {
   return measurement_id(value);
 }
 export function parse_create_measurement(value: unknown): CreateMeasurementInput {
-  const row = object(value, ["company_id", "name", "fields", "units"]);
+  const row = object(value, ["company_id", "name", "units"]);
   const company_id = optional_company(row.company_id);
-  const input = { ...(company_id ? { company_id } : {}), name: text(row.name, "Measurement name", 160), fields: fields(row.fields), units: units(row.units) };
-  if (!input.fields.some((field) => field.is_active) || !input.units.some((unit) => unit.is_active)) invalid("Provide at least one active field and one active unit.");
+  const input = { ...(company_id ? { company_id } : {}), name: text(row.name, "Measurement name", 160), units: units(row.units) };
+  if (!input.units.some((unit) => unit.is_active)) invalid("Provide at least one active unit.");
   return input;
 }
 export function parse_update_measurement(value: unknown): UpdateMeasurementInput {
-  const row = object(value, ["id", "name", "is_active", "fields", "units"]);
+  const row = object(value, ["id", "name", "is_active", "units"]);
   if (Object.keys(row).filter((key) => key !== "id").length === 0) invalid("Provide at least one change.");
   return {
     id: measurement_id(row.id),
     ...(row.name !== undefined ? { name: text(row.name, "Measurement name", 160) } : {}),
     ...(row.is_active !== undefined ? { is_active: boolean(row.is_active, true) } : {}),
-    ...(row.fields !== undefined ? { fields: fields(row.fields) } : {}),
     ...(row.units !== undefined ? { units: units(row.units) } : {}),
   };
 }

@@ -8,7 +8,7 @@ export function ArchiveMeasurementDialog({ name, pending, error, onClose, onConf
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}>
       <DialogContent className={`w-[calc(100%_-_2rem)] ${pending ? "[&>button]:hidden" : ""}`} onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }} onPointerDownOutside={(event) => { if (pending) event.preventDefault(); }}>
-        <DialogHeader><DialogTitle>Archive measurement?</DialogTitle><DialogDescription>Archive {name}? Its fields and units will be preserved. You can restore it later.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Archive measurement?</DialogTitle><DialogDescription>Archive {name}? Its units will be preserved. You can restore it later.</DialogDescription></DialogHeader>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <div className="flex justify-end gap-3 pt-2">
           <Button variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>

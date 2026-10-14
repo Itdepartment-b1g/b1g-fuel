@@ -6,7 +6,6 @@ export const MEASUREMENT_SORT_FIELDS = [
 ] as const;
 
 export type {
-  MeasurementFieldInput,
   MeasurementUnitInput,
   MeasurementSummary,
   CreateMeasurementInput,

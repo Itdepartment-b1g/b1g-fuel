@@ -87,18 +87,6 @@ export function MeasurementForm({
       setError("Each unit needs a unique symbol.");
       return;
     }
-    const savedField = measurement?.fields
-      .slice()
-      .sort((left, right) => left.position - right.position)[0];
-    const inputFields = prepareMeasurementEntries([
-      {
-        key: savedField?.key ?? "",
-        label: name.trim().slice(0, 100),
-        required: true,
-        is_active: true,
-        position: 0,
-      },
-    ]);
     const inputUnits = prepareMeasurementEntries(
       units.map((unit) => ({
         key: unit.key,
@@ -116,7 +104,6 @@ export function MeasurementForm({
             updateMeasurement({
               id: measurement.id,
               name: name.trim(),
-              fields: inputFields,
               units: inputUnits,
             }),
           ).unwrap()
@@ -124,7 +111,6 @@ export function MeasurementForm({
             createMeasurement({
               ...(shared || !companyId ? {} : { company_id: companyId }),
               name: name.trim(),
-              fields: inputFields,
               units: inputUnits,
             }),
           ).unwrap();

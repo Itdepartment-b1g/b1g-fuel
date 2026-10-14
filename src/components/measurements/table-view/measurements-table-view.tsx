@@ -51,15 +51,6 @@ export function MeasurementsTableView(
           cell: (measurement) => measurement.company?.name ?? "All companies",
         },
         {
-          id: "fields",
-          header: "Input fields",
-          cell: (measurement) =>
-            measurement.fields
-              .filter((field) => field.is_active)
-              .map((field) => field.label)
-              .join(", "),
-        },
-        {
           id: "units",
           header: "Units",
           cell: (measurement) => {

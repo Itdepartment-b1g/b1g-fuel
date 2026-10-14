@@ -1,6 +1,6 @@
 # Measurement API
 
-Company-owned definitions for dynamic numeric inputs. All routes require an authenticated session and the corresponding `measurements.view`, `.add`, `.edit`, or `.delete` permission. Register the Measurements page and these permissions on the user's role. Super admins have access automatically. The management page is available at `/measurements`.
+Company-owned measurement names and the units people can choose. All routes require an authenticated session and the corresponding `measurements.view`, `.add`, `.edit`, or `.delete` permission. Register the Measurements page and these permissions on the user's role. Super admins have access automatically. The management page is available at `/measurements`.
 
 ## Create
 
@@ -9,20 +9,15 @@ Company-owned definitions for dynamic numeric inputs. All routes require an auth
 ```json
 {
   "company_id": "30000000-0000-4000-8000-000000000001",
-  "name": "Dimensions",
-  "fields": [
-    { "key": "length", "label": "Length" },
-    { "key": "width", "label": "Width" },
-    { "key": "height", "label": "Height" }
-  ],
+  "name": "Weight",
   "units": [
-    { "key": "cm", "name": "Centimeter", "symbol": "cm" },
-    { "key": "m", "name": "Meter", "symbol": "m" }
+    { "key": "kg", "name": "Kilogram", "symbol": "kg" },
+    { "key": "g", "name": "Gram", "symbol": "g" }
   ]
 }
 ```
 
-Returns `201` with `{ "measurement": ... }`, including stable IDs, company, authenticated creator, timestamps, fields, and units. Fields are numeric; `required` and `is_active` default to true. Units default to active. `position` defaults to the entry's zero-based position. Keys use lowercase letters, numbers, and underscores, starting with a letter. Definitions support up to 30 fields and 30 units, including inactive entries. At least one field and unit must be active. Names are unique per company ignoring case; unit symbols are unique within a measurement ignoring case.
+Omit `company_id` when a super admin creates a measurement shared with every company. A user with one company can omit it too; the server uses that company. Returns `201` with `{ "measurement": ... }`, including stable IDs, company, authenticated creator, timestamps, and units. Units default to active. `position` defaults to the entry's zero-based position. Keys use lowercase letters, numbers, and underscores, starting with a letter. Definitions support up to 30 units, including inactive entries. At least one unit must be active. Names are unique per company ignoring case; shared measurements have their own name uniqueness. Unit symbols are unique within a measurement ignoring case.
 
 ## Read
 
@@ -31,7 +26,7 @@ Returns `201` with `{ "measurement": ... }`, including stable IDs, company, auth
 - `GET /api/measurements?id=<uuid>`
 - `GET /api/measurements/options` (requires `measurements.add`; returns only companies where the user can create measurements)
 
-Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`. Each measurement includes `company: { id, name }`. Page sizes are 10, 20, 50, or 100. Sorting supports `id`, `name`, `created_at`, and `updated_at`, with `sort_order=asc|desc`; default is newest first. Archived records are included unless filtered. Child entries include inactive definitions so management can restore them; variant forms should select active measurements and display active fields and units only.
+Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`. Each measurement includes `company: { id, name }` or null when it is shared. Page sizes are 10, 20, 50, or 100. Sorting supports `id`, `name`, `created_at`, and `updated_at`, with `sort_order=asc|desc`; default is newest first. Archived records are included unless filtered. Units include inactive definitions so management can restore them; variant forms should select active measurements and display active units only.
 
 ## Update
 
@@ -40,8 +35,8 @@ Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`
 ```json
 {
   "id": "<measurement UUID>",
-  "name": "Package dimensions",
-  "fields": [{ "key": "length", "label": "Length", "required": true }]
+  "name": "Mass",
+  "units": [{ "key": "kg", "name": "Kilogram", "symbol": "kg" }]
 }
 ```
 
@@ -49,8 +44,8 @@ At least one change is required. Company and creator cannot be changed. Supplied
 
 ## Archive
 
-`DELETE /api/measurements?id=<uuid>` archives the definition and returns `{ "id": "...", "message": "Measurement archived." }`. It does not delete fields or units. Restore with `PATCH` containing `{ "id": "...", "is_active": true }`.
+`DELETE /api/measurements?id=<uuid>` archives the definition and returns `{ "id": "...", "message": "Measurement archived." }`. It does not delete units. Restore with `PATCH` containing `{ "id": "...", "is_active": true }`.
 
 ## Deployment and scope
 
-Apply the checked-in migration using the project's normal `npm run db:deploy` workflow, then generate the Prisma client if needed. The migration is prepared separately from deployment. Unit conversion and variant measurement values are outside this initial backend. A variant will choose one allowed unit for all fields in a selected measurement, such as Length/Width/Height in centimeters.
+Apply the checked-in migration using the project's normal `npm run db:deploy` workflow, then generate the Prisma client if needed. The migration is prepared separately from deployment. Unit conversion and variant measurement values are outside this initial backend. A variant will choose one allowed unit for a measurement, such as Weight in kilograms.

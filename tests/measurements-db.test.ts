@@ -23,7 +23,6 @@ test("local database supports measurement creation, scoped listing, ordered edit
     await db.company.createMany({ data: [{ id: companyId, name: `Measurement test ${companyId}` }, { id: outsideId, name: `Measurement test ${outsideId}` }] });
     const input = parse_create_measurement({
       company_id: companyId, name: "Dimensions",
-      fields: [{ key: "length", label: "Length" }, { key: "width", label: "Width" }, { key: "height", label: "Height" }],
       units: [{ key: "cm", name: "Centimeter", symbol: "cm" }],
     });
     const created = await service.create_measurement(input, access);
@@ -37,7 +36,7 @@ test("local database supports measurement creation, scoped listing, ordered edit
     assert.equal(created.created_by, actor);
     assert.equal(shared.company_id, null);
     assert.equal(shared.company, null);
-    assert.deepEqual(created.fields.map((field) => field.label), ["Length", "Width", "Height"]);
+    assert.equal(created.units[0].symbol, "cm");
     await assert.rejects(service.get_measurement(outside.id, access), /not found/);
     assert.equal((await service.get_measurement(shared.id, access)).name, "Shared");
     await assert.rejects(service.update_measurement({ id: shared.id, name: "Changed" }, access), /not found/);
@@ -51,24 +50,21 @@ test("local database supports measurement creation, scoped listing, ordered edit
     assert.deepEqual(options.companies.map((company) => company.id), [companyId]);
     const edited = await service.update_measurement(parse_update_measurement({
       id: created.id,
-      fields: [{ key: "height", label: "Height", position: 0 }, { key: "length", label: "Package length", position: 1 }, { key: "width", label: "Width", position: 2, is_active: false }],
+      units: [{ key: "cm", name: "Centimetre", symbol: "cm" }],
     }), access);
-    assert.deepEqual(edited.fields.map((field) => field.key), ["height", "length", "width"]);
-    assert.equal(edited.fields.find((field) => field.key === "length")?.id, created.fields[0].id);
     assert.equal(edited.units[0].id, created.units[0].id);
-    assert.equal(edited.fields.find((field) => field.key === "width")?.is_active, false);
+    assert.equal(edited.units[0].name, "Centimetre");
     await service.archive_measurement(created.id, access);
     assert.equal((await service.list_measurements(pagination, "", undefined, access, companyId, true)).total, 0);
     const archived = await service.get_measurement(created.id, access);
     assert.equal(archived.is_active, false);
-    assert.equal(archived.fields.length, 3);
+    assert.equal(archived.units.length, 1);
     await service.update_measurement({ id: created.id, is_active: true }, access);
     assert.equal((await service.get_measurement(created.id, access)).is_active, true);
   } finally {
     // Delete only records belonging to the two freshly generated fixture companies.
     await db.$transaction(async (tx) => {
       const owner = { OR: [{ company_id: { in: [companyId, outsideId] } }, { company_id: null, created_by: actor }] };
-      await tx.measurement_field.deleteMany({ where: { measurement: owner } });
       await tx.measurement_unit.deleteMany({ where: { measurement: owner } });
       await tx.measurement.deleteMany({ where: owner });
       await tx.company.deleteMany({ where: { id: { in: [companyId, outsideId] } } });

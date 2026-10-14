@@ -1,23 +1,5 @@
 import type { CompanyOption } from "./companies";
 
-export interface MeasurementFieldInput {
-  // Stable machine-readable key; preserved when the label changes.
-  key: string;
-  // Display label for the numeric input, such as Length.
-  label: string;
-  // Whether users must enter a value for this field.
-  required: boolean;
-  // Whether this field is available for new variant measurements.
-  is_active: boolean;
-  // Zero-based display order within the measurement.
-  position: number;
-}
-
-export interface MeasurementField extends MeasurementFieldInput {
-  // Unique identifier (UUID) of the saved field definition.
-  id: string;
-}
-
 export interface MeasurementUnitInput {
   // Stable machine-readable key of the unit.
   key: string;
@@ -55,8 +37,6 @@ export interface Measurement {
   created_at: string;
   // ISO date string when the definition was last updated.
   updated_at: string;
-  // Ordered numeric input definitions, including inactive entries.
-  fields: MeasurementField[];
   // Ordered allowed units, including inactive entries.
   units: MeasurementUnit[];
 }
@@ -68,8 +48,6 @@ export interface CreateMeasurementInput {
   company_id?: string | null;
   // Display name of the new measurement.
   name: string;
-  // Numeric input fields to create.
-  fields: MeasurementFieldInput[];
   // Allowed units to create.
   units: MeasurementUnitInput[];
 }
@@ -81,8 +59,6 @@ export interface UpdateMeasurementInput {
   name?: string;
   // Updated active/archived status.
   is_active?: boolean;
-  // Field definitions to upsert by key; omitted fields are preserved.
-  fields?: MeasurementFieldInput[];
   // Unit definitions to upsert by key; omitted units are preserved.
   units?: MeasurementUnitInput[];
 }

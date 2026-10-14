@@ -13,28 +13,26 @@ import type { Database } from "@/server/lib/database";
 const company = "30000000-0000-4000-8000-000000000001";
 const input = {
   company_id: company, name: " Dimensions ",
-  fields: [{ key: "length", label: "Length" }, { key: "width", label: "Width" }, { key: "height", label: "Height" }],
-  units: [{ key: "cm", name: "Centimeter", symbol: "cm" }],
+  units: [{ key: "cm", name: "Centimeter", symbol: "cm" }, { key: "m", name: "Meter", symbol: "m" }],
 };
 const access: RecordAccess = {
   userId: "creator", superAdmin: false, companyIds: [company], pages: ["measurements"],
   grants: [{ permission: "measurements.add", scope: "company", companyId: company }, { permission: "measurements.view", scope: "company", companyId: company }],
 };
 
-test("dynamic measurement definitions normalize names and preserve field order", () => {
+test("dynamic measurement definitions normalize names and default units to active", () => {
   const result = parse_create_measurement(input);
   assert.equal(result.name, "Dimensions");
-  assert.deepEqual(result.fields.map((field) => [field.key, field.position, field.required]), [["length", 0, true], ["width", 1, true], ["height", 2, true]]);
+  assert.deepEqual(result.units.map((unit) => [unit.key, unit.position]), [["cm", 0], ["m", 1]]);
   assert.equal(result.units[0].is_active, true);
 });
 test("invalid definitions reject duplicate keys, symbols, empty groups and client-controlled ownership metadata", () => {
   for (const invalid of [
     { ...input, created_by: "someone" },
     { ...input, fields: [] },
-    { ...input, fields: [input.fields[0], input.fields[0]] },
-    { ...input, fields: [{ key: "Length", label: "Length" }] },
-    { ...input, fields: [{ key: "length", label: "Length", required: "yes" }] },
-    { ...input, fields: [{ key: "length", label: "Length", position: -1 }] },
+    { ...input, units: [] },
+    { ...input, units: [input.units[0], input.units[0]] },
+    { ...input, units: [{ key: "CM", name: "Centimeter", symbol: "cm" }] },
     { ...input, units: [{ key: "cm", name: "Centimeter", symbol: "cm" }, { key: "other", name: "Other", symbol: "CM" }] },
     { ...input, units: [{ ...input.units[0], is_active: false }] },
     { ...input, units: Array.from({ length: 31 }, (_, index) => ({ key: `u${index}`, name: "Unit", symbol: `u${index}` })) },
@@ -43,9 +41,8 @@ test("invalid definitions reject duplicate keys, symbols, empty groups and clien
 test("updates cannot move measurements between companies and accept deactivation by stable key", () => {
   assert.throws(() => parse_update_measurement({ id: company, company_id: company }));
   assert.throws(() => parse_update_measurement({ id: company }));
-  const result = parse_update_measurement({ id: company, fields: [{ key: "length", label: "Length", is_active: false }] });
-  assert.equal(result.fields?.[0].is_active, false);
-  assert.equal(result.units, undefined);
+  const result = parse_update_measurement({ id: company, units: [{ key: "cm", name: "Centimeter", symbol: "cm", is_active: false }] });
+  assert.equal(result.units?.[0].is_active, false);
 });
 test("creation grants and record filtering isolate company catalogs", () => {
   assert.equal(can_create_measurement(access, company), true);
@@ -84,7 +81,6 @@ test("child updates preserve existing IDs and omitted definitions; invalid updat
   const current = {
     id: company, company_id: company, created_by: access.userId, name: parsed.name, is_active: true,
     created_at: new Date("2026-10-14T00:00:00Z"), updated_at: new Date("2026-10-14T00:00:00Z"),
-    fields: parsed.fields.map((field) => ({ ...field, id: `field-${field.key}`, measurement_id: company })),
     units: parsed.units.map((unit) => ({ ...unit, id: `unit-${unit.key}`, measurement_id: company })),
   };
   let locked = false;
@@ -100,30 +96,28 @@ test("child updates preserve existing IDs and omitted definitions; invalid updat
       update: async () => { writes++; return current; },
     },
     user: { findMany: async () => [{ id: access.userId, name: "Creator" }] },
-    measurement_field: {
-      upsert: async (args: { update: typeof parsed.fields[number] }) => {
+    measurement_unit: {
+      upsert: async (args: { update: typeof parsed.units[number] }) => {
         writes++;
-        const existing = current.fields.find((field) => field.key === args.update.key);
+        const existing = current.units.find((unit) => unit.key === args.update.key);
         assert.ok(existing);
         Object.assign(existing, args.update);
       },
     },
-    measurement_unit: { upsert: async () => { writes++; } },
   };
   const state = globalThis as typeof globalThis & { fuelDatabase?: { database: Database } };
   const previous = state.fuelDatabase;
   state.fuelDatabase = { database: { $transaction: async (run: (client: typeof tx) => unknown) => run(tx) } as unknown as Database };
   const own = { ...access, grants: [{ permission: "measurements.edit", scope: "own" as const, companyId: company }] };
   try {
-    const result = await repository.update_measurement(parse_update_measurement({ id: company, fields: [{ key: "length", label: "Package length" }] }), own);
-    assert.equal(result.fields[0].id, "field-length");
-    assert.equal(result.fields[0].label, "Package length");
-    assert.deepEqual(result.fields.slice(1).map((field) => field.key), ["width", "height"]);
+    const result = await repository.update_measurement(parse_update_measurement({ id: company, units: [{ key: "cm", name: "Centimetre", symbol: "cm" }] }), own);
     assert.equal(result.units[0].id, "unit-cm");
+    assert.equal(result.units[0].name, "Centimetre");
+    assert.equal(result.units[1].id, "unit-m");
     const priorWrites = writes;
     await assert.rejects(repository.update_measurement(parse_update_measurement({
-      id: company, fields: parsed.fields.map((field) => ({ ...field, is_active: false })),
-    }), own), /at least one active field/);
+      id: company, units: parsed.units.map((unit) => ({ ...unit, is_active: false })),
+    }), own), /at least one active unit/);
     await assert.rejects(repository.update_measurement(parse_update_measurement({
       id: company, units: [{ key: "other", name: "Other", symbol: "CM" }],
     }), own), /symbols must be unique/);
@@ -136,12 +130,11 @@ test("creation persists the authenticated actor and all nested definitions atomi
   const state = globalThis as typeof globalThis & { fuelDatabase?: { database: Database } };
   const previous = state.fuelDatabase;
   state.fuelDatabase = { database: {
-    measurement: { create: async (args: { data: { created_by: string; fields: { create: unknown }; units: { create: unknown } } }) => {
+    measurement: { create: async (args: { data: { created_by: string; units: { create: unknown } } }) => {
       assert.equal(args.data.created_by, access.userId);
-      assert.deepEqual(args.data.fields.create, parsed.fields);
       assert.deepEqual(args.data.units.create, parsed.units);
       return { id: company, company_id: company, created_by: access.userId, name: parsed.name, is_active: true,
-        created_at: new Date(), updated_at: new Date(), fields: [], units: [] };
+        created_at: new Date(), updated_at: new Date(), units: [] };
     } },
     user: { findMany: async () => [{ id: access.userId, name: "Creator" }] },
   } as unknown as Database };

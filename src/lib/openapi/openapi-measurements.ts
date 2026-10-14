@@ -14,21 +14,10 @@ const child = {
   is_active: active,
   position: { type: "integer", minimum: 0, maximum: 1000 },
 };
-const field = {
-  ...child,
-  label: { type: "string", minLength: 1, maxLength: 100 },
-  required: { type: "boolean", default: true },
-};
 const unit = {
   ...child,
   name: { type: "string", minLength: 1, maxLength: 100 },
   symbol: { type: "string", minLength: 1, maxLength: 20 },
-};
-const fields = {
-  type: "array",
-  minItems: 1,
-  maxItems: 30,
-  items: ref("MeasurementFieldInput"),
 };
 const units = {
   type: "array",
@@ -37,12 +26,6 @@ const units = {
   items: ref("MeasurementUnitInput"),
 };
 export const measurementSchemas = {
-  MeasurementFieldInput: {
-    type: "object",
-    additionalProperties: false,
-    required: ["key", "label"],
-    properties: field,
-  },
   MeasurementUnitInput: {
     type: "object",
     additionalProperties: false,
@@ -59,7 +42,6 @@ export const measurementSchemas = {
       "is_active",
       "created_at",
       "updated_at",
-      "fields",
       "units",
     ],
     properties: {
@@ -82,10 +64,6 @@ export const measurementSchemas = {
       },
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
-      fields: {
-        type: "array",
-        items: { type: "object", properties: { id, ...field } },
-      },
       units: {
         type: "array",
         items: { type: "object", properties: { id, ...unit } },
@@ -95,15 +73,15 @@ export const measurementSchemas = {
   CreateMeasurement: {
     type: "object",
     additionalProperties: false,
-    required: ["name", "fields", "units"],
-    properties: { company_id: id, name, fields, units },
+    required: ["name", "units"],
+    properties: { company_id: id, name, units },
   },
   UpdateMeasurement: {
     type: "object",
     additionalProperties: false,
     required: ["id"],
     minProperties: 2,
-    properties: { id, name, is_active: active, fields, units },
+    properties: { id, name, is_active: active, units },
   },
   MeasurementResponse: {
     type: "object",
@@ -211,7 +189,7 @@ export const measurementPaths = {
     },
     post: {
       ...common,
-      summary: "Create a measurement with numeric fields and units",
+      summary: "Create a measurement and its units",
       requestBody: { required: true, ...json(ref("CreateMeasurement")) },
       responses: {
         "201": {
@@ -225,7 +203,7 @@ export const measurementPaths = {
       ...common,
       summary: "Update measurement and upsert children by stable key",
       description:
-        "Omitted children are preserved. Use is_active:false to deactivate a field or unit. Company ownership is immutable. At least one field and unit must remain active.",
+        "Omitted units are preserved. Use is_active:false to deactivate a unit. Company ownership is immutable. At least one unit must remain active.",
       requestBody: { required: true, ...json(ref("UpdateMeasurement")) },
       responses: {
         "200": {
