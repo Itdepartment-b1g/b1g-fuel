@@ -11,7 +11,7 @@ export const rowPadding = "px-4";
 export const rowHeight = "py-3.5";
 
 export const rowCellClass = cn(
-  "border-b bg-white align-middle text-sm text-foreground group-hover:bg-gray-50",
+  "whitespace-nowrap border-b bg-white align-middle text-sm text-foreground group-hover:bg-gray-50",
   rowPadding,
   rowHeight,
 );

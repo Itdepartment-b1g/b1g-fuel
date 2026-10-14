@@ -12,7 +12,7 @@ export const columnPadding = "px-3";
 export const columnHeaderHeight = "py-2.5";
 
 export const columnHeaderClass = cn(
-  "border-b bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 font-bold",
+  "whitespace-nowrap border-b bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500 font-bold",
   columnPadding,
   columnHeaderHeight,
 );
@@ -49,7 +49,7 @@ export function TableColumnHeader<T>({
 }) {
   const heading = (
     <>
-      <span className="truncate">{column.header}</span>
+      <span className="whitespace-nowrap">{column.header}</span>
       {pinned && (
         <Pin
           className="size-3.5 shrink-0 text-gray-400"
@@ -85,7 +85,7 @@ export function TableColumnHeader<T>({
         <TableMenu
           label={`${column.header} column options`}
           items={menu}
-          className="-ml-2 min-h-0 max-w-full py-0 uppercase tracking-wider"
+          className="-ml-2 min-h-0 py-0 uppercase tracking-wider"
         >
           {heading}
         </TableMenu>

@@ -7,7 +7,7 @@ import { archiveMeasurement, createMeasurement, editMeasurement, getMeasurementO
 import { moveMeasurementEntry, prepareMeasurementEntries } from "@/utils/measurement-form";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { MeasurementForm } from "@/components/measurements/dialog/measurement-form";
-import { MeasurementUnits, MeasurementsTableView } from "@/components/measurements/table-view/measurements-table-view";
+import { MeasurementsTableView } from "@/components/measurements/table-view/measurements-table-view";
 import { listSidebarMenu } from "@/app/layout/sideBarMenuItems";
 import type { MeasurementSummary } from "@/types/measurements";
 
@@ -123,8 +123,8 @@ test("measurement forms collect a name and units, and ask for a company only whe
   assert.match(edit, /value="cm"/);
   assert.doesNotMatch(edit, /Remove unit/);
   assert.doesNotMatch(edit, /Measurement active/);
-  assert.match(renderToStaticMarkup(<MeasurementUnits measurement={measurement} />), /cm/);
   const table = renderToStaticMarkup(<MeasurementsTableView measurements={[measurement]} loading={false} sorting={null} onSortingChange={() => {}} onEdit={() => {}} onArchive={() => {}} onRestore={() => {}} disabled={false} />);
+  assert.match(table, />cm</);
   assert.match(table, /Created by/);
   assert.match(table, /Ada/);
 });

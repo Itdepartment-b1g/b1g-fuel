@@ -62,11 +62,23 @@ export function MeasurementsTableView(
         {
           id: "units",
           header: "Units",
-          cell: (measurement) =>
-            measurement.units
-              .filter((unit) => unit.is_active)
-              .map((unit) => unit.symbol)
-              .join(", "),
+          cell: (measurement) => {
+            const units = measurement.units.filter((unit) => unit.is_active);
+            if (!units.length) return "—";
+            return (
+              <div className="flex flex-wrap gap-1.5">
+                {units.map((unit) => (
+                  <span
+                    key={unit.id}
+                    title={unit.name}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
+                  >
+                    {unit.symbol}
+                  </span>
+                ))}
+              </div>
+            );
+          },
         },
         {
           id: "is_active",
@@ -134,29 +146,5 @@ export function MeasurementsTableView(
             },
       ]}
     />
-  );
-}
-
-export function MeasurementUnits({
-  measurement,
-}: {
-  measurement: MeasurementSummary;
-}) {
-  const units = measurement.units.filter((unit) => unit.is_active);
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {units.map((unit) => (
-        <span
-          key={unit.id}
-          title={unit.name}
-          className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
-        >
-          {unit.symbol}
-        </span>
-      ))}
-      {!units.length && (
-        <span className="text-sm text-muted-foreground">No units</span>
-      )}
-    </div>
   );
 }

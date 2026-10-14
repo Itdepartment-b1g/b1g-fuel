@@ -5,10 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { MeasurementSummary } from "@/types/measurements";
-import {
-  MeasurementUnits,
-  type MeasurementActionProps,
-} from "../table-view/measurements-table-view";
+import { type MeasurementActionProps } from "../table-view/measurements-table-view";
 
 export function MeasurementsCards({
   measurements,
@@ -29,9 +26,13 @@ export function MeasurementsCards({
             {measurement.created_by_name ?? "—"} ·{" "}
             {measurement.is_active ? "Active" : "Archived"}
           </p>
-          <div className="mt-3">
-            <MeasurementUnits measurement={measurement} />
-          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Units:{" "}
+            {measurement.units
+              .filter((unit) => unit.is_active)
+              .map((unit) => unit.symbol)
+              .join(", ") || "—"}
+          </p>
           <div className="mt-4 flex justify-end gap-2 border-t pt-3">
             <Button
               variant="ghost"

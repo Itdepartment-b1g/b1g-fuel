@@ -182,7 +182,7 @@ export function TableView<T>({
     >
       <table
         ref={table}
-        className="w-full border-separate border-spacing-0 text-sm"
+        className="w-max min-w-full border-separate border-spacing-0 text-sm"
       >
         <caption className="sr-only">{caption}</caption>
         <thead>
