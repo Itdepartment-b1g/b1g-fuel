@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
-import { getDatabase } from "@/server/lib/database";
+import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type {
@@ -16,9 +16,10 @@ const include = {
   units: { orderBy: [{ position: "asc" }, { key: "asc" }] },
 } satisfies Prisma.measurementInclude;
 type Record = Prisma.measurementGetPayload<{ include: typeof include }>;
-function serialize(record: Record): MeasurementSummary {
+function serialize(record: Record, createdByName: string | null): MeasurementSummary {
   return {
     ...record,
+    created_by_name: createdByName,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
     fields: record.fields.map(
@@ -28,6 +29,16 @@ function serialize(record: Record): MeasurementSummary {
       ({ measurement_id: _measurementId, ...unit }) => unit,
     ),
   };
+}
+
+/** Resolve creator ids to display names. Missing or deleted creators stay unnamed. */
+async function serialize_measurements(records: Record[], client: DatabaseExecutor) {
+  const ids = [...new Set(records.flatMap((record) => record.created_by ? [record.created_by] : []))];
+  const creators = ids.length
+    ? await client.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+    : [];
+  const names = new Map(creators.map((creator) => [creator.id, creator.name]));
+  return records.map((record) => serialize(record, record.created_by ? names.get(record.created_by) ?? null : null));
 }
 export async function list_measurements(
   pagination: Pagination,
@@ -71,7 +82,7 @@ export async function list_measurements(
       });
       const total = await tx.measurement.count({ where });
       return {
-        measurements: rows.map(serialize),
+        measurements: await serialize_measurements(rows, tx),
         ...paginationMetadata(total, pagination),
       };
     },
@@ -79,19 +90,21 @@ export async function list_measurements(
   );
 }
 export async function get_measurement(id: string, access: RecordAccess) {
-  const record = await getDatabase().measurement.findFirst({
+  const client = getDatabase();
+  const record = await client.measurement.findFirst({
     where: { AND: [{ id }, record_where(access, "measurements")] },
     include,
   });
-  return record ? serialize(record) : null;
+  return record ? (await serialize_measurements([record], client))[0] : null;
 }
 export async function create_measurement(
   input: CreateMeasurementInput,
   actor: string,
 ) {
   const { fields, units, ...data } = input;
-  return serialize(
-    await getDatabase().measurement.create({
+  const client = getDatabase();
+  return (await serialize_measurements([
+    await client.measurement.create({
       data: {
         ...data,
         created_by: actor,
@@ -100,7 +113,7 @@ export async function create_measurement(
       },
       include,
     }),
-  );
+  ], client))[0];
 }
 export async function update_measurement(
   input: UpdateMeasurementInput,
@@ -161,7 +174,7 @@ export async function update_measurement(
         create: { ...unit, measurement_id: input.id },
         update: unit,
       });
-    return serialize(
+    return (await serialize_measurements([
       await tx.measurement.update({
         where: { id: input.id },
         data: {
@@ -172,6 +185,6 @@ export async function update_measurement(
         },
         include,
       }),
-    );
+    ], tx))[0];
   });
 }

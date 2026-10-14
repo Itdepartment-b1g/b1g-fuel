@@ -24,10 +24,11 @@ export function MeasurementsTableView(props: MeasurementActionProps & {
       expandedRow={(measurement) => <MeasurementDetails measurement={measurement} />}
       columns={[
         { id: "name", header: "Measurement", sortable: true, freezable: true, value: (measurement) => measurement.name, className: "font-semibold" },
-        { id: "company", header: "Company", freezable: true, cell: (measurement) => measurement.company.name },
+        { id: "company", header: "Company", freezable: true, cell: (measurement) => measurement.company?.name ?? "All companies" },
         { id: "fields", header: "Input fields", cell: (measurement) => measurement.fields.filter((field) => field.is_active).map((field) => field.label).join(", ") },
         { id: "units", header: "Units", cell: (measurement) => measurement.units.filter((unit) => unit.is_active).map((unit) => unit.symbol).join(", ") },
         { id: "is_active", header: "Status", cell: (measurement) => measurement.is_active ? "Active" : "Archived" },
+        { id: "created_by", header: "Created by", freezable: true, value: (measurement) => measurement.created_by_name, cell: (measurement) => measurement.created_by_name ?? "—" },
         { id: "created_at", header: "Created", sortable: true, freezable: true, cell: (measurement) => <time dateTime={measurement.created_at}>{new Date(measurement.created_at).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric", timeZone: "Asia/Manila" })}</time> },
       ]}
       actions={(measurement) => [

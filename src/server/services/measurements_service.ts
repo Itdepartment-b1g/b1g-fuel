@@ -26,16 +26,29 @@ export function can_create_measurement(
   );
 }
 
+export function measurement_company(access: RecordAccess, requested?: string) {
+  if (access.superAdmin) return null;
+  const unrestricted = access.grants.some((grant) => grant.permission === "measurements.add" && grant.scope === "all" && !grant.companyId);
+  const granted = [...new Set(access.grants.filter((grant) => grant.permission === "measurements.add").flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+  const choices = unrestricted ? access.companyIds : granted;
+  if (choices.length === 1) {
+    if (!can_create_measurement(access, choices[0]))
+      throw new MeasurementError("forbidden", "You cannot create measurements in this company.");
+    return choices[0];
+  }
+  if (!requested)
+    throw new MeasurementError("invalid_input", "Select a company.");
+  if (!can_create_measurement(access, requested))
+    throw new MeasurementError("forbidden", "You cannot create measurements in this company.");
+  return requested;
+}
+
 export async function create_measurement(
   input: CreateMeasurementInput,
   access: RecordAccess,
 ) {
-  if (!can_create_measurement(access, input.company_id))
-    throw new MeasurementError(
-      "forbidden",
-      "You cannot create measurements in this company.",
-    );
-  return repository.create_measurement(input, access.userId);
+  const company_id = measurement_company(access, input.company_id ?? undefined);
+  return repository.create_measurement({ ...input, company_id }, access.userId);
 }
 export function list_measurements(
   pagination: Pagination,

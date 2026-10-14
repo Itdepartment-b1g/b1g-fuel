@@ -166,7 +166,7 @@ export default function MeasurementList() {
               Measurements
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Define the input fields and units available for your variants.
+              Name the measurements and units available for your variants.
             </p>
           </div>
           {canPerform(access, "measurements", "add") && (

@@ -39,12 +39,14 @@ export interface MeasurementUnit extends MeasurementUnitInput {
 export interface Measurement {
   // Unique identifier (UUID) of the measurement definition.
   id: string;
-  // UUID of the company that owns this definition.
-  company_id: string;
-  // Display information for the owning company.
-  company: CompanyOption;
+  // UUID of the owning company. Null when a super admin shared the definition with every company.
+  company_id: string | null;
+  // Display information for the owning company. Null for a shared definition.
+  company: CompanyOption | null;
   // UUID of the user who created the definition, when recorded.
   created_by: string | null;
+  // Display name of the user who created the definition, when available.
+  created_by_name: string | null;
   // Display name of the measurement, such as Dimensions.
   name: string;
   // Whether the definition is active rather than archived.
@@ -62,8 +64,8 @@ export interface Measurement {
 export type MeasurementSummary = Measurement;
 
 export interface CreateMeasurementInput {
-  // UUID of the company that will own the definition.
-  company_id: string;
+  // UUID of the company that will own the definition. Omitted for a shared super-admin definition.
+  company_id?: string | null;
   // Display name of the new measurement.
   name: string;
   // Numeric input fields to create.

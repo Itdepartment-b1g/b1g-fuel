@@ -64,12 +64,19 @@ export const measurementSchemas = {
     ],
     properties: {
       id,
-      company_id: id,
+      company_id: { ...id, nullable: true },
       created_by: { ...id, nullable: true, readOnly: true },
+      created_by_name: {
+        type: "string",
+        nullable: true,
+        readOnly: true,
+        description: "Display name of the user who created this record.",
+      },
       name,
       is_active: active,
       company: {
         type: "object",
+        nullable: true,
         required: ["id", "name"],
         properties: { id, name: { type: "string" } },
       },
@@ -88,7 +95,7 @@ export const measurementSchemas = {
   CreateMeasurement: {
     type: "object",
     additionalProperties: false,
-    required: ["company_id", "name", "fields", "units"],
+    required: ["name", "fields", "units"],
     properties: { company_id: id, name, fields, units },
   },
   UpdateMeasurement: {

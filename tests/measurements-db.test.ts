@@ -27,11 +27,21 @@ test("local database supports measurement creation, scoped listing, ordered edit
       units: [{ key: "cm", name: "Centimeter", symbol: "cm" }],
     });
     const created = await service.create_measurement(input, access);
-    const outside = await service.create_measurement({ ...input, company_id: outsideId }, { ...access, superAdmin: true });
-    assert.equal(created.company.id, companyId);
+    const outsider: RecordAccess = {
+      ...access, userId: randomUUID(), companyIds: [outsideId],
+      grants: access.grants.map((grant) => ({ ...grant, companyId: outsideId })),
+    };
+    const outside = await service.create_measurement({ ...input, name: "Outside", company_id: outsideId }, outsider);
+    const shared = await service.create_measurement({ ...input, name: "Shared", company_id: companyId }, { ...access, superAdmin: true });
+    assert.equal(created.company?.id, companyId);
     assert.equal(created.created_by, actor);
+    assert.equal(shared.company_id, null);
+    assert.equal(shared.company, null);
     assert.deepEqual(created.fields.map((field) => field.label), ["Length", "Width", "Height"]);
     await assert.rejects(service.get_measurement(outside.id, access), /not found/);
+    assert.equal((await service.get_measurement(shared.id, access)).name, "Shared");
+    await assert.rejects(service.update_measurement({ id: shared.id, name: "Changed" }, access), /not found/);
+    await assert.rejects(service.archive_measurement(shared.id, access), /not found/);
     await assert.rejects(service.create_measurement({ ...input, name: "dimensions" }, access));
     const pagination = { page: 1, page_size: 10, skip: 0, take: 10 };
     const list = await service.list_measurements(pagination, "Dimension", undefined, access);
@@ -57,7 +67,7 @@ test("local database supports measurement creation, scoped listing, ordered edit
   } finally {
     // Delete only records belonging to the two freshly generated fixture companies.
     await db.$transaction(async (tx) => {
-      const owner = { company_id: { in: [companyId, outsideId] } };
+      const owner = { OR: [{ company_id: { in: [companyId, outsideId] } }, { company_id: null, created_by: actor }] };
       await tx.measurement_field.deleteMany({ where: { measurement: owner } });
       await tx.measurement_unit.deleteMany({ where: { measurement: owner } });
       await tx.measurement.deleteMany({ where: owner });

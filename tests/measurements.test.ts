@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parse_create_measurement, parse_update_measurement } from "@/server/lib/measurement-input";
-import { can_create_measurement, get_measurement_options } from "@/server/services/measurements_service";
+import { can_create_measurement, get_measurement_options, measurement_company } from "@/server/services/measurements_service";
 import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
 import { record_where } from "@/server/auth/record-access";
 import { create_measurement } from "@/server/controllers/measurements_controller";
@@ -50,8 +50,17 @@ test("updates cannot move measurements between companies and accept deactivation
 test("creation grants and record filtering isolate company catalogs", () => {
   assert.equal(can_create_measurement(access, company), true);
   assert.equal(can_create_measurement(access, "another-company"), false);
-  assert.deepEqual(record_where(access, "measurements"), { OR: [{ company_id: { in: [company] } }] });
+  assert.deepEqual(record_where(access, "measurements"), { OR: [{ company_id: { in: [company] } }, { company_id: null }] });
   assert.equal(canPerform(access, "measurements", "view", { id: "id", company_id: "another-company", created_by: null }), false);
+  assert.equal(measurement_company(access, "another-company"), company);
+  assert.equal(measurement_company({ ...access, superAdmin: true }, company), null);
+  const several = { ...access, companyIds: [company, "another-company"], grants: [company, "another-company"].map((companyId) => ({ permission: "measurements.add", scope: "company" as const, companyId })) };
+  assert.equal(measurement_company(several, "another-company"), "another-company");
+  assert.throws(() => measurement_company(several), /Select a company/);
+  const sharedEditor = { ...access, grants: [{ permission: "measurements.edit", scope: "all" as const, companyId: null }] };
+  assert.equal(canPerform(sharedEditor, "measurements", "edit", { id: "id", company_id: null, created_by: "admin" }), false);
+  assert.deepEqual(record_where(sharedEditor, "measurements", "edit"), { company_id: { not: null } });
+  assert.equal(canPerform({ ...sharedEditor, superAdmin: true }, "measurements", "edit", { id: "id", company_id: null, created_by: "admin" }), true);
   const own = { ...access, grants: [{ permission: "measurements.edit", scope: "own" as const, companyId: company }] };
   assert.deepEqual(record_where(own, "measurements", "edit"), { OR: [{ created_by: "creator" }] });
   assert.deepEqual(record_where(own, "measurements", "delete"), { OR: [] });
@@ -90,6 +99,7 @@ test("child updates preserve existing IDs and omitted definitions; invalid updat
       },
       update: async () => { writes++; return current; },
     },
+    user: { findMany: async () => [{ id: access.userId, name: "Creator" }] },
     measurement_field: {
       upsert: async (args: { update: typeof parsed.fields[number] }) => {
         writes++;
@@ -133,8 +143,12 @@ test("creation persists the authenticated actor and all nested definitions atomi
       return { id: company, company_id: company, created_by: access.userId, name: parsed.name, is_active: true,
         created_at: new Date(), updated_at: new Date(), fields: [], units: [] };
     } },
+    user: { findMany: async () => [{ id: access.userId, name: "Creator" }] },
   } as unknown as Database };
-  try { await repository.create_measurement(parsed, access.userId); }
+  try {
+    const created = await repository.create_measurement(parsed, access.userId);
+    assert.equal(created.created_by_name, "Creator");
+  }
   finally { state.fuelDatabase = previous; }
 });
 

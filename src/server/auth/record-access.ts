@@ -38,7 +38,10 @@ export function record_where(access: RecordAccess | undefined, resource: "measur
 export function record_where(access: RecordAccess | undefined, resource: Resource, action = "view") {
   if (!access || access.superAdmin) return {};
   const grants = access.grants.filter((grant) => grant.permission === `${resource}.${action}`);
-  if (grants.some((grant) => grant.scope === "all" && !grant.companyId)) return {};
+  if (grants.some((grant) => grant.scope === "all" && !grant.companyId)) {
+    if (resource === "measurements" && (action === "edit" || action === "delete")) return { company_id: { not: null } };
+    return {};
+  }
   const rules = grants.map((grant) => {
     if (grant.scope === "own") return { created_by: access.userId };
     const ids = grant.companyId ? [grant.companyId] : access.companyIds;
@@ -46,6 +49,7 @@ export function record_where(access: RecordAccess | undefined, resource: Resourc
     if (resource === "roles" || resource === "measurements") return { company_id: { in: ids } };
     return { user_companies: { some: { company_id: { in: ids } } } };
   });
+  if (resource === "measurements" && action === "view") return { OR: [...rules, { company_id: null }] };
   return { OR: rules };
 }
 

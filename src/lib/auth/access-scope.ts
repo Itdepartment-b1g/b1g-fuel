@@ -31,6 +31,7 @@ export function canPerform(
 ) {
   if (!access) return false;
   if (access.superAdmin) return true;
+  if (resource === "measurements" && record?.company_id === null && (action === "edit" || action === "delete")) return false;
   if (resource === "roles" && action !== "view") return false;
   return access.grants.some((grant) => {
     if (grant.permission !== `${resource}.${action}`) return false;

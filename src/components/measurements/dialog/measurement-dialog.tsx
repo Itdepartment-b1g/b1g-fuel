@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loading } from "@/components/common/loading";
+import { useRecordAccess } from "@/components/providers/access-provider";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   editMeasurement,
@@ -31,6 +32,7 @@ export function MeasurementDialog({
 }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const access = useRecordAccess();
   const {
     selectedMeasurement,
     detailStatus,
@@ -81,12 +83,11 @@ export function MeasurementDialog({
             {measurementId ? "Edit measurement" : "Create a measurement"}
           </DialogTitle>
           <DialogDescription>
-            Define the numeric fields and units users can select for their
-            variants.
+            Name the measurement and add the units people can choose.
           </DialogDescription>
         </DialogHeader>
         {ready ? (
-          !measurementId && !options.companies.length ? (
+          !measurementId && !options.companies.length && !access?.superAdmin ? (
             <p role="status" className="text-sm text-muted-foreground">
               No companies are available for creating measurements. Ask an
               administrator to check your company access.

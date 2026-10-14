@@ -53,9 +53,14 @@ function units(value: unknown): MeasurementUnitInput[] {
   if (new Set(result.map((unit) => unit.symbol.toLowerCase())).size !== result.length) invalid("Unit symbols must be unique.");
   return result;
 }
+function optional_company(value: unknown) {
+  if (value === undefined || value === null || value === "") return undefined;
+  return measurement_id(value);
+}
 export function parse_create_measurement(value: unknown): CreateMeasurementInput {
   const row = object(value, ["company_id", "name", "fields", "units"]);
-  const input = { company_id: measurement_id(row.company_id), name: text(row.name, "Measurement name", 160), fields: fields(row.fields), units: units(row.units) };
+  const company_id = optional_company(row.company_id);
+  const input = { ...(company_id ? { company_id } : {}), name: text(row.name, "Measurement name", 160), fields: fields(row.fields), units: units(row.units) };
   if (!input.fields.some((field) => field.is_active) || !input.units.some((unit) => unit.is_active)) invalid("Provide at least one active field and one active unit.");
   return input;
 }

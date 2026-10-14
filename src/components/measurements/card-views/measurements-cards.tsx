@@ -17,7 +17,7 @@ export function MeasurementsCards({ measurements, disabled, onEdit, onArchive, o
         <article key={measurement.id} className="rounded-xl border p-5">
           <Ruler className="mb-4 size-7 text-primary" aria-hidden="true" />
           <h2 className="break-words font-semibold">{measurement.name}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{measurement.company.name} · {measurement.is_active ? "Active" : "Archived"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{measurement.company?.name ?? "All companies"} · {measurement.created_by_name ?? "—"} · {measurement.is_active ? "Active" : "Archived"}</p>
           <p className="mt-3 text-sm text-muted-foreground">{measurement.fields.filter((field) => field.is_active).map((field) => field.label).join(", ")}</p>
           <p className="mt-2 text-xs text-muted-foreground">Units: {measurement.units.filter((unit) => unit.is_active).map((unit) => unit.symbol).join(", ")}</p>
           <button type="button" className="mt-4 flex w-full items-center justify-between text-sm font-medium" aria-expanded={expandedId === measurement.id} aria-controls={`measurement-details-${measurement.id}`} onClick={() => setExpandedId((current) => current === measurement.id ? null : measurement.id)}>
