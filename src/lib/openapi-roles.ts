@@ -1,5 +1,5 @@
 import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./pagination";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/utils/pagination";
 import { PAGE_CATALOG } from "./auth/catalog";
 import { PERMISSION_CATALOG } from "./auth/permissions";
 
@@ -34,10 +34,20 @@ const permissions = {
     enum: PERMISSION_CATALOG.map((permission) => permission.key),
   },
 };
-const permissionScopes = { type: "object", additionalProperties: { type: "string", enum: ["all", "company", "own"] }, description: "Access scope per selected View, Edit, or Delete permission; defaults to company. All covers every record. Create is enabled or disabled and has no scope." };
+const permissionScopes = {
+  type: "object",
+  additionalProperties: { type: "string", enum: ["all", "company", "own"] },
+  description:
+    "Access scope per selected View, Edit, or Delete permission; defaults to company. All covers every record. Create is enabled or disabled and has no scope.",
+};
 const editable = {
   permission_scopes: permissionScopes,
-  company_id: { type: ["string", "null"], format: "uuid", description: "Company scope only. A role belongs to one company; assigned roles cannot change company." },
+  company_id: {
+    type: ["string", "null"],
+    format: "uuid",
+    description:
+      "Company scope only. A role belongs to one company; assigned roles cannot change company.",
+  },
   name,
   is_default_role: {
     type: "boolean",
@@ -90,7 +100,19 @@ export const roleSchemas = {
       slug: { type: "string", maxLength: 100 },
       scope: { type: "string", enum: ["global", "company"] },
       company_id: { type: ["string", "null"], format: "uuid" },
-      company: { anyOf: [{ type: "null" }, { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } }] },
+      company: {
+        anyOf: [
+          { type: "null" },
+          {
+            type: "object",
+            required: ["id", "name"],
+            properties: {
+              id: { type: "string", format: "uuid" },
+              name: { type: "string" },
+            },
+          },
+        ],
+      },
       is_system: { type: "boolean", readOnly: true },
       is_default_role: { type: "boolean" },
       created_at: { type: "string", format: "date-time" },
@@ -98,7 +120,12 @@ export const roleSchemas = {
       pages,
       permissions,
       permission_scopes: permissionScopes,
-      created_by: { type: "string", format: "uuid", nullable: true, readOnly: true },
+      created_by: {
+        type: "string",
+        format: "uuid",
+        nullable: true,
+        readOnly: true,
+      },
       assignment_count: { type: "integer", minimum: 0, readOnly: true },
     },
   },
@@ -157,7 +184,17 @@ export const roleSchemas = {
     type: "object",
     required: ["companies", "scopes", "pages", "permissions"],
     properties: {
-      companies: { type: "array", items: { type: "object", required: ["id", "name"], properties: { id: { type: "string", format: "uuid" }, name: { type: "string" } } } },
+      companies: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["id", "name"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+          },
+        },
+      },
       scopes: {
         type: "array",
         items: { type: "string", enum: ["company", "global"] },
@@ -179,7 +216,12 @@ export const roleSchemas = {
         items: {
           type: "object",
           required: ["key", "label", "page_key", "action"],
-          properties: { key: { type: "string" }, label: { type: "string" }, page_key: { type: "string" }, action: { type: "string", enum: ["view", "edit", "add", "delete"] } },
+          properties: {
+            key: { type: "string" },
+            label: { type: "string" },
+            page_key: { type: "string" },
+            action: { type: "string", enum: ["view", "edit", "add", "delete"] },
+          },
         },
       },
     },
@@ -204,8 +246,19 @@ export const rolePaths = {
           in: "query",
           schema: { type: "integer", minimum: 1, maximum: 1000000, default: 1 },
         },
-        { name: "sort_by", in: "query", description: "Sort before pagination; defaults to created_at.", schema: { type: "string", enum: [...ROLE_SORT_FIELDS] } },
-        { name: "sort_order", in: "query", description: "asc or desc; defaults to desc for created_at and asc for other fields.", schema: { type: "string", enum: ["asc", "desc"] } },
+        {
+          name: "sort_by",
+          in: "query",
+          description: "Sort before pagination; defaults to created_at.",
+          schema: { type: "string", enum: [...ROLE_SORT_FIELDS] },
+        },
+        {
+          name: "sort_order",
+          in: "query",
+          description:
+            "asc or desc; defaults to desc for created_at and asc for other fields.",
+          schema: { type: "string", enum: ["asc", "desc"] },
+        },
         {
           name: "page_size",
           in: "query",

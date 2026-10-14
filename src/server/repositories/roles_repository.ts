@@ -1,4 +1,4 @@
-import type { QuickFilterState } from "@/lib/quick-filter";
+import type { QuickFilterState } from "@/types/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";

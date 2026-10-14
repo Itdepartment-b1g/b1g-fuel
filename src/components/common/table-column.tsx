@@ -3,7 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SortValue } from "@/lib/table";
+import type { SortValue } from "@/types/table-views";
 import { TableMenu, type TableMenuItem } from "./table-menu";
 
 /** Left and right space inside each header. */

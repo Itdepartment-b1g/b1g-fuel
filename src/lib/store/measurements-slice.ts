@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import type { ArchiveMeasurementResponse, CreateMeasurementInput, MeasurementOptions, MeasurementResponse, MeasurementSummary, MeasurementsPage, UpdateMeasurementInput } from "@/types/measurements";
 
 export type MeasurementFailure = { status: number; message: string };

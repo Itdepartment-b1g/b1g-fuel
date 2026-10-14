@@ -1,34 +1,10 @@
 import {
   formatDateForInput,
   parseDateFromInput,
-  type DatePreset,
-  type DateRangeFilterValue,
-} from "./dateRangePresets";
+} from "@/utils/dateRangePresets";
+import type { DatePreset, DateRangeFilterValue } from "@/types/date-range";
+import type { ColumnCondition, DateFilter, FilterDefaults, FilterOption, QuickFilterState } from "@/types/quick-filter";
 
-export type FilterOption = { value: string; label: string; count?: number };
-export type FilterField = {
-  key: string;
-  label: string;
-  options: FilterOption[];
-};
-export type AdditionalFilter = {
-  key: string;
-  label: string;
-  options: FilterOption[];
-};
-export type ColumnCondition = { id: string; field: string; value: string };
-export type DateFilter = { preset: string; from: string; to: string };
-export type QuickFilterState = {
-  date: DateFilter;
-  conditions: ColumnCondition[];
-  status: string;
-  additional: Record<string, string>;
-};
-export type FilterDefaults = {
-  date?: string;
-  status: string;
-  additional?: Record<string, string>;
-};
 export const DATE_PRESETS: FilterOption[] = [
   { value: "all", label: "All Time" },
   { value: "this_month", label: "This Month" },

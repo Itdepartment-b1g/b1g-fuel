@@ -4,7 +4,7 @@ import { useRecordAccess } from "@/components/providers/access-provider";
 import { LockKeyhole, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableView } from "@/components/common/table-view";
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import type { RoleSummary } from "@/types/roles";
 import { RoleDetails } from "../role-details";
 export type RoleActionProps = {

@@ -1,5 +1,5 @@
-import type { QuickFilterState } from "@/lib/quick-filter";
-import { COMPANY_FILTER_OPTIONS } from "@/lib/management-filters";
+import type { QuickFilterState } from "@/types/quick-filter";
+import { COMPANY_FILTER_OPTIONS } from "@/utils/management-filters";
 import { build_filter_options } from "@/server/lib/quick-filters";
 import type { RecordAccess } from "@/server/auth/record-access";
 import type { Sorting } from "@/server/lib/sorting";

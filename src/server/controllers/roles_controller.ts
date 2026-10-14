@@ -1,5 +1,5 @@
 import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
-import { ROLE_FILTER_OPTIONS } from "@/lib/management-filters";
+import { ROLE_FILTER_OPTIONS } from "@/utils/management-filters";
 import { ACCESS_SCOPES, type AccessScope } from "@/lib/auth/access-scope";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";

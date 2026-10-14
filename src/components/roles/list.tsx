@@ -6,7 +6,7 @@ import {
   useToast,
   toastErrorMessage,
 } from "@/components/providers/toast-provider";
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutGrid, List, LoaderCircle, Plus, Shield } from "lucide-react";
@@ -22,13 +22,9 @@ import {
   clearRoleMutation,
   selectRole,
 } from "@/lib/store/roles-slice";
-import { countActiveFilters, createQuickFilterState } from "@/lib/quick-filter";
-import { ROLE_FILTER_DEFAULTS } from "@/lib/management-filters";
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-  paginationFromApi,
-} from "@/lib/pagination";
+import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
+import { ROLE_FILTER_DEFAULTS } from "@/utils/management-filters";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import type { RoleSummary } from "@/types/roles";
 import { RoleDialog } from "./dialog/role-dialog";
 import { RolesTableView } from "./table-view/roles-table-view";

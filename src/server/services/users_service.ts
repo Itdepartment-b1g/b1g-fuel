@@ -1,12 +1,12 @@
 import type { RecordAccess } from "@/server/auth/record-access";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateUserInput } from "@/server/schema/users_schema";
-import type { UserFilters, UserFilterOptions } from "@/lib/users-filters";
+import type { UserFilters, UserFilterOptions } from "@/types/users-filters";
 import {
   USER_FILTER_FIELDS,
   USER_STATUS_OPTIONS,
   USER_ADDITIONAL_FILTERS,
-} from "@/lib/users-filters";
+} from "@/utils/users-filters";
 import { createAdminClient } from "@/server/auth/admin";
 import * as usersRepository from "@/server/repositories/users_repository";
 import type { Pagination } from "@/server/lib/pagination";

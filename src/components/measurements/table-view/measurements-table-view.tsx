@@ -4,7 +4,7 @@ import { Archive, Pencil, RotateCcw } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import type { MeasurementSummary } from "@/types/measurements";
 
 

@@ -5,15 +5,13 @@ import type { Request, Response, NextFunction } from "express";
 import * as userService from "@/server/services/users_service";
 import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import type { CreateUserInput } from "@/server/schema/users_schema";
-import {
-  DATE_PRESETS,
-  type QuickFilterState,
-} from "@/lib/quick-filter";
+import { DATE_PRESETS } from "@/utils/quick-filter";
+import type { QuickFilterState } from "@/types/quick-filter";
 import {
   USER_FILTER_FIELDS,
   USER_STATUS_OPTIONS,
   USER_ADDITIONAL_FILTERS,
-} from "@/lib/users-filters";
+} from "@/utils/users-filters";
 import { resolveDateRange } from "@/server/lib/filter";
 import { UserError } from "@/server/services/users_service";
 

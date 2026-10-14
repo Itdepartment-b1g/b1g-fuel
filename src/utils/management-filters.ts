@@ -1,6 +1,5 @@
-import type { AdditionalFilter, FilterField, FilterOption } from "./quick-filter";
+import type { ManagementFilterOptions } from "@/types/management-filters";
 
-export type ManagementFilterOptions = { fields: FilterField[]; statusOptions: FilterOption[]; additionalFilters: AdditionalFilter[] };
 export const COMPANY_FILTER_OPTIONS: ManagementFilterOptions = {
   fields: [{ key: "name", label: "Company name", options: [] }],
   statusOptions: [{ value: "all", label: "All companies" }, { value: "assigned", label: "With members" }, { value: "unassigned", label: "Without members" }],

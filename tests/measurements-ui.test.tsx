@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Provider } from "react-redux";
 import { makeStore } from "@/lib/store/store";
 import { archiveMeasurement, createMeasurement, editMeasurement, getMeasurementOption, listMeasurement, updateMeasurement } from "@/lib/store/measurements-slice";
-import { moveMeasurementEntry, prepareMeasurementEntries } from "@/lib/measurement-form";
+import { moveMeasurementEntry, prepareMeasurementEntries } from "@/utils/measurement-form";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { MeasurementForm } from "@/components/measurements/dialog/measurement-form";
 import { MeasurementDetails } from "@/components/measurements/table-view/measurements-table-view";

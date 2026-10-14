@@ -1,10 +1,11 @@
-import type { QuickFilterState } from "@/lib/quick-filter";
-import { COMPANY_FILTER_OPTIONS, type ManagementFilterOptions } from "@/lib/management-filters";
-import type { TableSort } from "@/lib/table";
+import type { QuickFilterState } from "@/types/quick-filter";
+import { COMPANY_FILTER_OPTIONS } from "@/utils/management-filters";
+import type { ManagementFilterOptions } from "@/types/management-filters";
+import type { TableSort } from "@/types/table-views";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import type { CompanySummary, CompaniesPage, CompanyResponse, CreateCompanyInput, UpdateCompanyInput, DeleteCompanyResponse } from "@/types/companies";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/utils/pagination";
 
 export type CompanyFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";

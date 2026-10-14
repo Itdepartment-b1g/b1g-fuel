@@ -3,13 +3,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  DEFAULT_LIMIT_OPTIONS,
-  mobilePageNumbers,
-  pageNavigation,
-  validateLimit,
-  type PaginationMetadata,
-} from "@/lib/pagination";
+import { DEFAULT_LIMIT_OPTIONS, mobilePageNumbers, pageNavigation, validateLimit } from "@/utils/pagination";
+import type { PaginationMetadata } from "@/types/pagination";
 
 export type PaginationProps = {
   metadata: PaginationMetadata;

@@ -3,7 +3,7 @@ import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 
 import { useToast } from "@/components/providers/toast-provider";
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -21,13 +21,9 @@ import {
   selectUser,
 } from "@/lib/store/users-slice";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
-import { countActiveFilters, createQuickFilterState } from "@/lib/quick-filter";
-import { USER_FILTER_DEFAULTS } from "@/lib/users-filters";
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-  paginationFromApi,
-} from "@/lib/pagination";
+import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
+import { USER_FILTER_DEFAULTS } from "@/utils/users-filters";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import { CreateUserDialog } from "./dialog/create-user-dialog";
 import { AssignUserDialog } from "./dialog/assign-user-dialog";
 import type { UserSummary } from "@/types/users";

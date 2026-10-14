@@ -1,7 +1,8 @@
-import { DATE_PRESETS, type QuickFilterState } from "@/lib/quick-filter";
-import type { ManagementFilterOptions } from "@/lib/management-filters";
+import { DATE_PRESETS } from "@/utils/quick-filter";
+import type { QuickFilterState } from "@/types/quick-filter";
+import type { ManagementFilterOptions } from "@/types/management-filters";
 import { resolveDateRange } from "./filter";
-import type { FilterOption } from "@/lib/quick-filter";
+import type { FilterOption } from "@/types/quick-filter";
 
 export class QuickFilterError extends Error {}
 

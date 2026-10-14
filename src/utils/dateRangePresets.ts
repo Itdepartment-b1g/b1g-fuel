@@ -1,18 +1,4 @@
-export type DatePreset =
-  | "all"
-  | "this_month"
-  | "last_month"
-  | "last_3_months"
-  | "last_6_months"
-  | "this_year"
-  | "last_year"
-  | "custom";
-
-export type DateRangeFilterValue = {
-  preset: DatePreset;
-  customStart?: Date;
-  customEnd?: Date;
-};
+import type { DatePreset, DateRangeFilterValue } from "@/types/date-range";
 
 export const ALL_TIME_DATE_RANGE: DateRangeFilterValue = { preset: "all" };
 

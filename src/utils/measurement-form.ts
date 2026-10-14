@@ -1,7 +1,7 @@
 import type {
   MeasurementFieldInput,
   MeasurementUnitInput,
-} from "@/server/schema/measurements_schema";
+} from "@/types/measurements";
 
 /** Preserve saved keys; generate unique keys for new definitions from their visible names. */
 export function prepareMeasurementEntries<

@@ -2,7 +2,7 @@ import { record_where, allowed_company_ids, type RecordAccess } from "@/server/a
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
-import type { QuickFilterState } from "@/lib/quick-filter";
+import type { QuickFilterState } from "@/types/quick-filter";
 import { build_filter } from "@/server/lib/filter";
 import type { AccessScope } from "@/lib/auth/access-scope";
 import type {

@@ -8,8 +8,9 @@ import {
 } from "@/components/common/table-view";
 import { Pagination } from "@/components/common/pagination";
 import { Input } from "@/components/ui/input";
-import { paginateItems } from "@/lib/pagination";
-import { sortTableRows, type TableSort } from "@/lib/table";
+import { paginateItems } from "@/utils/pagination";
+import { sortTableRows } from "@/utils/table-views";
+import type { TableSort } from "@/types/table-views";
 import type { UserSummary } from "@/types/users";
 export function UserAssignments({ user }: { user: UserSummary }) {
   return (

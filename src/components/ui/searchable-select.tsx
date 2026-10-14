@@ -4,7 +4,8 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, Search } from "lucide-react";
 import { Input } from "./input";
-import { searchFilterOptions, type FilterOption } from "@/lib/quick-filter";
+import { searchFilterOptions } from "@/utils/quick-filter";
+import type { FilterOption } from "@/types/quick-filter";
 
 export function SearchableSelect({ label, value, options, onChange, anyLabel = "Any" }: {
   label: string; value: string; options: FilterOption[]; onChange: (value: string) => void; anyLabel?: string;

@@ -1,4 +1,4 @@
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import {
   createAsyncThunk,
   createSlice,
@@ -14,8 +14,9 @@ import type {
   UserSummary,
   UsersPage,
 } from "@/types/users";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
-import { USER_ADDITIONAL_FILTERS, USER_FILTER_FIELDS, USER_STATUS_OPTIONS, type UserFilterOptions, type UserFilters } from "@/lib/users-filters";
+import { DEFAULT_PAGE_SIZE } from "@/utils/pagination";
+import { USER_ADDITIONAL_FILTERS, USER_FILTER_FIELDS, USER_STATUS_OPTIONS } from "@/utils/users-filters";
+import type { UserFilterOptions, UserFilters } from "@/types/users-filters";
 
 export type ApiFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";

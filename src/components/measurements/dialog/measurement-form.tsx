@@ -17,12 +17,12 @@ import {
 import {
   moveMeasurementEntry,
   prepareMeasurementEntries,
-} from "@/lib/measurement-form";
+} from "@/utils/measurement-form";
 import type {
   MeasurementFieldInput,
   MeasurementSummary,
   MeasurementUnitInput,
-} from "@/server/schema/measurements_schema";
+} from "@/types/measurements";
 
 type FieldRow = MeasurementFieldInput & { rowId: string };
 type UnitRow = MeasurementUnitInput & { rowId: string };

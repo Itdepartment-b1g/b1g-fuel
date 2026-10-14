@@ -1,5 +1,4 @@
-export type TableSort = { field: string; direction: "asc" | "desc" };
-export type SortValue = string | number | boolean | Date | null | undefined;
+import type { SortValue, TableSort } from "@/types/table-views";
 
 /** Compare supported cell values; missing and invalid values stay last in either direction. */
 export function compareTableValues(a: SortValue, b: SortValue, direction: TableSort["direction"]) {

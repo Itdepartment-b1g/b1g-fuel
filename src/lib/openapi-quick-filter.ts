@@ -1,5 +1,5 @@
-import { DATE_PRESETS } from "./quick-filter";
-import { USER_FILTER_FIELDS } from "./users-filters";
+import { DATE_PRESETS } from "@/utils/quick-filter";
+import { USER_FILTER_FIELDS } from "@/utils/users-filters";
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 export const quickFilterSchemas = {
   QuickFilters: {

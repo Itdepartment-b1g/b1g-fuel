@@ -11,7 +11,8 @@ import {
 } from "react";
 import { ArrowDown, ArrowUp, Clock3, Pin, PinOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { sortTableRows, type SortValue, type TableSort } from "@/lib/table";
+import { sortTableRows } from "@/utils/table-views";
+import type { SortValue, TableSort } from "@/types/table-views";
 import type { TableMenuItem } from "./table-menu";
 import { TableColumnHeader, type TableColumn } from "./table-column";
 import { TableRow, type TableAction } from "./table-row";

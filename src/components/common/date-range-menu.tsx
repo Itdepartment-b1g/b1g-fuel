@@ -15,9 +15,8 @@ import {
   formatDateForInput,
   getDatePresetLabel,
   parseDateFromInput,
-  type DatePreset,
-  type DateRangeFilterValue,
-} from "@/lib/dateRangePresets";
+} from "@/utils/dateRangePresets";
+import type { DatePreset, DateRangeFilterValue } from "@/types/date-range";
 import { cn } from "@/lib/utils";
 
 export type DateRangeMenuProps = {

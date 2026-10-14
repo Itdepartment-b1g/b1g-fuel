@@ -1,5 +1,5 @@
 import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
-import { COMPANY_FILTER_OPTIONS } from "@/lib/management-filters";
+import { COMPANY_FILTER_OPTIONS } from "@/utils/management-filters";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { COMPANY_SORT_FIELDS } from "@/server/schema/companies_schema";
 import type { Request, Response, NextFunction } from "express";

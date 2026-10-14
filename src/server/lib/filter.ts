@@ -1,10 +1,5 @@
-import {
-  isActiveCondition,
-  type ColumnCondition,
-  type DateFilter,
-  type FilterDefaults,
-  type QuickFilterState,
-} from "@/lib/quick-filter";
+import { isActiveCondition } from "@/utils/quick-filter";
+import type { ColumnCondition, DateFilter, FilterDefaults, QuickFilterState } from "@/types/quick-filter";
 
 export function groupActiveConditions(
   conditions: ColumnCondition[],

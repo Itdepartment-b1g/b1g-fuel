@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  fromDateMenuValue,
-  toDateMenuValue,
-  type AdditionalFilter,
-  type FilterField,
-  type FilterOption,
-  type QuickFilterState,
-} from "@/lib/quick-filter";
+import { fromDateMenuValue, toDateMenuValue } from "@/utils/quick-filter";
+import type { AdditionalFilter, FilterField, FilterOption, QuickFilterState } from "@/types/quick-filter";
 import { cn } from "@/lib/utils";
 import { DateRangeMenu } from "./date-range-menu";
 import { SearchQuickFilter } from "./search-quick-filter";

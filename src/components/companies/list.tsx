@@ -6,7 +6,7 @@ import {
   useToast,
   toastErrorMessage,
 } from "@/components/providers/toast-provider";
-import type { TableSort } from "@/lib/table";
+import type { TableSort } from "@/types/table-views";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, LayoutGrid, List, LoaderCircle, Plus } from "lucide-react";
@@ -22,13 +22,9 @@ import {
   clearCompanyMutation,
   selectCompany,
 } from "@/lib/store/companies-slice";
-import { countActiveFilters, createQuickFilterState } from "@/lib/quick-filter";
-import { COMPANY_FILTER_DEFAULTS } from "@/lib/management-filters";
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-  paginationFromApi,
-} from "@/lib/pagination";
+import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
+import { COMPANY_FILTER_DEFAULTS } from "@/utils/management-filters";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import type { CompanySummary } from "@/types/companies";
 import { CompanyDialog } from "./dialog/company-dialog";
 import { CompaniesTableView } from "./table-view/companies-table-view";
