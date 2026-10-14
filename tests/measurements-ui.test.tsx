@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Provider } from "react-redux";
 import { makeStore } from "@/lib/store/store";
-import { archiveMeasurement, createMeasurement, editMeasurement, getMeasurementOption, listMeasurement, updateMeasurement } from "@/lib/store/measurements-slice";
+import { createMeasurement, deleteMeasurement, editMeasurement, getMeasurementOption, listMeasurement, updateMeasurement } from "@/lib/store/measurements-slice";
 import { moveMeasurementEntry, prepareMeasurementEntries } from "@/utils/measurement-form";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { MeasurementForm } from "@/components/measurements/dialog/measurement-form";
@@ -14,9 +14,9 @@ import type { MeasurementSummary } from "@/types/measurements";
 const measurement: MeasurementSummary = {
   id: "30000000-0000-4000-8000-000000000001", company_id: "30000000-0000-4000-8000-000000000002",
   company: { id: "30000000-0000-4000-8000-000000000002", name: "B1G Fuel" },
-  created_by: "creator", created_by_name: "Ada", name: "Dimensions", is_active: true,
+  created_by: "creator", created_by_name: "Ada", name: "Dimensions",
   created_at: "2026-10-14T00:00:00Z", updated_at: "2026-10-14T00:00:00Z",
-  units: [{ id: "unit-cm", key: "cm", name: "Centimeter", symbol: "cm", is_active: true, position: 0 }],
+  units: [{ id: "unit-cm", key: "cm", name: "Centimeter", symbol: "cm" }],
 };
 const page = { measurements: [measurement], total: 1, page: 1, page_size: 10 };
 
@@ -48,25 +48,28 @@ test("successful mutations invalidate pending reads, while failed saves remain r
   assert.equal(store.getState().measurements.mutationError?.status, 409);
   assert.equal(store.getState().measurements.selectedMeasurement?.name, input.name);
 });
-test("thunks use the API with cookies, preserve false filters, and serialize nested definitions", async () => {
+test("thunks use the API with cookies and serialize nested definitions", async () => {
   const original = globalThis.fetch;
   const calls: { url: string; init?: RequestInit }[] = [];
   globalThis.fetch = async (url, init) => {
     calls.push({ url: String(url), init });
-    const body = init?.method === "DELETE" ? { id: measurement.id, message: "Measurement archived." } : init?.method === "POST" ? { measurement } : page;
+    const body = init?.method === "DELETE" ? { id: measurement.id, message: "Measurement deleted." } : init?.method === "POST" ? { measurement } : page;
     return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   try {
     const store = makeStore();
-    await store.dispatch(listMeasurement({ is_active: false, search: "Weight & Volume", page: 2 })).unwrap();
-    assert.equal(new URL(calls[0].url, "http://test").searchParams.get("is_active"), "false");
+    await store.dispatch(listMeasurement({ search: "Weight & Volume", page: 2 })).unwrap();
+    const listed = new URL(calls[0].url, "http://test");
+    assert.equal(listed.searchParams.get("search"), "Weight & Volume");
+    assert.equal(listed.searchParams.get("page"), "2");
+    assert.equal(listed.searchParams.get("is_active"), null);
     assert.equal(calls[0].init?.credentials, "include");
     assert.ok(calls[0].init?.signal);
     const input = { company_id: measurement.company_id, name: measurement.name, units: measurement.units };
     await store.dispatch(createMeasurement(input)).unwrap();
     assert.equal(calls[1].init?.method, "POST");
     assert.deepEqual(JSON.parse(String(calls[1].init?.body)), input);
-    await store.dispatch(archiveMeasurement(measurement.id)).unwrap();
+    await store.dispatch(deleteMeasurement(measurement.id)).unwrap();
     assert.equal(calls[2].init?.method, "DELETE");
     assert.equal(store.getState().measurements.selectedMeasurement, null);
   } finally { globalThis.fetch = original; }
@@ -77,25 +80,24 @@ test("API errors retain their status and message, and simultaneous mutations are
   globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: "Permission denied" }), { status: 403 }); };
   try {
     const store = makeStore();
-    const input = { id: measurement.id, is_active: true };
+    const input = { id: measurement.id, name: "Mass" };
     await assert.rejects(store.dispatch(updateMeasurement(input)).unwrap(), (error: unknown) => Boolean(error && typeof error === "object" && "status" in error && error.status === 403));
     assert.equal(store.getState().measurements.mutationError?.message, "Permission denied");
     store.dispatch(updateMeasurement.pending("in-flight", input));
-    const action = await store.dispatch(archiveMeasurement(measurement.id));
-    assert.ok(archiveMeasurement.rejected.match(action) && action.meta.condition);
+    const action = await store.dispatch(deleteMeasurement(measurement.id));
+    assert.ok(deleteMeasurement.rejected.match(action) && action.meta.condition);
     assert.equal(calls, 1);
     assert.equal(store.getState().measurements.mutationStatus, "loading");
   } finally { globalThis.fetch = original; }
 });
 test("generated keys remain unique and saved keys survive renaming and reordering", () => {
   const entries = [
-    { key: "length", name: "Renamed length", symbol: "rl", is_active: true, position: 0 },
-    { key: "", name: "Length", symbol: "l", is_active: true, position: 1 },
-    { key: "", name: "Length", symbol: "l2", is_active: true, position: 2 },
+    { key: "length", name: "Renamed length", symbol: "rl" },
+    { key: "", name: "Length", symbol: "l" },
+    { key: "", name: "Length", symbol: "l2" },
   ];
   const result = prepareMeasurementEntries(moveMeasurementEntry(entries, 0, 1));
   assert.deepEqual(result.map((entry) => entry.key), ["length_2", "length", "length_3"]);
-  assert.deepEqual(result.map((entry) => entry.position), [0, 1, 2]);
 });
 test("measurement forms collect a name and units, and ask for a company only when several are available", () => {
   const store = makeStore();
@@ -119,10 +121,13 @@ test("measurement forms collect a name and units, and ask for a company only whe
   assert.match(edit, /value="cm"/);
   assert.doesNotMatch(edit, /Remove unit/);
   assert.doesNotMatch(edit, /Measurement active/);
-  const table = renderToStaticMarkup(<MeasurementsTableView measurements={[measurement]} loading={false} sorting={null} onSortingChange={() => {}} onEdit={() => {}} onArchive={() => {}} onRestore={() => {}} disabled={false} />);
+  const table = renderToStaticMarkup(<MeasurementsTableView measurements={[measurement]} loading={false} sorting={null} onSortingChange={() => {}} onEdit={() => {}} onDelete={() => {}} disabled={false} />);
   assert.match(table, />cm</);
   assert.match(table, /Created by/);
   assert.match(table, /Ada/);
+  assert.match(table, /Delete/);
+  assert.match(table, /Expand row/);
+  assert.doesNotMatch(table, /Archive/);
 });
 test("measurement navigation points to the implemented route and respects view permissions", () => {
   assert.ok(listSidebarMenu([], { role: "super_admin" }).some((item) => item.href === "/measurements"));

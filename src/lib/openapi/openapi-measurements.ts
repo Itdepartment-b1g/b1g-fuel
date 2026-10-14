@@ -6,16 +6,10 @@ const json = (schema: object) => ({
   content: { "application/json": { schema } },
 });
 const id = { type: "string", format: "uuid" };
-const active = { type: "boolean", default: true };
 const key = { type: "string", maxLength: 64, pattern: "^[a-z][a-z0-9_]*$" };
 const name = { type: "string", minLength: 1, maxLength: 160 };
-const child = {
-  key,
-  is_active: active,
-  position: { type: "integer", minimum: 0, maximum: 1000 },
-};
 const unit = {
-  ...child,
+  key,
   name: { type: "string", minLength: 1, maxLength: 100 },
   symbol: { type: "string", minLength: 1, maxLength: 20 },
 };
@@ -39,7 +33,6 @@ export const measurementSchemas = {
       "company_id",
       "company",
       "name",
-      "is_active",
       "created_at",
       "updated_at",
       "units",
@@ -55,7 +48,6 @@ export const measurementSchemas = {
         description: "Display name of the user who created this record.",
       },
       name,
-      is_active: active,
       company: {
         type: "object",
         nullable: true,
@@ -81,7 +73,7 @@ export const measurementSchemas = {
     additionalProperties: false,
     required: ["id"],
     minProperties: 2,
-    properties: { id, name, is_active: active, units },
+    properties: { id, name, units },
   },
   MeasurementResponse: {
     type: "object",
@@ -150,7 +142,6 @@ export const measurementPaths = {
           in: "query",
           schema: { type: "string", maxLength: 160 },
         },
-        { name: "is_active", in: "query", schema: { type: "boolean" } },
         {
           name: "page",
           in: "query",
@@ -179,7 +170,7 @@ export const measurementPaths = {
       responses: {
         "200": {
           description:
-            "Scoped measurements, including active and inactive children",
+            "Scoped measurements",
           ...json({
             oneOf: [ref("MeasurementsPage"), ref("MeasurementResponse")],
           }),
@@ -203,7 +194,7 @@ export const measurementPaths = {
       ...common,
       summary: "Update measurement and upsert children by stable key",
       description:
-        "Omitted units are preserved. Use is_active:false to deactivate a unit. Company ownership is immutable. At least one unit must remain active.",
+        "Omitted units are preserved. Company ownership is immutable. At least one unit must remain.",
       requestBody: { required: true, ...json(ref("UpdateMeasurement")) },
       responses: {
         "200": {
@@ -215,11 +206,11 @@ export const measurementPaths = {
     },
     delete: {
       ...common,
-      summary: "Archive measurement without removing its definition",
+      summary: "Delete a measurement and its units",
       parameters: [{ name: "id", in: "query", required: true, schema: id }],
       responses: {
         "200": {
-          description: "Measurement archived",
+          description: "Measurement deleted",
           ...json({
             type: "object",
             properties: { id, message: { type: "string" } },

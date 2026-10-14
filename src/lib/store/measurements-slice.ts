@@ -1,11 +1,11 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import type { TableSort } from "@/types/table-views";
-import type { ArchiveMeasurementResponse, CreateMeasurementInput, MeasurementOptions, MeasurementResponse, MeasurementSummary, MeasurementsPage, UpdateMeasurementInput } from "@/types/measurements";
+import type { CreateMeasurementInput, DeleteMeasurementResponse, MeasurementOptions, MeasurementResponse, MeasurementSummary, MeasurementsPage, UpdateMeasurementInput } from "@/types/measurements";
 
 export type MeasurementFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type MeasurementsQuery = { page?: number; page_size?: number; search?: string; company_id?: string; is_active?: boolean; sort_by?: string; sort_order?: TableSort["direction"] };
+export type MeasurementsQuery = { page?: number; page_size?: number; search?: string; company_id?: string; sort_by?: string; sort_order?: TableSort["direction"] };
 type State = {
   measurements: MeasurementSummary[]; total: number; selectedMeasurement: MeasurementSummary | null;
   options: MeasurementOptions;
@@ -55,8 +55,8 @@ export const updateMeasurement = createAsyncThunk<MeasurementResponse, UpdateMea
   try { return await request<MeasurementResponse>("/api/measurements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); }
   catch (error) { return rejectWithValue(failure(error)); }
 }, { condition: canMutate });
-export const archiveMeasurement = createAsyncThunk<ArchiveMeasurementResponse, string, Config>("measurements/archive", async (id, { rejectWithValue }) => {
-  try { return await request<ArchiveMeasurementResponse>(`/api/measurements?id=${encodeURIComponent(id)}`, { method: "DELETE" }); }
+export const deleteMeasurement = createAsyncThunk<DeleteMeasurementResponse, string, Config>("measurements/delete", async (id, { rejectWithValue }) => {
+  try { return await request<DeleteMeasurementResponse>(`/api/measurements?id=${encodeURIComponent(id)}`, { method: "DELETE" }); }
   catch (error) { return rejectWithValue(failure(error)); }
 }, { condition: canMutate });
 const slice = createSlice({
@@ -76,8 +76,8 @@ const slice = createSlice({
       .addCase(getMeasurementOption.pending, (state, action) => { state.optionsStatus = "loading"; state.optionsError = null; state.optionsRequestId = action.meta.requestId; })
       .addCase(getMeasurementOption.fulfilled, (state, action) => { if (state.optionsRequestId !== action.meta.requestId) return; state.options = action.payload; state.optionsStatus = "succeeded"; state.optionsRequestId = null; })
       .addCase(getMeasurementOption.rejected, (state, action) => { if (state.optionsRequestId !== action.meta.requestId) return; state.optionsStatus = action.meta.aborted ? "idle" : "failed"; state.optionsError = action.meta.aborted ? null : action.payload ?? failure(action.error); state.optionsRequestId = null; })
-      .addMatcher(isAnyOf(createMeasurement.pending, updateMeasurement.pending, archiveMeasurement.pending), (state, action) => { state.mutationStatus = "loading"; state.mutationError = null; state.mutationRequestId = action.meta.requestId; })
-      .addMatcher(isAnyOf(createMeasurement.fulfilled, updateMeasurement.fulfilled, archiveMeasurement.fulfilled), (state, action) => {
+      .addMatcher(isAnyOf(createMeasurement.pending, updateMeasurement.pending, deleteMeasurement.pending), (state, action) => { state.mutationStatus = "loading"; state.mutationError = null; state.mutationRequestId = action.meta.requestId; })
+      .addMatcher(isAnyOf(createMeasurement.fulfilled, updateMeasurement.fulfilled, deleteMeasurement.fulfilled), (state, action) => {
         if (state.mutationRequestId !== action.meta.requestId) return;
         state.mutationStatus = "succeeded"; state.mutationRequestId = null;
         // Invalidate outstanding reads so an older response cannot overwrite a successful change.
@@ -87,7 +87,7 @@ const slice = createSlice({
         else state.selectedMeasurement = null;
         state.detailStatus = state.selectedMeasurement ? "succeeded" : "idle";
       })
-      .addMatcher(isAnyOf(createMeasurement.rejected, updateMeasurement.rejected, archiveMeasurement.rejected), (state, action) => { if (state.mutationRequestId !== action.meta.requestId) return; state.mutationStatus = "failed"; state.mutationError = action.payload ?? failure(action.error); state.mutationRequestId = null; });
+      .addMatcher(isAnyOf(createMeasurement.rejected, updateMeasurement.rejected, deleteMeasurement.rejected), (state, action) => { if (state.mutationRequestId !== action.meta.requestId) return; state.mutationStatus = "failed"; state.mutationError = action.payload ?? failure(action.error); state.mutationRequestId = null; });
   },
 });
 export const measurementsReducer = slice.reducer;

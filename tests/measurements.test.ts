@@ -20,11 +20,10 @@ const access: RecordAccess = {
   grants: [{ permission: "measurements.add", scope: "company", companyId: company }, { permission: "measurements.view", scope: "company", companyId: company }],
 };
 
-test("dynamic measurement definitions normalize names and default units to active", () => {
+test("dynamic measurement definitions normalize names and unit keys", () => {
   const result = parse_create_measurement(input);
   assert.equal(result.name, "Dimensions");
-  assert.deepEqual(result.units.map((unit) => [unit.key, unit.position]), [["cm", 0], ["m", 1]]);
-  assert.equal(result.units[0].is_active, true);
+  assert.deepEqual(result.units.map((unit) => unit.key), ["cm", "m"]);
 });
 test("invalid definitions reject duplicate keys, symbols, empty groups and client-controlled ownership metadata", () => {
   for (const invalid of [
@@ -34,15 +33,17 @@ test("invalid definitions reject duplicate keys, symbols, empty groups and clien
     { ...input, units: [input.units[0], input.units[0]] },
     { ...input, units: [{ key: "CM", name: "Centimeter", symbol: "cm" }] },
     { ...input, units: [{ key: "cm", name: "Centimeter", symbol: "cm" }, { key: "other", name: "Other", symbol: "CM" }] },
-    { ...input, units: [{ ...input.units[0], is_active: false }] },
+    { ...input, units: [{ key: "cm", name: "Centimeter", symbol: "cm", is_active: false }] },
     { ...input, units: Array.from({ length: 31 }, (_, index) => ({ key: `u${index}`, name: "Unit", symbol: `u${index}` })) },
   ]) assert.throws(() => parse_create_measurement(invalid));
 });
-test("updates cannot move measurements between companies and accept deactivation by stable key", () => {
+test("updates cannot move measurements between companies and reject unit flags", () => {
   assert.throws(() => parse_update_measurement({ id: company, company_id: company }));
   assert.throws(() => parse_update_measurement({ id: company }));
-  const result = parse_update_measurement({ id: company, units: [{ key: "cm", name: "Centimeter", symbol: "cm", is_active: false }] });
-  assert.equal(result.units?.[0].is_active, false);
+  assert.throws(() => parse_update_measurement({ id: company, is_active: false }));
+  assert.throws(() => parse_update_measurement({ id: company, units: [{ key: "cm", name: "Centimeter", symbol: "cm", is_active: false }] }));
+  const result = parse_update_measurement({ id: company, units: [{ key: "cm", name: "Centimetre", symbol: "cm" }] });
+  assert.equal(result.units?.[0].name, "Centimetre");
 });
 test("creation grants and record filtering isolate company catalogs", () => {
   assert.equal(can_create_measurement(access, company), true);
@@ -79,7 +80,7 @@ test("measurement endpoints are documented in the API schema", () => {
 test("child updates preserve existing IDs and omitted definitions; invalid updates write nothing", async () => {
   const parsed = parse_create_measurement(input);
   const current = {
-    id: company, company_id: company, created_by: access.userId, name: parsed.name, is_active: true,
+    id: company, company_id: company, created_by: access.userId, name: parsed.name,
     created_at: new Date("2026-10-14T00:00:00Z"), updated_at: new Date("2026-10-14T00:00:00Z"),
     units: parsed.units.map((unit) => ({ ...unit, id: `unit-${unit.key}`, measurement_id: company })),
   };
@@ -116,9 +117,6 @@ test("child updates preserve existing IDs and omitted definitions; invalid updat
     assert.equal(result.units[1].id, "unit-m");
     const priorWrites = writes;
     await assert.rejects(repository.update_measurement(parse_update_measurement({
-      id: company, units: parsed.units.map((unit) => ({ ...unit, is_active: false })),
-    }), own), /at least one active unit/);
-    await assert.rejects(repository.update_measurement(parse_update_measurement({
       id: company, units: [{ key: "other", name: "Other", symbol: "CM" }],
     }), own), /symbols must be unique/);
     assert.equal(writes, priorWrites);
@@ -133,7 +131,7 @@ test("creation persists the authenticated actor and all nested definitions atomi
     measurement: { create: async (args: { data: { created_by: string; units: { create: unknown } } }) => {
       assert.equal(args.data.created_by, access.userId);
       assert.deepEqual(args.data.units.create, parsed.units);
-      return { id: company, company_id: company, created_by: access.userId, name: parsed.name, is_active: true,
+      return { id: company, company_id: company, created_by: access.userId, name: parsed.name,
         created_at: new Date(), updated_at: new Date(), units: [] };
     } },
     user: { findMany: async () => [{ id: access.userId, name: "Creator" }] },
@@ -145,19 +143,36 @@ test("creation persists the authenticated actor and all nested definitions atomi
   finally { state.fuelDatabase = previous; }
 });
 
-test("archive checks delete scope and returns not found without mutating inaccessible definitions", async () => {
+test("delete removes units before the measurement and skips inaccessible definitions", async () => {
   const state = globalThis as typeof globalThis & { fuelDatabase?: { database: Database } };
   const previous = state.fuelDatabase;
-  const tx = {
+  const denied = {
     $queryRaw: async () => [],
     measurement: { findFirst: async (args: { where: unknown }) => {
       assert.deepEqual(args.where, { AND: [{ id: company }, { OR: [] }] });
       return null;
-    }, update: async () => { assert.fail("Unauthorized mutation must not run"); } },
+    }, delete: async () => { assert.fail("Unauthorized mutation must not run"); } },
+    measurement_unit: { deleteMany: async () => { assert.fail("Unauthorized mutation must not run"); } },
   };
-  state.fuelDatabase = { database: { $transaction: async (run: (client: typeof tx) => unknown) => run(tx) } as unknown as Database };
+  const order: string[] = [];
+  const allowed = {
+    $queryRaw: async () => [],
+    measurement: {
+      findFirst: async () => ({ id: company }),
+      delete: async (args: { where: { id: string } }) => { order.push("measurement"); assert.equal(args.where.id, company); },
+    },
+    measurement_unit: { deleteMany: async (args: { where: { measurement_id: string } }) => {
+      order.push("units");
+      assert.equal(args.where.measurement_id, company);
+    } },
+  };
+  const deleter = { ...access, grants: [{ permission: "measurements.delete", scope: "company" as const, companyId: company }] };
   try {
-    await assert.rejects(repository.update_measurement({ id: company, is_active: false }, access, "delete"), /Measurement not found/);
+    state.fuelDatabase = { database: { $transaction: async (run: (client: typeof denied) => unknown) => run(denied) } as unknown as Database };
+    await assert.rejects(repository.delete_measurement(company, access), /Measurement not found/);
+    state.fuelDatabase = { database: { $transaction: async (run: (client: typeof allowed) => unknown) => run(allowed) } as unknown as Database };
+    await repository.delete_measurement(company, deleter);
+    assert.deepEqual(order, ["units", "measurement"]);
   } finally { state.fuelDatabase = previous; }
 });
 

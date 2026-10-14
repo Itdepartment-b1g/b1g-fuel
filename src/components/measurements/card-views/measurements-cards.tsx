@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Pencil, RotateCcw, Ruler } from "lucide-react";
+import { Pencil, Ruler, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -11,8 +11,7 @@ export function MeasurementsCards({
   measurements,
   disabled,
   onEdit,
-  onArchive,
-  onRestore,
+  onDelete,
 }: MeasurementActionProps & { measurements: MeasurementSummary[] }) {
   const access = useRecordAccess();
   return (
@@ -23,15 +22,11 @@ export function MeasurementsCards({
           <h2 className="break-words font-semibold">{measurement.name}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             {measurement.company?.name ?? "All companies"} ·{" "}
-            {measurement.created_by_name ?? "—"} ·{" "}
-            {measurement.is_active ? "Active" : "Archived"}
+            {measurement.created_by_name ?? "—"}
           </p>
           <p className="mt-3 text-xs text-muted-foreground">
             Units:{" "}
-            {measurement.units
-              .filter((unit) => unit.is_active)
-              .map((unit) => unit.symbol)
-              .join(", ") || "—"}
+            {measurement.units.map((unit) => unit.symbol).join(", ") || "—"}
           </p>
           <div className="mt-4 flex justify-end gap-2 border-t pt-3">
             <Button
@@ -45,31 +40,17 @@ export function MeasurementsCards({
             >
               <Pencil className="size-4" /> Edit
             </Button>
-            {measurement.is_active ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={
-                  disabled ||
-                  !canPerform(access, "measurements", "delete", measurement)
-                }
-                onClick={() => onArchive(measurement)}
-              >
-                <Archive className="size-4" /> Archive
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={
-                  disabled ||
-                  !canPerform(access, "measurements", "edit", measurement)
-                }
-                onClick={() => onRestore(measurement)}
-              >
-                <RotateCcw className="size-4" /> Restore
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={
+                disabled ||
+                !canPerform(access, "measurements", "delete", measurement)
+              }
+              onClick={() => onDelete(measurement)}
+            >
+              <Trash2 className="size-4" /> Delete
+            </Button>
           </div>
         </article>
       ))}

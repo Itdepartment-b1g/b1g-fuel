@@ -66,12 +66,6 @@ export async function list_measurements(req: Request, res: Response) {
         "invalid_input",
         "Search must contain at most 160 characters.",
       );
-    const active = req.query.is_active;
-    if (active !== undefined && active !== "true" && active !== "false")
-      throw new MeasurementError(
-        "invalid_input",
-        "is_active must be true or false.",
-      );
     res.json(
       await service.list_measurements(
         parsePagination(req.query),
@@ -81,7 +75,6 @@ export async function list_measurements(req: Request, res: Response) {
         req.query.company_id === undefined
           ? undefined
           : measurement_id(req.query.company_id),
-        active === undefined ? undefined : active === "true",
       ),
     );
   } catch (error) {
@@ -114,11 +107,11 @@ export async function update_measurement(req: Request, res: Response) {
     failure(res, error);
   }
 }
-export async function archive_measurement(req: Request, res: Response) {
+export async function delete_measurement(req: Request, res: Response) {
   try {
     const id = measurement_id(req.query.id);
-    await service.archive_measurement(id, res.locals.access);
-    res.json({ id, message: "Measurement archived." });
+    await service.delete_measurement(id, res.locals.access);
+    res.json({ id, message: "Measurement deleted." });
   } catch (error) {
     failure(res, error);
   }

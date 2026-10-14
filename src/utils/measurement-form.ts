@@ -23,7 +23,7 @@ export function prepareMeasurementEntries<T extends MeasurementUnitInput>(
       while (used.has(key)) key = `${base}_${suffix++}`;
       used.add(key);
     }
-    return { ...entry, key, position };
+    return { ...entry, key };
   });
 }
 export function moveMeasurementEntry<T>(

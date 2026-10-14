@@ -28,18 +28,37 @@ export function can_create_measurement(
 
 export function measurement_company(access: RecordAccess, requested?: string) {
   if (access.superAdmin) return null;
-  const unrestricted = access.grants.some((grant) => grant.permission === "measurements.add" && grant.scope === "all" && !grant.companyId);
-  const granted = [...new Set(access.grants.filter((grant) => grant.permission === "measurements.add").flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+  const unrestricted = access.grants.some(
+    (grant) =>
+      grant.permission === "measurements.add" &&
+      grant.scope === "all" &&
+      !grant.companyId,
+  );
+  const granted = [
+    ...new Set(
+      access.grants
+        .filter((grant) => grant.permission === "measurements.add")
+        .flatMap((grant) =>
+          grant.companyId ? [grant.companyId] : access.companyIds,
+        ),
+    ),
+  ];
   const choices = unrestricted ? access.companyIds : granted;
   if (choices.length === 1) {
     if (!can_create_measurement(access, choices[0]))
-      throw new MeasurementError("forbidden", "You cannot create measurements in this company.");
+      throw new MeasurementError(
+        "forbidden",
+        "You cannot create measurements in this company.",
+      );
     return choices[0];
   }
   if (!requested)
     throw new MeasurementError("invalid_input", "Select a company.");
   if (!can_create_measurement(access, requested))
-    throw new MeasurementError("forbidden", "You cannot create measurements in this company.");
+    throw new MeasurementError(
+      "forbidden",
+      "You cannot create measurements in this company.",
+    );
   return requested;
 }
 
@@ -56,7 +75,6 @@ export function list_measurements(
   sorting: Sorting | undefined,
   access: RecordAccess,
   companyId?: string,
-  active?: boolean,
 ) {
   return repository.list_measurements(
     pagination,
@@ -64,7 +82,6 @@ export function list_measurements(
     sorting,
     access,
     companyId,
-    active,
   );
 }
 export async function get_measurement(id: string, access: RecordAccess) {
@@ -79,21 +96,32 @@ export function update_measurement(
 ) {
   return repository.update_measurement(input, access);
 }
-export function archive_measurement(id: string, access: RecordAccess) {
-  return repository.update_measurement(
-    { id, is_active: false },
-    access,
-    "delete",
-  );
+export function delete_measurement(id: string, access: RecordAccess) {
+  return repository.delete_measurement(id, access);
 }
 
 export async function get_measurement_options(access: RecordAccess) {
-  const all = access.superAdmin || access.grants.some((grant) => grant.permission === "measurements.add" && grant.scope === "all" && !grant.companyId);
-  const ids = [...new Set(access.grants.filter((grant) => grant.permission === "measurements.add")
-    .flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+  const all =
+    access.superAdmin ||
+    access.grants.some(
+      (grant) =>
+        grant.permission === "measurements.add" &&
+        grant.scope === "all" &&
+        !grant.companyId,
+    );
+  const ids = [
+    ...new Set(
+      access.grants
+        .filter((grant) => grant.permission === "measurements.add")
+        .flatMap((grant) =>
+          grant.companyId ? [grant.companyId] : access.companyIds,
+        ),
+    ),
+  ];
   const companies = await getDatabase().company.findMany({
     where: all ? {} : { id: { in: ids } },
-    select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }],
+    select: { id: true, name: true },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
   });
   return { companies };
 }

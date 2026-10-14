@@ -17,6 +17,7 @@ import {
 } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DeleteDialog } from "@/components/common/delete-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { canPerform } from "@/lib/auth/access-scope";
 import {
@@ -27,15 +28,13 @@ import {
 import type { TableSort } from "@/types/table-views";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
-  archiveMeasurement,
   clearMeasurementMutation,
+  deleteMeasurement,
   listMeasurement,
   selectMeasurement,
-  updateMeasurement,
 } from "@/lib/store/measurements-slice";
 import type { MeasurementSummary } from "@/types/measurements";
 import { MeasurementDialog } from "./dialog/measurement-dialog";
-import { ArchiveMeasurementDialog } from "./dialog/archive-measurement-dialog";
 import { MeasurementsTableView } from "./table-view/measurements-table-view";
 import { MeasurementsCards } from "./card-views/measurements-cards";
 
@@ -56,12 +55,11 @@ export default function MeasurementList() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
-  const [status, setStatus] = useState("active");
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<{ id: string | null } | null>(null);
-  const [archiving, setArchiving] = useState<MeasurementSummary | null>(null);
+  const [removing, setRemoving] = useState<MeasurementSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
   const pagination = paginationFromApi({ page, page_size: pageSize, total });
@@ -72,7 +70,6 @@ export default function MeasurementList() {
         page,
         page_size: pageSize,
         search,
-        ...(status === "all" ? {} : { is_active: status === "active" }),
         ...(sorting
           ? { sort_by: sorting.field, sort_order: sorting.direction }
           : {}),
@@ -88,7 +85,7 @@ export default function MeasurementList() {
       current = false;
       request.abort();
     };
-  }, [dispatch, page, pageSize, search, status, sorting, revision]);
+  }, [dispatch, page, pageSize, search, sorting, revision]);
   useEffect(() => {
     if ([listError, mutationError].some((error) => error?.status === 401))
       router.replace("/login");
@@ -100,31 +97,16 @@ export default function MeasurementList() {
   function refresh() {
     setRevision((value) => value + 1);
   }
-  async function archive() {
-    if (!archiving || pending) return;
+  async function remove() {
+    if (!removing || pending) return;
     try {
-      await dispatch(archiveMeasurement(archiving.id)).unwrap();
-      toast.success(`${archiving.name} was archived.`);
-      setArchiving(null);
+      await dispatch(deleteMeasurement(removing.id)).unwrap();
+      toast.success(`${removing.name} was deleted.`);
+      setRemoving(null);
       refresh();
     } catch (error) {
       toast.error(
-        toastErrorMessage(error, "Could not archive the measurement."),
-      );
-    }
-  }
-  async function restore(measurement: MeasurementSummary) {
-    if (pending) return;
-    dispatch(clearMeasurementMutation());
-    try {
-      await dispatch(
-        updateMeasurement({ id: measurement.id, is_active: true }),
-      ).unwrap();
-      toast.success(`${measurement.name} was restored.`);
-      refresh();
-    } catch (error) {
-      toast.error(
-        toastErrorMessage(error, "Could not restore the measurement."),
+        toastErrorMessage(error, "Could not delete the measurement."),
       );
     }
   }
@@ -146,12 +128,9 @@ export default function MeasurementList() {
     measurements,
     disabled: pending || loading,
     onEdit: openEditor,
-    onArchive: (measurement: MeasurementSummary) => {
+    onDelete: (measurement: MeasurementSummary) => {
       dispatch(clearMeasurementMutation());
-      setArchiving(measurement);
-    },
-    onRestore: (measurement: MeasurementSummary) => {
-      void restore(measurement);
+      setRemoving(measurement);
     },
   };
   return (
@@ -201,21 +180,6 @@ export default function MeasurementList() {
               </Button>
             )}
           </form>
-          <label className="flex items-center gap-2 text-sm">
-            Status
-            <select
-              className="h-10 rounded-md border bg-white px-3"
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
-              <option value="all">All</option>
-            </select>
-          </label>
           <div
             className="flex rounded-lg border p-1"
             role="group"
@@ -288,7 +252,7 @@ export default function MeasurementList() {
                 />
                 <h3 className="font-semibold">No measurements found</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Add a measurement or adjust your search and status filter.
+                  Add a measurement or adjust your search.
                 </p>
               </div>
             ) : null}
@@ -318,17 +282,19 @@ export default function MeasurementList() {
           }}
         />
       )}
-      {archiving && (
-        <ArchiveMeasurementDialog
-          name={archiving.name}
-          pending={pending}
-          error={mutationError?.message ?? null}
-          onClose={() => setArchiving(null)}
-          onConfirm={() => {
-            void archive();
-          }}
-        />
-      )}
+      <DeleteDialog
+        open={Boolean(removing)}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+        title="Delete measurement?"
+        description={`Delete ${removing?.name ?? "this measurement"}? Its units will also be removed. This cannot be undone.`}
+        onConfirm={() => {
+          void remove();
+        }}
+        pending={pending}
+        error={mutationError?.message}
+      />
     </>
   );
 }

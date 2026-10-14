@@ -55,8 +55,6 @@ export function MeasurementForm({
             key: "",
             name: "",
             symbol: "",
-            is_active: true,
-            position: 0,
           },
         ],
   );
@@ -92,8 +90,6 @@ export function MeasurementForm({
         key: unit.key,
         name: unit.name.trim(),
         symbol: unit.symbol.trim(),
-        is_active: true,
-        position: unit.position,
       })),
     );
     busy.current = true;
@@ -232,8 +228,6 @@ export function MeasurementForm({
                   key: "",
                   name: "",
                   symbol: "",
-                  is_active: true,
-                  position: rows.length,
                 },
               ])
             }

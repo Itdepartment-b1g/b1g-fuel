@@ -10,7 +10,7 @@ import type { RecordAccess } from "@/lib/auth/access-scope";
 const url = process.env.DATABASE_URL;
 const local = url && ["localhost", "127.0.0.1", "::1"].includes(new URL(url).hostname);
 
-test("local database supports measurement creation, scoped listing, ordered edits, archive and restore", { skip: !local }, async () => {
+test("local database supports measurement creation, scoped listing, ordered edits, and deletion", { skip: !local }, async () => {
   const companyId = randomUUID();
   const outsideId = randomUUID();
   const actor = randomUUID();
@@ -40,10 +40,10 @@ test("local database supports measurement creation, scoped listing, ordered edit
     await assert.rejects(service.get_measurement(outside.id, access), /not found/);
     assert.equal((await service.get_measurement(shared.id, access)).name, "Shared");
     await assert.rejects(service.update_measurement({ id: shared.id, name: "Changed" }, access), /not found/);
-    await assert.rejects(service.archive_measurement(shared.id, access), /not found/);
+    await assert.rejects(service.delete_measurement(shared.id, access), /not found/);
     await assert.rejects(service.create_measurement({ ...input, name: "dimensions" }, access));
     const pagination = { page: 1, page_size: 10, skip: 0, take: 10 };
-    const list = await service.list_measurements(pagination, "Dimension", undefined, access);
+    const list = await service.list_measurements(pagination, "Dimension", undefined, access, companyId);
     assert.equal(list.total, 1);
     assert.equal(list.measurements[0].id, created.id);
     const options = await service.get_measurement_options(access);
@@ -54,13 +54,10 @@ test("local database supports measurement creation, scoped listing, ordered edit
     }), access);
     assert.equal(edited.units[0].id, created.units[0].id);
     assert.equal(edited.units[0].name, "Centimetre");
-    await service.archive_measurement(created.id, access);
-    assert.equal((await service.list_measurements(pagination, "", undefined, access, companyId, true)).total, 0);
-    const archived = await service.get_measurement(created.id, access);
-    assert.equal(archived.is_active, false);
-    assert.equal(archived.units.length, 1);
-    await service.update_measurement({ id: created.id, is_active: true }, access);
-    assert.equal((await service.get_measurement(created.id, access)).is_active, true);
+    await service.delete_measurement(created.id, access);
+    assert.equal((await service.list_measurements(pagination, "", undefined, access, companyId)).total, 0);
+    await assert.rejects(service.get_measurement(created.id, access), /not found/);
+    assert.equal(await db.measurement_unit.count({ where: { measurement_id: created.id } }), 0);
   } finally {
     // Delete only records belonging to the two freshly generated fixture companies.
     await db.$transaction(async (tx) => {

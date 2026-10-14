@@ -18,20 +18,10 @@ export function measurement_id(value: unknown) {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) invalid("Provide a valid ID.");
   return value.toLowerCase();
 }
-function boolean(value: unknown, fallback: boolean) {
-  if (value === undefined) return fallback;
-  if (typeof value !== "boolean") invalid("Expected a boolean value.");
-  return value;
-}
 function key(value: unknown) {
   const result = text(value, "Key", 64);
   if (!/^[a-z][a-z0-9_]*$/.test(result)) invalid("Keys must start with a lowercase letter and contain only lowercase letters, numbers, or underscores.");
   return result;
-}
-function position(value: unknown, fallback: number) {
-  if (value === undefined) return fallback;
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value > 1000) invalid("Position must be an integer between 0 and 1000.");
-  return value;
 }
 function array<T extends { key: string }>(value: unknown, parse: (entry: unknown, index: number) => T): T[] {
   if (!Array.isArray(value) || !value.length || value.length > 30) invalid("Provide between 1 and 30 entries.");
@@ -40,9 +30,9 @@ function array<T extends { key: string }>(value: unknown, parse: (entry: unknown
   return result;
 }
 function units(value: unknown): MeasurementUnitInput[] {
-  const result = array(value, (entry, index) => {
-    const row = object(entry, ["key", "name", "symbol", "is_active", "position"]);
-    return { key: key(row.key), name: text(row.name, "Unit name", 100), symbol: text(row.symbol, "Unit symbol", 20), is_active: boolean(row.is_active, true), position: position(row.position, index) };
+  const result = array(value, (entry) => {
+    const row = object(entry, ["key", "name", "symbol"]);
+    return { key: key(row.key), name: text(row.name, "Unit name", 100), symbol: text(row.symbol, "Unit symbol", 20) };
   });
   if (new Set(result.map((unit) => unit.symbol.toLowerCase())).size !== result.length) invalid("Unit symbols must be unique.");
   return result;
@@ -54,17 +44,14 @@ function optional_company(value: unknown) {
 export function parse_create_measurement(value: unknown): CreateMeasurementInput {
   const row = object(value, ["company_id", "name", "units"]);
   const company_id = optional_company(row.company_id);
-  const input = { ...(company_id ? { company_id } : {}), name: text(row.name, "Measurement name", 160), units: units(row.units) };
-  if (!input.units.some((unit) => unit.is_active)) invalid("Provide at least one active unit.");
-  return input;
+  return { ...(company_id ? { company_id } : {}), name: text(row.name, "Measurement name", 160), units: units(row.units) };
 }
 export function parse_update_measurement(value: unknown): UpdateMeasurementInput {
-  const row = object(value, ["id", "name", "is_active", "units"]);
+  const row = object(value, ["id", "name", "units"]);
   if (Object.keys(row).filter((key) => key !== "id").length === 0) invalid("Provide at least one change.");
   return {
     id: measurement_id(row.id),
     ...(row.name !== undefined ? { name: text(row.name, "Measurement name", 160) } : {}),
-    ...(row.is_active !== undefined ? { is_active: boolean(row.is_active, true) } : {}),
     ...(row.units !== undefined ? { units: units(row.units) } : {}),
   };
 }

@@ -17,16 +17,16 @@ Company-owned measurement names and the units people can choose. All routes requ
 }
 ```
 
-Omit `company_id` when a super admin creates a measurement shared with every company. A user with one company can omit it too; the server uses that company. Returns `201` with `{ "measurement": ... }`, including stable IDs, company, authenticated creator, timestamps, and units. Units default to active. `position` defaults to the entry's zero-based position. Keys use lowercase letters, numbers, and underscores, starting with a letter. Definitions support up to 30 units, including inactive entries. At least one unit must be active. Names are unique per company ignoring case; shared measurements have their own name uniqueness. Unit symbols are unique within a measurement ignoring case.
+Omit `company_id` when a super admin creates a measurement shared with every company. A user with one company can omit it too; the server uses that company. Returns `201` with `{ "measurement": ... }`, including stable IDs, company, authenticated creator, timestamps, and units. Keys use lowercase letters, numbers, and underscores, starting with a letter. Definitions support up to 30 units. Names are unique per company ignoring case; shared measurements have their own name uniqueness. Unit symbols are unique within a measurement ignoring case.
 
 ## Read
 
 - `GET /api/measurements?page=1&page_size=10&search=dimensions`
-- `GET /api/measurements?company_id=<uuid>&is_active=true`
+- `GET /api/measurements?company_id=<uuid>`
 - `GET /api/measurements?id=<uuid>`
 - `GET /api/measurements/options` (requires `measurements.add`; returns only companies where the user can create measurements)
 
-Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`. Each measurement includes `company: { id, name }` or null when it is shared. Page sizes are 10, 20, 50, or 100. Sorting supports `id`, `name`, `created_at`, and `updated_at`, with `sort_order=asc|desc`; default is newest first. Archived records are included unless filtered. Units include inactive definitions so management can restore them; variant forms should select active measurements and display active units only.
+Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`. Each measurement includes `company: { id, name }` or null when it is shared. Page sizes are 10, 20, 50, or 100. Sorting supports `id`, `name`, `created_at`, and `updated_at`, with `sort_order=asc|desc`; default is newest first. Shared measurements are visible to anyone who can view measurements.
 
 ## Update
 
@@ -40,11 +40,11 @@ Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`
 }
 ```
 
-At least one change is required. Company and creator cannot be changed. Supplied child entries are upserted by key with stable IDs; omitted children are preserved. Each supplied entry is a full definition: omitted booleans take their defaults and omitted position uses its position in the submitted array. Send `is_active: false` on a child to deactivate it. Reuse its original key to restore it. Keep keys semantically stable; creating a new key adds a new definition. Updates run in a transaction with a measurement row lock.
+At least one change is required. Company and creator cannot be changed. Supplied units are upserted by key with stable IDs; omitted units are preserved. Keep keys semantically stable; creating a new key adds a new unit. Updates run in a transaction with a measurement row lock.
 
-## Archive
+## Delete
 
-`DELETE /api/measurements?id=<uuid>` archives the definition and returns `{ "id": "...", "message": "Measurement archived." }`. It does not delete units. Restore with `PATCH` containing `{ "id": "...", "is_active": true }`.
+`DELETE /api/measurements?id=<uuid>` removes the measurement and its units and returns `{ "id": "...", "message": "Measurement deleted." }`. This cannot be undone. Shared measurements can be deleted only by a super admin.
 
 ## Deployment and scope
 

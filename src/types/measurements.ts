@@ -7,10 +7,6 @@ export interface MeasurementUnitInput {
   name: string;
   // Short unit symbol, such as cm.
   symbol: string;
-  // Whether this unit is available for new variant measurements.
-  is_active: boolean;
-  // Zero-based display order within the measurement.
-  position: number;
 }
 
 export interface MeasurementUnit extends MeasurementUnitInput {
@@ -31,13 +27,11 @@ export interface Measurement {
   created_by_name: string | null;
   // Display name of the measurement, such as Dimensions.
   name: string;
-  // Whether the definition is active rather than archived.
-  is_active: boolean;
   // ISO date string when the definition was created.
   created_at: string;
   // ISO date string when the definition was last updated.
   updated_at: string;
-  // Ordered allowed units, including inactive entries.
+  // Units people can choose for this measurement.
   units: MeasurementUnit[];
 }
 
@@ -57,8 +51,6 @@ export interface UpdateMeasurementInput {
   id: string;
   // Updated display name, when supplied.
   name?: string;
-  // Updated active/archived status.
-  is_active?: boolean;
   // Unit definitions to upsert by key; omitted units are preserved.
   units?: MeasurementUnitInput[];
 }
@@ -84,8 +76,8 @@ export interface MeasurementsPage {
   page_size: number;
 }
 
-export interface ArchiveMeasurementResponse {
-  // UUID of the archived measurement.
+export interface DeleteMeasurementResponse {
+  // UUID of the deleted measurement.
   id: string;
   // Result message returned by the API.
   message: string;

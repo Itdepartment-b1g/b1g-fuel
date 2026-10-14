@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Pencil, RotateCcw } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -9,10 +9,45 @@ import type { MeasurementSummary } from "@/types/measurements";
 
 export type MeasurementActionProps = {
   onEdit: (measurement: MeasurementSummary) => void;
-  onArchive: (measurement: MeasurementSummary) => void;
-  onRestore: (measurement: MeasurementSummary) => void;
+  onDelete: (measurement: MeasurementSummary) => void;
   disabled: boolean;
 };
+
+function MeasurementUnits({ measurement }: { measurement: MeasurementSummary }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border bg-white">
+      <table className="w-full text-left text-sm">
+        <caption className="sr-only">Units for {measurement.name}</caption>
+        <thead className="border-b bg-gray-50 text-xs uppercase text-muted-foreground">
+          <tr>
+            <th scope="col" className="px-4 py-3">
+              Unit name
+            </th>
+            <th scope="col" className="px-4 py-3">
+              Symbol
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {measurement.units.length ? (
+            measurement.units.map((unit) => (
+              <tr key={unit.id} className="border-b last:border-b-0">
+                <td className="px-4 py-3 font-medium">{unit.name}</td>
+                <td className="px-4 py-3">{unit.symbol}</td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={2} className="px-4 py-3 text-muted-foreground">
+                No units
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 export function MeasurementsTableView(
   props: MeasurementActionProps & {
     measurements: MeasurementSummary[];
@@ -27,6 +62,9 @@ export function MeasurementsTableView(
       data={props.measurements}
       rowKey={(measurement) => measurement.id}
       caption="Measurement definitions and units"
+      expandedRow={(measurement) => (
+        <MeasurementUnits measurement={measurement} />
+      )}
       loading={props.loading}
       sortingMode="server"
       sorting={props.sorting}
@@ -34,7 +72,7 @@ export function MeasurementsTableView(
       multipleFrozenColumns
       actionsDisabled={props.disabled}
       emptyTitle="No measurements found"
-      emptyDescription="Add a measurement or adjust your search and status filter."
+      emptyDescription="Add a measurement or adjust your search."
       columns={[
         {
           id: "name",
@@ -54,7 +92,7 @@ export function MeasurementsTableView(
           id: "units",
           header: "Units",
           cell: (measurement) => {
-            const units = measurement.units.filter((unit) => unit.is_active);
+            const units = measurement.units;
             if (!units.length) return "—";
             return (
               <div className="flex flex-wrap gap-1.5">
@@ -70,12 +108,6 @@ export function MeasurementsTableView(
               </div>
             );
           },
-        },
-        {
-          id: "is_active",
-          header: "Status",
-          cell: (measurement) =>
-            measurement.is_active ? "Active" : "Archived",
         },
         {
           id: "created_by",
@@ -109,32 +141,14 @@ export function MeasurementsTableView(
           disabled: !canPerform(access, "measurements", "edit", measurement),
           onSelect: props.onEdit,
         },
-        measurement.is_active
-          ? {
-              id: "archive",
-              label: "Archive",
-              icon: <Archive />,
-              destructive: true,
-              disabled: !canPerform(
-                access,
-                "measurements",
-                "delete",
-                measurement,
-              ),
-              onSelect: props.onArchive,
-            }
-          : {
-              id: "restore",
-              label: "Restore",
-              icon: <RotateCcw />,
-              disabled: !canPerform(
-                access,
-                "measurements",
-                "edit",
-                measurement,
-              ),
-              onSelect: props.onRestore,
-            },
+        {
+          id: "delete",
+          label: "Delete",
+          icon: <Trash2 />,
+          destructive: true,
+          disabled: !canPerform(access, "measurements", "delete", measurement),
+          onSelect: props.onDelete,
+        },
       ]}
     />
   );

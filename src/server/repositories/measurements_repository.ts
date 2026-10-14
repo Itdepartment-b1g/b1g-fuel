@@ -12,7 +12,7 @@ import { MeasurementError } from "@/server/lib/measurement-input";
 
 const include = {
   company: { select: { id: true, name: true } },
-  units: { orderBy: [{ position: "asc" }, { key: "asc" }] },
+  units: { orderBy: [{ name: "asc" }, { key: "asc" }] },
 } satisfies Prisma.measurementInclude;
 type Record = Prisma.measurementGetPayload<{ include: typeof include }>;
 function serialize(record: Record, createdByName: string | null): MeasurementSummary {
@@ -42,14 +42,12 @@ export async function list_measurements(
   sorting: Sorting | undefined,
   access: RecordAccess,
   companyId?: string,
-  active?: boolean,
 ) {
   const where: Prisma.measurementWhereInput = {
     AND: [
       record_where(access, "measurements"),
       {
         ...(companyId ? { company_id: companyId } : {}),
-        ...(active !== undefined ? { is_active: active } : {}),
         ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
       },
     ],
@@ -113,12 +111,11 @@ export async function create_measurement(
 export async function update_measurement(
   input: UpdateMeasurementInput,
   access: RecordAccess,
-  action = "edit",
 ) {
   return getDatabase().$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "measurement" WHERE id = ${input.id}::uuid FOR UPDATE`;
     const where = {
-      AND: [{ id: input.id }, record_where(access, "measurements", action)],
+      AND: [{ id: input.id }, record_where(access, "measurements", "edit")],
     };
     const current = await tx.measurement.findFirst({ where, include });
     if (!current)
@@ -130,11 +127,8 @@ export async function update_measurement(
         id: units.get(unit.key)?.id ?? "",
         measurement_id: current.id,
       });
-    if (!Array.from(units.values()).some((unit) => unit.is_active))
-      throw new MeasurementError(
-        "invalid_input",
-        "Keep at least one active unit.",
-      );
+    if (!units.size)
+      throw new MeasurementError("invalid_input", "Keep at least one unit.");
     const symbols = Array.from(units.values()).map((unit) =>
       unit.symbol.toLowerCase(),
     );
@@ -156,12 +150,24 @@ export async function update_measurement(
         where: { id: input.id },
         data: {
           ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.is_active !== undefined
-            ? { is_active: input.is_active }
-            : {}),
         },
         include,
       }),
     ], tx))[0];
+  });
+}
+
+/** Remove a measurement and its units. Units are deleted first because the relation restricts parent deletion. */
+export async function delete_measurement(id: string, access: RecordAccess) {
+  await getDatabase().$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "measurement" WHERE id = ${id}::uuid FOR UPDATE`;
+    const current = await tx.measurement.findFirst({
+      where: { AND: [{ id }, record_where(access, "measurements", "delete")] },
+      select: { id: true },
+    });
+    if (!current)
+      throw new MeasurementError("not_found", "Measurement not found.");
+    await tx.measurement_unit.deleteMany({ where: { measurement_id: id } });
+    await tx.measurement.delete({ where: { id } });
   });
 }
