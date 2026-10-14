@@ -29,7 +29,7 @@ import {
   PAGE_SIZE_OPTIONS,
   paginationFromApi,
 } from "@/lib/pagination";
-import type { RoleSummary } from "@/server/schema/roles_schema";
+import type { RoleSummary } from "@/types/roles";
 import { RoleDialog } from "./dialog/role-dialog";
 import { RolesTableView } from "./table-view/roles-table-view";
 import { RolesCards } from "./card-views/roles-cards";

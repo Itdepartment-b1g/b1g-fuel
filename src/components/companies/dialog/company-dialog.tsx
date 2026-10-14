@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editCompany, selectCompany } from "@/lib/store/companies-slice";
-import type { CompanySummary } from "@/server/schema/companies_schema";
+import type { CompanySummary } from "@/types/companies";
 import { CompanyForm } from "./company-form";
 import { Loading } from "@/components/common/loading";
 

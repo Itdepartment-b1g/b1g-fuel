@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { createUser, selectUser } from "@/lib/store/users-slice";
-import type { CreateUserInput, UserSummary } from "@/server/schema/users_schema";
+import type { CreateUserInput, UserSummary } from "@/types/users";
 
 export function UserForm({ onCreated, onCancel }: { onCreated: (user: UserSummary) => void; onCancel: () => void }) {
   const dispatch = useAppDispatch();

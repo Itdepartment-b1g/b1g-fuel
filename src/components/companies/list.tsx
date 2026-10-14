@@ -29,7 +29,7 @@ import {
   PAGE_SIZE_OPTIONS,
   paginationFromApi,
 } from "@/lib/pagination";
-import type { CompanySummary } from "@/server/schema/companies_schema";
+import type { CompanySummary } from "@/types/companies";
 import { CompanyDialog } from "./dialog/company-dialog";
 import { CompaniesTableView } from "./table-view/companies-table-view";
 import { CompaniesCards } from "./card-views/companies-cards";

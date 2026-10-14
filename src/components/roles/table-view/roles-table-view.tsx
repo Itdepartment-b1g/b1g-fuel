@@ -5,7 +5,7 @@ import { LockKeyhole, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableView } from "@/components/common/table-view";
 import type { TableSort } from "@/lib/table";
-import type { RoleSummary } from "@/server/schema/roles_schema";
+import type { RoleSummary } from "@/types/roles";
 import { RoleDetails } from "../role-details";
 export type RoleActionProps = {
   onEdit: (role: RoleSummary) => void;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ShieldCheck } from "lucide-react";
 import { RoleDetails } from "../role-details";
-import type { RoleSummary } from "@/server/schema/roles_schema";
+import type { RoleSummary } from "@/types/roles";
 import {
   RoleActions,
   RoleLabels,

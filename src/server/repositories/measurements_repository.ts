@@ -11,6 +11,7 @@ import type {
 import { MeasurementError } from "@/server/lib/measurement-input";
 
 const include = {
+  company: { select: { id: true, name: true } },
   fields: { orderBy: [{ position: "asc" }, { key: "asc" }] },
   units: { orderBy: [{ position: "asc" }, { key: "asc" }] },
 } satisfies Prisma.measurementInclude;

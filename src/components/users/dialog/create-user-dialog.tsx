@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { clearCreateStatus, selectUser } from "@/lib/store/users-slice";
-import type { UserSummary } from "@/server/schema/users_schema";
+import type { UserSummary } from "@/types/users";
 import { UserForm } from "./user-form";
 
 export function CreateUserDialog({ onCreated }: { onCreated: (user: UserSummary) => void }) {

@@ -3,7 +3,7 @@ import { COMPANY_FILTER_OPTIONS, type ManagementFilterOptions } from "@/lib/mana
 import type { TableSort } from "@/lib/table";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { CompanySummary, CompaniesPage, CompanyResponse, CreateCompanyInput, UpdateCompanyInput, DeleteCompanyResponse } from "@/server/schema/companies_schema";
+import type { CompanySummary, CompaniesPage, CompanyResponse, CreateCompanyInput, UpdateCompanyInput, DeleteCompanyResponse } from "@/types/companies";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type CompanyFailure = { status: number; message: string };

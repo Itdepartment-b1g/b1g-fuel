@@ -11,7 +11,7 @@ import { ACCESS_SCOPE_LABELS, type AccessScope } from "@/lib/auth/access-scope";
 import { PAGE_CATALOG } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import { assignUser, getUserOption, selectUser } from "@/lib/store/users-slice";
-import type { AssignableRole, UserSummary } from "@/server/schema/users_schema";
+import type { AssignableRole, UserSummary } from "@/types/users";
 
 function RoleAccess({ role }: { role: AssignableRole }) {
   const pages = PAGE_CATALOG.filter((page) => role.pages.includes(page.key));

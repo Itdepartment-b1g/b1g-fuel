@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "prisma generate && tsc --noEmit",
     "test:access": "node --import tsx --test tests/role-access.test.tsx tests/role-company-db.test.ts tests/record-access.test.ts tests/record-access-db.test.ts tests/created-by.test.ts",
-    "test:measurements": "node --import tsx --test tests/measurements.test.ts tests/record-access.test.ts tests/created-by.test.ts",
+    "test:measurements": "node --import tsx --test tests/measurements.test.ts tests/measurements-ui.test.tsx tests/measurements-db.test.ts tests/record-access.test.ts tests/created-by.test.ts",
     "db:generate": "prisma migrate dev --create-only",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",

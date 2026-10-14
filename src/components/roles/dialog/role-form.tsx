@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { createRole, updateRole, selectRole } from "@/lib/store/roles-slice";
-import type { RoleSummary, RoleScope } from "@/server/schema/roles_schema";
+import type { RoleSummary, RoleScope } from "@/types/roles";
 import { ACCESS_SCOPES, ACCESS_SCOPE_LABELS, type AccessScope } from "@/lib/auth/access-scope";
 
 export function RoleForm({

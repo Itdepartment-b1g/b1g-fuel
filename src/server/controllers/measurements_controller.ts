@@ -123,3 +123,8 @@ export async function archive_measurement(req: Request, res: Response) {
     failure(res, error);
   }
 }
+
+export async function get_measurement_options(_req: Request, res: Response) {
+  try { res.json(await service.get_measurement_options(res.locals.access)); }
+  catch (error) { failure(res, error); }
+}

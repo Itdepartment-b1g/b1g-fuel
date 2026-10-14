@@ -10,7 +10,7 @@ import { Pagination } from "@/components/common/pagination";
 import { Input } from "@/components/ui/input";
 import { paginateItems } from "@/lib/pagination";
 import { sortTableRows, type TableSort } from "@/lib/table";
-import type { UserSummary } from "@/server/schema/users_schema";
+import type { UserSummary } from "@/types/users";
 export function UserAssignments({ user }: { user: UserSummary }) {
   return (
     <div className="flex flex-wrap gap-1.5">

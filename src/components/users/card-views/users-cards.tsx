@@ -1,6 +1,6 @@
 import { Building2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { UserSummary } from "@/server/schema/users_schema";
+import type { UserSummary } from "@/types/users";
 import { UserAssignments, UserAvatar } from "../table-view/users-table-view";
 
 export function UsersCards({

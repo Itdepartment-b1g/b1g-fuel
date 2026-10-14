@@ -3,7 +3,7 @@ import { ROLE_FILTER_OPTIONS, type ManagementFilterOptions } from "@/lib/managem
 import type { TableSort } from "@/lib/table";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { CreateRoleInput, UpdateRoleInput, RoleResponse, RoleScope, RoleSummary, RolesPage, RoleOptions, DeleteRoleResponse } from "@/server/schema/roles_schema";
+import type { CreateRoleInput, UpdateRoleInput, RoleResponse, RoleScope, RoleSummary, RolesPage, RoleOptions, DeleteRoleResponse } from "@/types/roles";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export type RoleFailure = { status: number; message: string };

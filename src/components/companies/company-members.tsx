@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { Button } from "@/components/ui/button";
 import { canPerform } from "@/lib/auth/access-scope";
-import type { CompanyMembersPage } from "@/server/schema/companies_schema";
+import type { CompanyMembersPage } from "@/types/companies";
 
 export function CompanyMembers({ companyId }: { companyId: string }) {
   const access = useRecordAccess();

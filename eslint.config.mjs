@@ -23,9 +23,9 @@ export default defineConfig([
     },
   },
   {
-    files: ["src/components/**/*.tsx", "src/lib/store/**/*.ts"],
+    files: ["src/components/**/*.tsx", "src/lib/store/**/*.ts", "src/lib/measurement-form.ts", "src/types/**/*.ts"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [{ regex: "^@/(?:server/(?!schema/(?:companies|roles|users)_schema$)|generated/)", message: "Client code must access the backend through API routes." }, { group: ["@/server/schema/companies_schema", "@/server/schema/roles_schema", "@/server/schema/users_schema"], allowTypeImports: true, message: "Schema contracts must be imported with import type." }] }]
+      "no-restricted-imports": ["error", { patterns: [{ group: ["@/server/**", "@/generated/**"], message: "Client code must use contracts from @/types and access the backend through API routes." }] }]
     }
   }
 ]);

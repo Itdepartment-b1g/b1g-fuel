@@ -15,8 +15,9 @@ const units = { type: "array", minItems: 1, maxItems: 30, items: ref("Measuremen
 export const measurementSchemas = {
   MeasurementFieldInput: { type: "object", additionalProperties: false, required: ["key", "label"], properties: field },
   MeasurementUnitInput: { type: "object", additionalProperties: false, required: ["key", "name", "symbol"], properties: unit },
-  Measurement: { type: "object", required: ["id", "company_id", "name", "is_active", "created_at", "updated_at", "fields", "units"], properties: {
+  Measurement: { type: "object", required: ["id", "company_id", "company", "name", "is_active", "created_at", "updated_at", "fields", "units"], properties: {
     id, company_id: id, created_by: { ...id, nullable: true, readOnly: true }, name, is_active: active,
+    company: { type: "object", required: ["id", "name"], properties: { id, name: { type: "string" } } },
     created_at: { type: "string", format: "date-time" }, updated_at: { type: "string", format: "date-time" },
     fields: { type: "array", items: { type: "object", properties: { id, ...field } } },
     units: { type: "array", items: { type: "object", properties: { id, ...unit } } },
@@ -32,6 +33,11 @@ const error = { description: "Request failed", ...json(ref("Error")) };
 const errors = { "400": error, "401": error, "403": error, "404": error, "409": error, "500": error };
 const common = { tags: ["Measurements"], security: [{ session: [] }] };
 export const measurementPaths = {
+  "/api/measurements/options": {
+    get: { ...common, summary: "List companies permitted for creating measurements", description: "Requires measurements.add. Does not require companies.view.", responses: {
+      "200": { description: "Permitted companies", ...json({ type: "object", required: ["companies"], properties: { companies: { type: "array", items: { type: "object", required: ["id", "name"], properties: { id, name: { type: "string" } } } } } }) }, ...errors,
+    } },
+  },
   "/api/measurements": {
     get: { ...common, summary: "List measurements or get one by ID", parameters: [
       { name: "id", in: "query", schema: id }, { name: "company_id", in: "query", schema: id },

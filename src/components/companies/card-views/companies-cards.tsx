@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Building2, ChevronDown } from "lucide-react";
 import { CompanyMembers } from "../company-members";
-import type { CompanySummary } from "@/server/schema/companies_schema";
+import type { CompanySummary } from "@/types/companies";
 import {
   CompanyActions,
   CompanyDate,

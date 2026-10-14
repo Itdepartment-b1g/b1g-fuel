@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editRole, getRoleOption, selectRole } from "@/lib/store/roles-slice";
-import type { RoleSummary } from "@/server/schema/roles_schema";
+import type { RoleSummary } from "@/types/roles";
 import { RoleForm } from "./role-form";
 import { Loading } from "@/components/common/loading";
 

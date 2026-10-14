@@ -7,6 +7,7 @@ import type { Pagination } from "@/server/lib/pagination";
 import type { Sorting } from "@/server/lib/sorting";
 import * as repository from "@/server/repositories/measurements_repository";
 import { MeasurementError } from "@/server/lib/measurement-input";
+import { getDatabase } from "@/server/lib/database";
 
 export function can_create_measurement(
   access: RecordAccess,
@@ -71,4 +72,15 @@ export function archive_measurement(id: string, access: RecordAccess) {
     access,
     "delete",
   );
+}
+
+export async function get_measurement_options(access: RecordAccess) {
+  const all = access.superAdmin || access.grants.some((grant) => grant.permission === "measurements.add" && grant.scope === "all" && !grant.companyId);
+  const ids = [...new Set(access.grants.filter((grant) => grant.permission === "measurements.add")
+    .flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+  const companies = await getDatabase().company.findMany({
+    where: all ? {} : { id: { in: ids } },
+    select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
+  return { companies };
 }

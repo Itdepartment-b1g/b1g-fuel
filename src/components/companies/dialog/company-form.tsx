@@ -13,7 +13,7 @@ import {
   updateCompany,
   selectCompany,
 } from "@/lib/store/companies-slice";
-import type { CompanySummary } from "@/server/schema/companies_schema";
+import type { CompanySummary } from "@/types/companies";
 
 export function CompanyForm({
   company,

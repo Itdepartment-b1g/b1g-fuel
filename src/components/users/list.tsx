@@ -30,7 +30,7 @@ import {
 } from "@/lib/pagination";
 import { CreateUserDialog } from "./dialog/create-user-dialog";
 import { AssignUserDialog } from "./dialog/assign-user-dialog";
-import type { UserSummary } from "@/server/schema/users_schema";
+import type { UserSummary } from "@/types/users";
 import { UsersTable } from "./table-view/users-table-view";
 import { UsersCards } from "./card-views/users-cards";
 

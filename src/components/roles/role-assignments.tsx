@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { Button } from "@/components/ui/button";
 import { canPerform } from "@/lib/auth/access-scope";
-import type { RoleAssignmentsPage } from "@/server/schema/roles_schema";
+import type { RoleAssignmentsPage } from "@/types/roles";
 
 export function RoleAssignments({ roleId }: { roleId: string }) {
   const access = useRecordAccess();

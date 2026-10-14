@@ -1,7 +1,7 @@
 import { ACCESS_SCOPE_LABELS } from "@/lib/auth/access-scope";
 import { PAGE_CATALOG } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
-import type { RoleSummary } from "@/server/schema/roles_schema";
+import type { RoleSummary } from "@/types/roles";
 import { RoleAssignments } from "./role-assignments";
 
 export function RoleDetails({ role }: { role: RoleSummary }) {

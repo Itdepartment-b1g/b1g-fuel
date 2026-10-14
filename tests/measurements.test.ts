@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parse_create_measurement, parse_update_measurement } from "@/server/lib/measurement-input";
-import { can_create_measurement } from "@/server/services/measurements_service";
+import { can_create_measurement, get_measurement_options } from "@/server/services/measurements_service";
 import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
 import { record_where } from "@/server/auth/record-access";
 import { create_measurement } from "@/server/controllers/measurements_controller";
@@ -151,5 +151,22 @@ test("archive checks delete scope and returns not found without mutating inacces
   state.fuelDatabase = { database: { $transaction: async (run: (client: typeof tx) => unknown) => run(tx) } as unknown as Database };
   try {
     await assert.rejects(repository.update_measurement({ id: company, is_active: false }, access, "delete"), /Measurement not found/);
+  } finally { state.fuelDatabase = previous; }
+});
+
+test("company options use measurement creation grants without requiring companies.view", async () => {
+  const state = globalThis as typeof globalThis & { fuelDatabase?: { database: Database } };
+  const previous = state.fuelDatabase;
+  const filters: unknown[] = [];
+  state.fuelDatabase = { database: { company: { findMany: async (args: { where: unknown }) => {
+    filters.push(args.where);
+    return [{ id: company, name: "B1G Fuel" }];
+  } } } as unknown as Database };
+  try {
+    const options = await get_measurement_options(access);
+    assert.equal(options.companies[0].name, "B1G Fuel");
+    await get_measurement_options({ ...access, grants: [] });
+    await get_measurement_options({ ...access, superAdmin: true });
+    assert.deepEqual(filters, [{ id: { in: [company] } }, { id: { in: [] } }, {}]);
   } finally { state.fuelDatabase = previous; }
 });

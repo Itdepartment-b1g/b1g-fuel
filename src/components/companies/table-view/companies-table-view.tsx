@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableView } from "@/components/common/table-view";
 import type { TableSort } from "@/lib/table";
-import type { CompanySummary } from "@/server/schema/companies_schema";
+import type { CompanySummary } from "@/types/companies";
 import { CompanyMembers } from "../company-members";
 
 export type CompanyActionProps = {

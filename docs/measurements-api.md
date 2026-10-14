@@ -1,6 +1,6 @@
 # Measurement API
 
-Company-owned definitions for dynamic numeric inputs. All routes require an authenticated session and the corresponding `measurements.view`, `.add`, `.edit`, or `.delete` permission. Register the Measurements page and these permissions on the user's role. Super admins have access automatically. The catalog entry is hidden from navigation until a UI exists.
+Company-owned definitions for dynamic numeric inputs. All routes require an authenticated session and the corresponding `measurements.view`, `.add`, `.edit`, or `.delete` permission. Register the Measurements page and these permissions on the user's role. Super admins have access automatically. The management page is available at `/measurements`.
 
 ## Create
 
@@ -29,8 +29,9 @@ Returns `201` with `{ "measurement": ... }`, including stable IDs, company, auth
 - `GET /api/measurements?page=1&page_size=10&search=dimensions`
 - `GET /api/measurements?company_id=<uuid>&is_active=true`
 - `GET /api/measurements?id=<uuid>`
+- `GET /api/measurements/options` (requires `measurements.add`; returns only companies where the user can create measurements)
 
-Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`. Page sizes are 10, 20, 50, or 100. Sorting supports `id`, `name`, `created_at`, and `updated_at`, with `sort_order=asc|desc`; default is newest first. Archived records are included unless filtered. Child entries include inactive definitions so management can restore them; variant forms should select active measurements and display active fields and units only.
+Lists return `{ "measurements": [...], "total": 1, "page": 1, "page_size": 10 }`. Each measurement includes `company: { id, name }`. Page sizes are 10, 20, 50, or 100. Sorting supports `id`, `name`, `created_at`, and `updated_at`, with `sort_order=asc|desc`; default is newest first. Archived records are included unless filtered. Child entries include inactive definitions so management can restore them; variant forms should select active measurements and display active fields and units only.
 
 ## Update
 
