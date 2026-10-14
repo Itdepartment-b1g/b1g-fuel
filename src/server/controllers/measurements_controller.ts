@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
+import { MEASUREMENT_FILTER_OPTIONS } from "@/utils/management-filters";
 import * as service from "@/server/services/measurements_service";
+import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
 import {
   MeasurementError,
   measurement_id,
@@ -21,7 +23,8 @@ function failure(res: Response, error: unknown) {
     res.status(status).json({ error: error.message });
   } else if (
     error instanceof PaginationError ||
-    error instanceof SortingError
+    error instanceof SortingError ||
+    error instanceof QuickFilterError
   ) {
     res.status(400).json({ error: error.message });
   } else if (
@@ -75,8 +78,16 @@ export async function list_measurements(req: Request, res: Response) {
         req.query.company_id === undefined
           ? undefined
           : measurement_id(req.query.company_id),
+        parse_quick_filters(req.query.filters, MEASUREMENT_FILTER_OPTIONS),
       ),
     );
+  } catch (error) {
+    failure(res, error);
+  }
+}
+export async function get_measurement_filter_options(_req: Request, res: Response) {
+  try {
+    res.json(await service.get_measurement_filter_options(res.locals.access));
   } catch (error) {
     failure(res, error);
   }

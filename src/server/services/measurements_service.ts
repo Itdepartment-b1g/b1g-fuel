@@ -1,4 +1,7 @@
+import type { QuickFilterState } from "@/types/quick-filter";
+import { MEASUREMENT_FILTER_OPTIONS } from "@/utils/management-filters";
 import type { RecordAccess } from "@/server/auth/record-access";
+import { build_filter_options } from "@/server/lib/quick-filters";
 import type {
   CreateMeasurementInput,
   UpdateMeasurementInput,
@@ -75,6 +78,7 @@ export function list_measurements(
   sorting: Sorting | undefined,
   access: RecordAccess,
   companyId?: string,
+  filters?: QuickFilterState,
 ) {
   return repository.list_measurements(
     pagination,
@@ -82,6 +86,22 @@ export function list_measurements(
     sorting,
     access,
     companyId,
+    filters,
+  );
+}
+export async function get_measurement_filter_options(access: RecordAccess) {
+  const records = await repository.get_measurement_filter_data(access);
+  return build_filter_options(
+    records,
+    MEASUREMENT_FILTER_OPTIONS,
+    (measurement, field) =>
+      field === "company"
+        ? measurement.company
+          ? { value: measurement.company.id, label: measurement.company.name }
+          : null
+        : { value: measurement.name, label: measurement.name },
+    (measurement, status) =>
+      status === "all" || (measurement.company_id === null) === (status === "shared"),
   );
 }
 export async function get_measurement(id: string, access: RecordAccess) {

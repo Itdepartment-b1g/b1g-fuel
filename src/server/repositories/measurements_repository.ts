@@ -1,6 +1,8 @@
 import type { Prisma } from "@/generated/prisma/client";
+import type { QuickFilterState } from "@/types/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
+import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type {
@@ -42,16 +44,18 @@ export async function list_measurements(
   sorting: Sorting | undefined,
   access: RecordAccess,
   companyId?: string,
+  filters?: QuickFilterState,
 ) {
-  const where: Prisma.measurementWhereInput = {
-    AND: [
-      record_where(access, "measurements"),
-      {
-        ...(companyId ? { company_id: companyId } : {}),
-        ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
-      },
-    ],
-  };
+  const where = build_filter<Prisma.measurementWhereInput>(filters, {
+    where: { AND: [record_where(access, "measurements"), ...(companyId ? [{ company_id: companyId }] : [])] },
+    fields: {
+      name: (values) => ({ OR: values.map((name) => ({ name: { equals: name, mode: "insensitive" as const } })) }),
+      company: (values) => ({ company_id: { in: values } }),
+    },
+    date: (range) => ({ created_at: range }),
+    status: { shared: { company_id: null }, company: { company_id: { not: null } } },
+    search: { value: search, fields: [(filter) => ({ name: filter })] },
+  });
   const orderBy = build_sort<Prisma.measurementOrderByWithRelationInput>(
     sorting,
     {
@@ -82,6 +86,13 @@ export async function list_measurements(
     },
     { isolationLevel: "RepeatableRead" },
   );
+}
+export function get_measurement_filter_data(access: RecordAccess) {
+  return getDatabase().measurement.findMany({
+    where: record_where(access, "measurements"),
+    select: { name: true, company_id: true, company: { select: { id: true, name: true } } },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
 }
 export async function get_measurement(id: string, access: RecordAccess) {
   const client = getDatabase();

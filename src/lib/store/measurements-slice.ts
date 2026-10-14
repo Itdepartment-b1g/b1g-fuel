@@ -1,20 +1,25 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
+import type { QuickFilterState } from "@/types/quick-filter";
+import type { ManagementFilterOptions } from "@/types/management-filters";
 import type { TableSort } from "@/types/table-views";
+import { MEASUREMENT_FILTER_OPTIONS } from "@/utils/management-filters";
 import type { CreateMeasurementInput, DeleteMeasurementResponse, MeasurementOptions, MeasurementResponse, MeasurementSummary, MeasurementsPage, UpdateMeasurementInput } from "@/types/measurements";
 
 export type MeasurementFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
-export type MeasurementsQuery = { page?: number; page_size?: number; search?: string; company_id?: string; sort_by?: string; sort_order?: TableSort["direction"] };
+export type MeasurementsQuery = { page?: number; page_size?: number; search?: string; company_id?: string; sort_by?: string; sort_order?: TableSort["direction"]; filters?: QuickFilterState };
 type State = {
   measurements: MeasurementSummary[]; total: number; selectedMeasurement: MeasurementSummary | null;
   options: MeasurementOptions;
+  filterOptions: ManagementFilterOptions; filterOptionsStatus: Status; filterOptionsError: MeasurementFailure | null; filterOptionsRequestId: string | null;
   listStatus: Status; detailStatus: Status; optionsStatus: Status; mutationStatus: Status;
   listError: MeasurementFailure | null; detailError: MeasurementFailure | null; optionsError: MeasurementFailure | null; mutationError: MeasurementFailure | null;
   listRequestId: string | null; detailRequestId: string | null; optionsRequestId: string | null; mutationRequestId: string | null;
 };
 const initialState: State = {
   measurements: [], total: 0, selectedMeasurement: null, options: { companies: [] },
+  filterOptions: MEASUREMENT_FILTER_OPTIONS, filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null,
   listStatus: "idle", detailStatus: "idle", optionsStatus: "idle", mutationStatus: "idle",
   listError: null, detailError: null, optionsError: null, mutationError: null,
   listRequestId: null, detailRequestId: null, optionsRequestId: null, mutationRequestId: null,
@@ -34,12 +39,16 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
 type Config = { state: RootState; rejectValue: MeasurementFailure };
 export const listMeasurement = createAsyncThunk<MeasurementsPage, MeasurementsQuery, Config>("measurements/list", async (query, { signal, rejectWithValue }) => {
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value));
+  for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, key === "filters" ? JSON.stringify(value) : String(value));
   try { return await request<MeasurementsPage>(`/api/measurements?${params}`, { signal }); }
   catch (error) { return rejectWithValue(failure(error)); }
 });
 export const editMeasurement = createAsyncThunk<MeasurementResponse, string, Config>("measurements/detail", async (id, { signal, rejectWithValue }) => {
   try { return await request<MeasurementResponse>(`/api/measurements?id=${encodeURIComponent(id)}`, { signal }); }
+  catch (error) { return rejectWithValue(failure(error)); }
+});
+export const getMeasurementFilterOption = createAsyncThunk<ManagementFilterOptions, void, Config>("measurements/filter-options", async (_, { signal, rejectWithValue }) => {
+  try { return await request<ManagementFilterOptions>("/api/measurements/filter-options", { signal }); }
   catch (error) { return rejectWithValue(failure(error)); }
 });
 export const getMeasurementOption = createAsyncThunk<MeasurementOptions, void, Config>("measurements/options", async (_, { signal, rejectWithValue }) => {
@@ -73,6 +82,9 @@ const slice = createSlice({
       .addCase(editMeasurement.pending, (state, action) => { state.detailStatus = "loading"; state.selectedMeasurement = null; state.detailError = null; state.detailRequestId = action.meta.requestId; })
       .addCase(editMeasurement.fulfilled, (state, action) => { if (state.detailRequestId !== action.meta.requestId) return; state.selectedMeasurement = action.payload.measurement; state.detailStatus = "succeeded"; state.detailRequestId = null; })
       .addCase(editMeasurement.rejected, (state, action) => { if (state.detailRequestId !== action.meta.requestId) return; state.detailStatus = action.meta.aborted ? "idle" : "failed"; state.detailError = action.meta.aborted ? null : action.payload ?? failure(action.error); state.detailRequestId = null; })
+      .addCase(getMeasurementFilterOption.pending, (state, action) => { state.filterOptionsStatus = "loading"; state.filterOptionsError = null; state.filterOptionsRequestId = action.meta.requestId; })
+      .addCase(getMeasurementFilterOption.fulfilled, (state, action) => { if (state.filterOptionsRequestId !== action.meta.requestId) return; state.filterOptions = action.payload; state.filterOptionsStatus = "succeeded"; state.filterOptionsRequestId = null; })
+      .addCase(getMeasurementFilterOption.rejected, (state, action) => { if (state.filterOptionsRequestId !== action.meta.requestId) return; state.filterOptionsStatus = action.meta.aborted ? "idle" : "failed"; state.filterOptionsError = action.meta.aborted ? null : action.payload ?? failure(action.error); state.filterOptionsRequestId = null; })
       .addCase(getMeasurementOption.pending, (state, action) => { state.optionsStatus = "loading"; state.optionsError = null; state.optionsRequestId = action.meta.requestId; })
       .addCase(getMeasurementOption.fulfilled, (state, action) => { if (state.optionsRequestId !== action.meta.requestId) return; state.options = action.payload; state.optionsStatus = "succeeded"; state.optionsRequestId = null; })
       .addCase(getMeasurementOption.rejected, (state, action) => { if (state.optionsRequestId !== action.meta.requestId) return; state.optionsStatus = action.meta.aborted ? "idle" : "failed"; state.optionsError = action.meta.aborted ? null : action.payload ?? failure(action.error); state.optionsRequestId = null; })

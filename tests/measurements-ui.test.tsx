@@ -102,7 +102,7 @@ test("generated keys remain unique and saved keys survive renaming and reorderin
 test("measurement forms collect a name and units, and ask for a company only when several are available", () => {
   const store = makeStore();
   store.dispatch(getMeasurementOption.pending("options", undefined));
-  store.dispatch(getMeasurementOption.fulfilled({ companies: [measurement.company] }, "options", undefined));
+  store.dispatch(getMeasurementOption.fulfilled({ companies: [{ id: measurement.company_id ?? "", name: measurement.company?.name ?? "" }] }, "options", undefined));
   const render = (existing?: MeasurementSummary) => renderToStaticMarkup(<Provider store={store}><ToastProvider><MeasurementForm measurement={existing} onSaved={() => {}} onCancel={() => {}} /></ToastProvider></Provider>);
   const create = render();
   assert.match(create, /Measurement name/);
@@ -112,7 +112,7 @@ test("measurement forms collect a name and units, and ask for a company only whe
   assert.doesNotMatch(create, /Required/);
   const several = makeStore();
   several.dispatch(getMeasurementOption.pending("options", undefined));
-  several.dispatch(getMeasurementOption.fulfilled({ companies: [measurement.company, { id: "30000000-0000-4000-8000-000000000003", name: "Other Fuel" }] }, "options", undefined));
+  several.dispatch(getMeasurementOption.fulfilled({ companies: [{ id: measurement.company_id ?? "", name: measurement.company?.name ?? "" }, { id: "30000000-0000-4000-8000-000000000003", name: "Other Fuel" }] }, "options", undefined));
   const choice = renderToStaticMarkup(<Provider store={several}><ToastProvider><MeasurementForm onSaved={() => {}} onCancel={() => {}} /></ToastProvider></Provider>);
   assert.match(choice, /Select a company/);
   assert.match(choice, /B1G Fuel/);

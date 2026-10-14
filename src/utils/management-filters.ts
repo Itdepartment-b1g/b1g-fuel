@@ -6,6 +6,18 @@ export const COMPANY_FILTER_OPTIONS: ManagementFilterOptions = {
   additionalFilters: [],
 };
 export const COMPANY_FILTER_DEFAULTS = { status: "all" };
+export const BRAND_FILTER_OPTIONS: ManagementFilterOptions = {
+  fields: [{ key: "name", label: "Brand name", options: [] }, { key: "company", label: "Company", options: [] }],
+  statusOptions: [{ value: "all", label: "All brands" }, { value: "with_variants", label: "With variants" }, { value: "without_variants", label: "Without variants" }],
+  additionalFilters: [],
+};
+export const BRAND_FILTER_DEFAULTS = { status: "all" };
+export const MEASUREMENT_FILTER_OPTIONS: ManagementFilterOptions = {
+  fields: [{ key: "name", label: "Measurement name", options: [] }, { key: "company", label: "Company", options: [] }],
+  statusOptions: [{ value: "all", label: "All measurements" }, { value: "shared", label: "Shared" }, { value: "company", label: "Company" }],
+  additionalFilters: [],
+};
+export const MEASUREMENT_FILTER_DEFAULTS = { status: "all" };
 export const ROLE_FILTER_OPTIONS: ManagementFilterOptions = {
   fields: [{ key: "name", label: "Role name", options: [] }, { key: "slug", label: "Slug", options: [] }, { key: "company", label: "Company", options: [] }],
   statusOptions: [{ value: "all", label: "All roles" }, { value: "assigned", label: "Assigned to users" }, { value: "unassigned", label: "Not assigned to users" }],

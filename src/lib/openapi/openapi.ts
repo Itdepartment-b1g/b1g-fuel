@@ -4,6 +4,7 @@ import { rolePaths, roleSchemas } from "./openapi-roles";
 import { quickFilterSchemas } from "./openapi-quick-filter";
 import { companyPaths, companySchemas } from "./openapi-companies";
 import { measurementPaths, measurementSchemas } from "./openapi-measurements";
+import { brandAndVariantPaths, brandAndVariantSchemas } from "./openapi-brand-and-variant";
 
 const errorResponse = {
   description: "Request failed",
@@ -31,6 +32,8 @@ export const openapi = {
     { name: "Roles" },
     { name: "Companies" },
     { name: "Measurements" },
+    { name: "Brands" },
+    { name: "Variants" },
   ],
   components: {
     securitySchemes: {
@@ -47,6 +50,7 @@ export const openapi = {
       ...quickFilterSchemas,
       ...companySchemas,
       ...measurementSchemas,
+      ...brandAndVariantSchemas,
       Error: {
         type: "object",
         required: ["error"],
@@ -289,6 +293,7 @@ export const openapi = {
     ...rolePaths,
     ...companyPaths,
     ...measurementPaths,
+    ...brandAndVariantPaths,
     "/api/auth/google": {
       post: {
         tags: ["Auth"],

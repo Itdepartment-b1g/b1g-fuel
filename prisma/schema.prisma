@@ -47,6 +47,9 @@ model company {
   user_companies user_company[]
   roles          roles[]
   measurements   measurement[]
+  brands         brand[]
+  variants       variant[]
+
   @@index([created_by])
 }
 
@@ -141,4 +144,36 @@ model role_permissions {
   role           roles  @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@id([role_id, permission_key])
+}
+
+model brand {
+  id         String    @id @default(uuid()) @db.Uuid
+  company_id String?   @db.Uuid
+  created_by String?   @db.Uuid
+  name       String    @db.VarChar(160)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @db.Timestamptz(6)
+  company    company?  @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  variants   variant[]
+
+  @@unique([company_id, name])
+  @@index([created_by])
+  @@index([company_id])
+}
+
+model variant {
+  id         String   @id @default(uuid()) @db.Uuid
+  brand_id   String   @db.Uuid
+  company_id String?  @db.Uuid
+  created_by String?  @db.Uuid
+  name       String   @db.VarChar(160)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  brand      brand    @relation(fields: [brand_id], references: [id], onDelete: Restrict)
+  company    company? @relation(fields: [company_id], references: [id], onDelete: Restrict)
+
+  @@unique([brand_id, company_id, name])
+  @@index([created_by])
+  @@index([brand_id])
+  @@index([company_id])
 }

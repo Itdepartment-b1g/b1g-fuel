@@ -5,6 +5,8 @@ import { usersRouter } from "./users";
 import { rolesRouter } from "./roles";
 import { companiesRouter } from "./companies";
 import { measurementsRouter } from "./measurements";
+import { brandsRouter } from "./brands";
+import { variantsRouter } from "./variants";
 
 export const routesRouter = Router();
 
@@ -17,6 +19,8 @@ routesRouter.use("/api/users", usersRouter);
 routesRouter.use("/api/roles", rolesRouter);
 routesRouter.use("/api/companies", companiesRouter);
 routesRouter.use("/api/measurements", measurementsRouter);
+routesRouter.use("/api/brands", brandsRouter);
+routesRouter.use("/api/variants", variantsRouter);
 routesRouter.use((_req, res) =>
   res.status(404).json({ error: "Endpoint not found." }),
 );

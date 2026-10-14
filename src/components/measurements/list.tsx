@@ -1,25 +1,20 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  LayoutGrid,
-  List,
-  LoaderCircle,
-  Plus,
-  Ruler,
-  Search,
-} from "lucide-react";
+import { LayoutGrid, List, LoaderCircle, Plus, Ruler } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import {
   useToast,
   toastErrorMessage,
 } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DeleteDialog } from "@/components/common/delete-dialog";
 import { Pagination } from "@/components/common/pagination";
+import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
+import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
+import { MEASUREMENT_FILTER_DEFAULTS } from "@/utils/management-filters";
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
@@ -30,6 +25,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   clearMeasurementMutation,
   deleteMeasurement,
+  getMeasurementFilterOption,
   listMeasurement,
   selectMeasurement,
 } from "@/lib/store/measurements-slice";
@@ -50,11 +46,16 @@ export default function MeasurementList() {
     listError,
     mutationStatus,
     mutationError,
+    filterOptions,
+    filterOptionsError,
   } = useAppSelector(selectMeasurement);
+  const [filters, setFilters] = useState(() =>
+    createQuickFilterState(MEASUREMENT_FILTER_DEFAULTS),
+  );
+  const activeFilters = countActiveFilters(filters, MEASUREMENT_FILTER_DEFAULTS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
-  const [draft, setDraft] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
@@ -73,6 +74,7 @@ export default function MeasurementList() {
         ...(sorting
           ? { sort_by: sorting.field, sort_order: sorting.direction }
           : {}),
+        ...(activeFilters ? { filters } : {}),
       }),
     );
     request.then((action) => {
@@ -85,7 +87,11 @@ export default function MeasurementList() {
       current = false;
       request.abort();
     };
-  }, [dispatch, page, pageSize, search, sorting, revision]);
+  }, [dispatch, page, pageSize, search, sorting, filters, activeFilters, revision]);
+  useEffect(() => {
+    const request = dispatch(getMeasurementFilterOption());
+    return () => request.abort();
+  }, [dispatch, revision]);
   useEffect(() => {
     if ([listError, mutationError].some((error) => error?.status === 401))
       router.replace("/login");
@@ -109,11 +115,6 @@ export default function MeasurementList() {
         toastErrorMessage(error, "Could not delete the measurement."),
       );
     }
-  }
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSearch(draft.trim());
-    setPage(1);
   }
   if (listError?.status === 403)
     return (
@@ -154,34 +155,32 @@ export default function MeasurementList() {
             </Button>
           )}
         </header>
-        <div className="flex flex-wrap items-center gap-3">
-          <form onSubmit={submitSearch} className="flex min-w-60 flex-1 gap-2">
-            <Input
-              aria-label="Search measurements"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Search measurement name"
-              maxLength={160}
-            />
-            <Button type="submit" variant="outline" aria-label="Search">
-              <Search className="size-4" />
-            </Button>
-            {(search || draft) && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setDraft("");
-                  setSearch("");
-                  setPage(1);
-                }}
-              >
-                Clear
-              </Button>
-            )}
-          </form>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <SearchFilterBar
+            className="min-w-0 w-full flex-1"
+            search={search}
+            onSearch={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            filters={filters}
+            onFiltersChange={(next) => {
+              setFilters(next);
+              setPage(1);
+            }}
+            fields={filterOptions.fields}
+            statusOptions={filterOptions.statusOptions}
+            additionalFilters={filterOptions.additionalFilters}
+            filterLabels={{ date: "Creation date", status: "Ownership" }}
+            maxConditions={50}
+            loading={loading}
+            searchLabel="Search measurements"
+            placeholder="Search measurement name"
+            maxLength={160}
+            quickFilterActive={activeFilters > 0}
+          />
           <div
-            className="flex rounded-lg border p-1"
+            className="flex w-fit shrink-0 self-end rounded-lg border p-1 sm:self-auto"
             role="group"
             aria-label="Measurement display"
           >
@@ -190,7 +189,7 @@ export default function MeasurementList() {
               aria-label="Table view"
               aria-pressed={view === "table"}
               onClick={() => setView("table")}
-              className={`inline-flex size-9 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
+              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
             >
               <List className="size-4" />
             </button>
@@ -199,7 +198,7 @@ export default function MeasurementList() {
               aria-label="Card view"
               aria-pressed={view === "cards"}
               onClick={() => setView("cards")}
-              className={`inline-flex size-9 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
+              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
             >
               <LayoutGrid className="size-4" />
             </button>
@@ -214,6 +213,21 @@ export default function MeasurementList() {
               <span>{listError.message}</span>
               <Button variant="outline" size="sm" onClick={refresh}>
                 Try again
+              </Button>
+            </div>
+          )}
+          {filterOptionsError && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-2 px-6 py-2 text-xs text-destructive"
+            >
+              <span>Filter choices could not be loaded.</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => dispatch(getMeasurementFilterOption())}
+              >
+                Retry
               </Button>
             </div>
           )}
@@ -250,9 +264,15 @@ export default function MeasurementList() {
                   className="mx-auto mb-4 size-10 text-primary/40"
                   aria-hidden="true"
                 />
-                <h3 className="font-semibold">No measurements found</h3>
+                <h3 className="font-semibold">
+                  {search || activeFilters
+                    ? "No matching measurements"
+                    : "No measurements yet"}
+                </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Add a measurement or adjust your search.
+                  {search || activeFilters
+                    ? "Try another search or clear your filters."
+                    : "Add a measurement or adjust your search."}
                 </p>
               </div>
             ) : null}
