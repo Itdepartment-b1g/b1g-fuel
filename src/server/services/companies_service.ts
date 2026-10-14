@@ -33,6 +33,12 @@ export async function list_by_id_company(id: string, repository = companiesRepos
   return company;
 }
 
+export async function list_company_members(id: string, pagination: Pagination, access?: RecordAccess) {
+  const result = await companiesRepository.list_company_members(id, pagination, access);
+  if (!result) throw new CompanyError("company_not_found", "Company not found.");
+  return result;
+}
+
 export async function update_company(
   input: UpdateCompanyInput,
   repository = companiesRepository,

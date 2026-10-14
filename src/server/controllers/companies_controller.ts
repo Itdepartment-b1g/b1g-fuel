@@ -9,6 +9,24 @@ import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import type { CreateCompanyInput, UpdateCompanyInput } from "@/server/schema/companies_schema";
 
 const company_id_pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function list_company_members(req: Request, res: Response) {
+  try {
+    const id = req.query.id;
+    if (typeof id !== "string" || !company_id_pattern.test(id))
+      throw new CompanyError("invalid_input", "Provide a valid company ID.");
+    res.json(await companyService.list_company_members(id.toLowerCase(), parsePagination(req.query), res.locals.access));
+  } catch (error) {
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message });
+    } else if (error instanceof CompanyError) {
+      res.status(error.code === "company_not_found" ? 404 : 400).json({ error: error.message });
+    } else {
+      console.error("Company members request failed:", error);
+      res.status(500).json({ error: "Company members could not be loaded." });
+    }
+  }
+}
 const company_error_status: Partial<Record<CompanyError["code"], number>> = {
   invalid_input: 400, company_not_found: 404, company_has_members: 409,
 };

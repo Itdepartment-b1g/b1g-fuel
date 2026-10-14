@@ -122,3 +122,31 @@ export async function get_company_filter_data(access?: RecordAccess) {
     orderBy: [{ name: "asc" }, { id: "asc" }],
   });
 }
+
+export async function list_company_members(id: string, pagination: Pagination, access?: RecordAccess) {
+  return getDatabase().$transaction(async (tx) => {
+    const company = await list_by_id_company(id, tx, false, access);
+    if (!company) return null;
+    const where = { company_id: id, user: record_where(access, "users") } satisfies Prisma.user_companyWhereInput;
+    const memberships = await tx.user_company.findMany({
+      where,
+      select: {
+        assigned_at: true,
+        user: { select: { id: true, name: true, email: true } },
+        roles: { select: { role: { select: { id: true, name: true } } }, orderBy: { role: { name: "asc" } } },
+      },
+      orderBy: [{ user: { name: "asc" } }, { id: "asc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+    });
+    const total = await tx.user_company.count({ where });
+    return {
+      members: memberships.map(({ user, roles, assigned_at }) => ({
+        ...user,
+        assigned_at: assigned_at.toISOString(),
+        roles: roles.map(({ role }) => role),
+      })),
+      ...paginationMetadata(total, pagination),
+    };
+  }, { isolationLevel: "RepeatableRead" });
+}

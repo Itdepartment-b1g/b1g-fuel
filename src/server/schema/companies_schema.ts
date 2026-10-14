@@ -15,6 +15,19 @@ export type CompaniesPage = {
   page_size: number;
 };
 export type CompanyResponse = { company: CompanySummary };
+export type CompanyMember = {
+  id: string;
+  name: string;
+  email: string | null;
+  assigned_at: string;
+  roles: { id: string; name: string }[];
+};
+export type CompanyMembersPage = {
+  members: CompanyMember[];
+  total: number;
+  page: number;
+  page_size: number;
+};
 export type CreateCompanyInput = { name: string };
 export type UpdateCompanyInput = { id: string; name: string };
 export type DeleteCompanyResponse = { id: string; message: string };

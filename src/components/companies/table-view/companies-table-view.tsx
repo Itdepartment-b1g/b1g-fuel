@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TableView } from "@/components/common/table-view";
 import type { TableSort } from "@/lib/table";
 import type { CompanySummary } from "@/server/schema/companies_schema";
+import { CompanyMembers } from "../company-members";
 
 export type CompanyActionProps = {
   onEdit: (company: CompanySummary) => void;
@@ -79,6 +80,7 @@ export function CompaniesTableView(props: Props) {
       data={props.companies}
       rowKey={(company) => company.id}
       caption="Organization companies and membership counts"
+      expandedRow={(company) => <CompanyMembers key={company.id} companyId={company.id} />}
       sortingMode={props.onSortingChange ? "server" : "client"}
       sorting={props.sorting}
       onSortingChange={props.onSortingChange}
