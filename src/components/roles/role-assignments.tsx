@@ -57,8 +57,10 @@ export function RoleAssignments({ roleId }: { roleId: string }) {
         <ul className="space-y-2">
           {result.assignments.map((assignment) => (
             <li key={assignment.id}>
-              <p className="font-medium">{assignment.name}</p>
-              {assignment.company && <p className="text-xs text-muted-foreground">{assignment.company}</p>}
+              <span className="font-medium">{assignment.name}</span>
+              {assignment.company && (
+                <span className="text-muted-foreground"> - {assignment.company}</span>
+              )}
             </li>
           ))}
         </ul>
