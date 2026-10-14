@@ -27,6 +27,12 @@ export type RolesPage = {
   page_size: number;
 };
 export type RoleResponse = { role: RoleSummary };
+export type RoleAssignmentsPage = {
+  assignments: { id: string; name: string; company: string | null }[];
+  total: number;
+  page: number;
+  page_size: number;
+};
 export type CreateRoleInput = {
   name: string;
   slug?: string;

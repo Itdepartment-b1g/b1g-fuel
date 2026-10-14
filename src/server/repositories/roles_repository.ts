@@ -123,6 +123,41 @@ export async function list_by_id_role(
   return role ? serialize_role(role) : null;
 }
 
+/** Read assigned users within the caller's role, user, and company access scopes. */
+export async function list_role_assignments(id: string, pagination: Pagination, access?: RecordAccess) {
+  return getDatabase().$transaction(async (tx) => {
+    const role = await list_by_id_role(id, tx, access);
+    if (!role) return null;
+    if (role.scope === "global") {
+      const where = { role_id: id, user: record_where(access, "users") } satisfies Prisma.user_roleWhereInput;
+      const records = await tx.user_role.findMany({
+        where,
+        select: { user: { select: { id: true, name: true } } },
+        orderBy: [{ user: { name: "asc" } }, { user_id: "asc" }],
+        skip: pagination.skip, take: pagination.take,
+      });
+      const total = await tx.user_role.count({ where });
+      return { assignments: records.map(({ user }) => ({ ...user, company: null })), ...paginationMetadata(total, pagination) };
+    }
+    const where = {
+      roles: { some: { role_id: id } },
+      user: record_where(access, "users"),
+      company: record_where(access, "companies"),
+    } satisfies Prisma.user_companyWhereInput;
+    const records = await tx.user_company.findMany({
+      where,
+      select: { id: true, user: { select: { name: true } }, company: { select: { name: true } } },
+      orderBy: [{ user: { name: "asc" } }, { id: "asc" }],
+      skip: pagination.skip, take: pagination.take,
+    });
+    const total = await tx.user_company.count({ where });
+    return {
+      assignments: records.map(({ id, user, company }) => ({ id, name: user.name, company: company.name })),
+      ...paginationMetadata(total, pagination),
+    };
+  }, { isolationLevel: "RepeatableRead" });
+}
+
 /** Create a non-system role with the supplied scope and default setting, plus its page and permission mappings in one transaction. Return the saved role summary. */
 export async function create_role(input: Required<CreateRoleInput>, createdBy?: string) {
   return getDatabase().$transaction(async (tx) => {

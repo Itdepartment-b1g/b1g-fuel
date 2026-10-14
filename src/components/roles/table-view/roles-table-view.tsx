@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { TableView } from "@/components/common/table-view";
 import type { TableSort } from "@/lib/table";
 import type { RoleSummary } from "@/server/schema/roles_schema";
+import { RoleDetails } from "../role-details";
 export type RoleActionProps = {
   onEdit: (role: RoleSummary) => void;
   onDelete: (role: RoleSummary) => void;
@@ -92,6 +93,7 @@ export function RolesTableView(props: Props) {
       data={props.roles}
       rowKey={(role) => role.id}
       caption="Role definitions and assignments"
+      expandedRow={(role) => <RoleDetails role={role} />}
       sortingMode={props.onSortingChange ? "server" : "client"}
       sorting={props.sorting}
       onSortingChange={props.onSortingChange}

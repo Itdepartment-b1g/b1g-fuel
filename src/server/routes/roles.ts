@@ -12,6 +12,7 @@ import {
   delete_role,
   list_by_id_role,
   list_role,
+  list_role_assignments,
   update_role,
 } from "@/server/controllers/roles_controller";
 
@@ -31,6 +32,7 @@ rolesRouter.use((_req, res, next) => {
   next();
 });
 rolesRouter.use(requireAuthUser, loadRecordAccess);
+rolesRouter.get("/assignments", requirePermission("roles", "view"), requirePermission("users", "view"), list_role_assignments);
 rolesRouter.get("/options", requireSuperAdmin, async (_req, res) => {
   const companies = await getDatabase().company.findMany({ select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
   res.status(200).json({ companies, scopes: ["company", "global"], pages: PAGE_CATALOG.map(({ key, label, href }) => ({ key, label, href })), permissions: [...PERMISSION_CATALOG] });

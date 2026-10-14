@@ -22,6 +22,12 @@ function require_permission_scopes(permissions: string[], scopes: Record<string,
   }
 }
 
+export async function list_role_assignments(id: string, pagination: Pagination, access?: RecordAccess) {
+  const result = await rolesRepository.list_role_assignments(id, pagination, access);
+  if (!result) throw new RoleError("role_not_found", "Role not found.");
+  return result;
+}
+
 function require_page_permissions(pages: string[], permissions: string[]) {
   if (permissions.some((key) => {
     const permission = PERMISSION_CATALOG.find((choice) => choice.key === key);

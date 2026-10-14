@@ -23,6 +23,22 @@ function parse_role_company(value: unknown): string | null {
     throw new RoleError("invalid_input", "Provide a valid company ID.");
   return value.toLowerCase();
 }
+
+export async function list_role_assignments(req: Request, res: Response) {
+  try {
+    const id = req.query.id;
+    if (typeof id !== "string" || !role_id_pattern.test(id))
+      throw new RoleError("invalid_input", "Provide a valid role ID.");
+    res.json(await roleService.list_role_assignments(id.toLowerCase(), parsePagination(req.query), res.locals.access));
+  } catch (error) {
+    if (error instanceof PaginationError) res.status(400).json({ error: error.message });
+    else if (error instanceof RoleError) res.status(error.code === "role_not_found" ? 404 : 400).json({ error: error.message });
+    else {
+      console.error("Role assignments request failed:", error);
+      res.status(500).json({ error: "Assigned users could not be loaded." });
+    }
+  }
+}
 const role_mapping_rules: ReadonlyArray<
   readonly ["pages" | "permissions", string, readonly string[]]
 > = [
