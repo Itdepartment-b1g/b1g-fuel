@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openapi } from "@/lib/openapi";
+import { openapi } from "@/lib/openapi/openapi";
 import { authRouter } from "./auth";
 import { usersRouter } from "./users";
 import { rolesRouter } from "./roles";

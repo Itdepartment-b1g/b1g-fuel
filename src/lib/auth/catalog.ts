@@ -24,10 +24,35 @@ export type PageCatalogGroup = {
 
 // Register pages and groups here when their features are added.
 export const PAGE_CATALOG: readonly PageCatalogItem[] = [
-  { key: PAGE_KEYS.home, label: "Dashboard", href: "/dashboard", view_permission: "home.view" },
-  { key: PAGE_KEYS.users, label: "Users", href: "/users", view_permission: "users.view" },
-  { key: PAGE_KEYS.roles, label: "Roles", href: "/roles", view_permission: "roles.view" },
-  { key: PAGE_KEYS.companies, label: "Companies", href: "/companies", view_permission: "companies.view" },
-  { key: PAGE_KEYS.measurements, label: "Measurements", href: "/measurements", view_permission: "measurements.view" },
+  {
+    key: PAGE_KEYS.home,
+    label: "Dashboard",
+    href: "/dashboard",
+    view_permission: "home.view",
+  },
+  {
+    key: PAGE_KEYS.users,
+    label: "Users",
+    href: "/users",
+    view_permission: "users.view",
+  },
+  {
+    key: PAGE_KEYS.roles,
+    label: "Roles",
+    href: "/roles",
+    view_permission: "roles.view",
+  },
+  {
+    key: PAGE_KEYS.companies,
+    label: "Companies",
+    href: "/companies",
+    view_permission: "companies.view",
+  },
+  {
+    key: PAGE_KEYS.measurements,
+    label: "Measurements",
+    href: "/measurements",
+    view_permission: "measurements.view",
+  },
 ];
 export const PAGE_GROUPS: readonly PageCatalogGroup[] = [];

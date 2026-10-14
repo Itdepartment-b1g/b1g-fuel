@@ -10,11 +10,16 @@ export type PermissionCatalogItem = {
 };
 
 // These keys describe saved role settings. Administrative routes still require super-admin access.
-export const PERMISSION_CATALOG: readonly PermissionCatalogItem[] = PAGE_CATALOG.flatMap((page) =>
-  PERMISSION_ACTIONS.map((action) => ({
-    key: action === "view" ? page.view_permission ?? `${page.key}.view` : `${page.key}.${action}`,
-    label: action === "add" ? "Create" : action[0].toUpperCase() + action.slice(1),
-    page_key: page.key,
-    action,
-  })),
-);
+export const PERMISSION_CATALOG: readonly PermissionCatalogItem[] =
+  PAGE_CATALOG.flatMap((page) =>
+    PERMISSION_ACTIONS.map((action) => ({
+      key:
+        action === "view"
+          ? (page.view_permission ?? `${page.key}.view`)
+          : `${page.key}.${action}`,
+      label:
+        action === "add" ? "Create" : action[0].toUpperCase() + action.slice(1),
+      page_key: page.key,
+      action,
+    })),
+  );

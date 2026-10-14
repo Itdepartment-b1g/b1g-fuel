@@ -6,7 +6,7 @@ import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
 import { record_where } from "@/server/auth/record-access";
 import { create_measurement } from "@/server/controllers/measurements_controller";
 import type { Request, Response } from "express";
-import { openapi } from "@/lib/openapi";
+import { openapi } from "@/lib/openapi/openapi";
 import * as repository from "@/server/repositories/measurements_repository";
 import type { Database } from "@/server/lib/database";
 
