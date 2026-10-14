@@ -46,7 +46,51 @@ model company {
   updated_at     DateTime       @updatedAt @db.Timestamptz(6)
   user_companies user_company[]
   roles          roles[]
+  measurements   measurement[]
   @@index([created_by])
+}
+
+model measurement {
+  id         String   @id @default(uuid()) @db.Uuid
+  company_id String   @db.Uuid
+  created_by String?  @db.Uuid
+  name       String   @db.VarChar(160)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  company    company  @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  fields     measurement_field[]
+  units      measurement_unit[]
+
+  @@unique([company_id, name])
+  @@index([created_by])
+}
+
+model measurement_field {
+  id             String      @id @default(uuid()) @db.Uuid
+  measurement_id String      @db.Uuid
+  key            String      @db.VarChar(64)
+  label          String      @db.VarChar(100)
+  required       Boolean     @default(true)
+  is_active      Boolean     @default(true)
+  position       Int         @default(0)
+  measurement    measurement @relation(fields: [measurement_id], references: [id], onDelete: Restrict)
+
+  @@unique([measurement_id, key])
+}
+
+model measurement_unit {
+  id             String      @id @default(uuid()) @db.Uuid
+  measurement_id String      @db.Uuid
+  key            String      @db.VarChar(64)
+  name           String      @db.VarChar(100)
+  symbol         String      @db.VarChar(20)
+  is_active      Boolean     @default(true)
+  position       Int         @default(0)
+  measurement    measurement @relation(fields: [measurement_id], references: [id], onDelete: Restrict)
+
+  @@unique([measurement_id, key])
+  @@unique([measurement_id, symbol])
 }
 
 model user_company {

@@ -4,7 +4,7 @@ import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type { AccessScope, AccessGrant, RecordAccess } from "@/lib/auth/access-scope";
 export type { RecordAccess } from "@/lib/auth/access-scope";
 
-export type Resource = "users" | "roles" | "companies";
+export type Resource = "users" | "roles" | "companies" | "measurements";
 
 export async function get_record_access(userId: string, client: DatabaseExecutor = getDatabase()): Promise<RecordAccess> {
   const roleSelect = { slug: true, company_id: true, pages: { select: { page_key: true } }, permissions: { select: { permission_key: true, access_scope: true } } } satisfies Prisma.rolesSelect;
@@ -34,6 +34,7 @@ export async function get_record_access(userId: string, client: DatabaseExecutor
 export function record_where(access: RecordAccess | undefined, resource: "users", action?: string): Prisma.userWhereInput;
 export function record_where(access: RecordAccess | undefined, resource: "roles", action?: string): Prisma.rolesWhereInput;
 export function record_where(access: RecordAccess | undefined, resource: "companies", action?: string): Prisma.companyWhereInput;
+export function record_where(access: RecordAccess | undefined, resource: "measurements", action?: string): Prisma.measurementWhereInput;
 export function record_where(access: RecordAccess | undefined, resource: Resource, action = "view") {
   if (!access || access.superAdmin) return {};
   const grants = access.grants.filter((grant) => grant.permission === `${resource}.${action}`);
@@ -42,7 +43,7 @@ export function record_where(access: RecordAccess | undefined, resource: Resourc
     if (grant.scope === "own") return { created_by: access.userId };
     const ids = grant.companyId ? [grant.companyId] : access.companyIds;
     if (resource === "companies") return { id: { in: ids } };
-    if (resource === "roles") return { company_id: { in: ids } };
+    if (resource === "roles" || resource === "measurements") return { company_id: { in: ids } };
     return { user_companies: { some: { company_id: { in: ids } } } };
   });
   return { OR: rules };

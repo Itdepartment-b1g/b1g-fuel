@@ -3,6 +3,7 @@ export const PAGE_KEYS = {
   users: "users",
   roles: "roles",
   companies: "companies",
+  measurements: "measurements",
 } as const;
 
 export type PageKey = (typeof PAGE_KEYS)[keyof typeof PAGE_KEYS];
@@ -13,6 +14,7 @@ export type PageCatalogItem = {
   href: string;
   group?: string;
   view_permission?: string;
+  navigation?: boolean;
 };
 
 export type PageCatalogGroup = {
@@ -26,5 +28,6 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
   { key: PAGE_KEYS.users, label: "Users", href: "/users", view_permission: "users.view" },
   { key: PAGE_KEYS.roles, label: "Roles", href: "/roles", view_permission: "roles.view" },
   { key: PAGE_KEYS.companies, label: "Companies", href: "/companies", view_permission: "companies.view" },
+  { key: PAGE_KEYS.measurements, label: "Measurements", href: "/procurement/measurements", view_permission: "measurements.view", navigation: false },
 ];
 export const PAGE_GROUPS: readonly PageCatalogGroup[] = [];
