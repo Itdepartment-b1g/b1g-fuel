@@ -1,8 +1,8 @@
 # Backend structure and request flow
 
-Resource controllers declare async operation handlers that match their service operations and may keep request validation and HTTP error helpers locally. If the service exposes `create_user`, the controller exposes `create_user`. Users, Roles, and Companies keep validation and HTTP error helpers in their controllers. Rate limiters belong in routes.
+Resource controllers declare async operation handlers that match their service operations. If the service exposes `create_user`, the controller exposes `create_user`. New catalog resources stay small: see [Simple catalog controllers](#simple-catalog-controllers). Users, Roles, and Companies still check field shape inside their handlers because those messages are specific. Rate limiters belong in routes.
 
-This guide describes the structure used by Users, Roles, and Companies. Authentication currently retains its own controller helpers and service object; it has not yet been converted to the resource controller pattern.
+This guide describes both shapes. Authentication currently retains its own controller helpers and service object; it has not yet been converted to the resource controller pattern.
 
 ## Request flow
 
@@ -17,6 +17,8 @@ flowchart LR
   Repository --> Prisma[Prisma]
   Prisma --> Database[(Postgres)]
 ```
+
+
 
 The service returns data to the controller, which sends the HTTP response. Redux receives that response and updates client state. Components render the result.
 
@@ -45,50 +47,91 @@ Files use the plural resource name (`users_controller.ts`). Operation names use 
 
 `src/server/schema` and `src/types` are separate contracts. Do not import one from the other.
 
-| Location | Used by | What belongs here |
-| --- | --- | --- |
+
+| Location                                 | Used by                                                | What belongs here                                                                  |
+| ---------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | `src/server/schema/{resource}_schema.ts` | Controllers, services, repositories, and input parsers | Sort-field allowlists, the record the repository returns, and create/update inputs |
-| `src/types/{resource}.ts` | Components and Redux | Page, response, options, and other shapes the UI reads from HTTP JSON |
+| `src/types/{resource}.ts`                | Components and Redux                                   | Page, response, options, and other shapes the UI reads from HTTP JSON              |
+
 
 Declare the server types in the schema file. Copy the fields the server needs, including a nested company as `{ id: string; name: string }`, instead of re-exporting `src/types`. Leave page, response, and options types in `src/types`. Shared auth values such as `AccessScope` may still be imported from `src/lib/auth`.
 
 ## Responsibilities
 
-| Layer | What belongs here | User creation example |
-| --- | --- | --- |
-| Component | Form values, interaction and rendering | Collect name, email, password and optional assignments |
-| Redux | HTTP requests, loading/error/data state | Send `POST /api/users`, retain the returned user |
-| Route | URL/method registration, access middleware, rate limiting | Apply verified session, super-admin access and creation limiter |
-| Controller | Read request input, invoke validation, call service, send success or error response | Call `create_user`, return `201` with `{ user }` |
-| Controller | Field validation, normalization and HTTP error translation | Trim name, normalize email, reject invalid IDs, map duplicate errors to `409` |
-| Service | Business conditions, transactions and external operations | Check assignments, create Auth account, coordinate profile persistence and cleanup |
-| Repository | Database reads/writes and record serialization | Find available assignments and persist the user and memberships |
-| Schema contract | Server-only record and write types | `CreateUserInput`, `UpdateUserInput`, `UserSummary` |
+
+| Layer           | What belongs here                                                                   | User creation example                                                              |
+| --------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Component       | Form values, interaction and rendering                                              | Collect name, email, password and optional assignments                             |
+| Redux           | HTTP requests, loading/error/data state                                             | Send `POST /api/users`, retain the returned user                                   |
+| Route           | URL/method registration, access middleware, rate limiting                           | Apply verified session, super-admin access and creation limiter                    |
+| Controller      | Read request input, invoke validation, call service, send success or error response | Call `create_user`, return `201` with `{ user }`                                   |
+| Controller      | Field validation, normalization and HTTP error translation                          | Trim name, normalize email, reject invalid IDs, map duplicate errors to `409`      |
+| Service         | Business conditions, transactions and external operations                           | Check assignments, create Auth account, coordinate profile persistence and cleanup |
+| Repository      | Database reads/writes and record serialization                                      | Find available assignments and persist the user and memberships                    |
+| Schema contract | Server-only record and write types                                                  | `CreateUserInput`, `UpdateUserInput`, `UserSummary`                                |
+
 
 ## Controller standard
 
-A controller file declares only its implemented resource operations using named async functions. Each handler validates and normalizes input inside its `try` block, calls the matching service operation, and translates failures inside its `catch` block. See [the users controller](../src/server/controllers/users_controller.ts) for the complete implementation.
+A controller file declares only its implemented resource operations using named async functions. Each handler calls the matching service operation inside its own `try` block and translates failures inside its own `catch` block. Do not add a shared `failure()` helper.
 
-The optional service dependency lets tests supply a replacement without changing the route. Express supplies the normal request, response and next arguments in production.
+Users, Roles, and Companies check field shape inside those handlers. See [the users controller](../src/server/controllers/users_controller.ts). Catalog resources follow [Simple catalog controllers](#simple-catalog-controllers) instead.
 
-The users controller declares only its implemented operation handlers, with request validation and error translation inline. Put `create_user_limiter` in `routes/users.ts`.
+The optional service dependency lets tests supply a replacement without changing the route. Express supplies the normal request, response and next arguments in production. Put `create_user_limiter` in `routes/users.ts`.
 
-Keep request validation and HTTP error helpers in the resource controller. Database queries belong in repositories, and business decisions belong in services.
+Database queries belong in repositories, and business decisions belong in services.
+
+## Simple catalog controllers
+
+Brands, variants, measurements, and suppliers use this shape. Use it for the next company-owned catalog. Do not copy the Users, Roles, or Companies handlers into a new catalog, and do not add local parsers back.
+
+A catalog controller is the five handlers: list, get by id, create, update, and delete. Each handler has its own `try/catch`. Leave out `id_pattern`, `object`, `text`, `search_of`, `optional_id`, `parse_create_*`, and `parse_update_*`.
+
+
+| Request                       | What the handler passes                                     |
+| ----------------------------- | ----------------------------------------------------------- |
+| Get by id                     | `String(req.query.id)`                                      |
+| List search                   | the query string when it is a string, otherwise `""`        |
+| List company or parent filter | the query string when it is a string, otherwise `undefined` |
+| Create                        | `req.body as CreateXInput`, status `201`                    |
+| Update                        | `req.body as UpdateXInput`                                  |
+| Delete                        | `String(req.query.id)`                                      |
+
+
+A list screen that already sends page, sort, and filters may call the shared `parsePagination`, `parse_sort`, and `parse_quick_filters`. A list that does not use those query values passes a fixed first page, an empty search, and `undefined` sorting, as `list_suppliers` does.
+
+Handle the result inside the same function:
+
+
+| Failure                                    | Response                                           |
+| ------------------------------------------ | -------------------------------------------------- |
+| Resource error `not_found`                 | `404` with the error message                       |
+| Prisma `P2002`                             | `409` with a short duplicate-name message          |
+| Prisma `P2003`                             | `400` when a related company or parent is missing  |
+| Pagination, sorting, or quick-filter error | `400` with that error message                      |
+| Anything else                              | `console.error`, then `500` with a generic message |
+
+
+The matching service is the error class plus those five functions. Create passes the input and `access.userId`. Get-by-id, update, and delete throw `not_found` when the repository returns nothing. The repository owns the Prisma queries.
+
+`supplier_controller.ts` is the smallest version. `brands_controller.ts` is the same shape with pagination, sort, and filters on the list.
 
 ## Validation and business conditions
 
 Validation asks whether the supplied input has an acceptable shape and format. Business conditions ask whether the requested operation is allowed for the current records.
 
-| Check | Location |
-| --- | --- |
-| Name is a nonempty string within its length limit | Controller |
-| Email has a valid format and needs normalization | Controller |
-| Company ID is a UUID | Controller |
-| Role IDs are distinct and within the count limit | Controller |
-| Assigning roles requires a company | Service |
-| Selected company and company roles are available | Service, using repository lookup results |
-| Email already belongs to an account | Service, using repository lookup results |
-| Insert user, membership and role assignments | Repository |
+
+| Check                                             | Location                                 |
+| ------------------------------------------------- | ---------------------------------------- |
+| Name is a nonempty string within its length limit | Controller                               |
+| Email has a valid format and needs normalization  | Controller                               |
+| Company ID is a UUID                              | Controller                               |
+| Role IDs are distinct and within the count limit  | Controller                               |
+| Assigning roles requires a company                | Service                                  |
+| Selected company and company roles are available  | Service, using repository lookup results |
+| Email already belongs to an account               | Service, using repository lookup results |
+| Insert user, membership and role assignments      | Repository                               |
+
 
 Services accept validated values and return data or raise application errors. They do not accept Express request/response objects or choose HTTP status codes. Repositories execute queries; services interpret their results.
 
@@ -96,14 +139,16 @@ Services accept validated values and return data or raise application errors. Th
 
 Use `snake_case`, with the action followed by a singular entity, for backend operations. Match controller and service operation names.
 
-| Operation | Controller | Service | Repository |
-| --- | --- | --- | --- |
-| List users | `list_user` | `list_user` | `list_user` |
-| Create user | `create_user` | `create_user` | `create_user` |
-| User form choices | `get_user_option` | `get_user_option` | `get_user_option` |
-| User filter choices | `get_user_filter_option` | `get_user_filter_option` | `get_user_filter_data` |
-| Load role for editing | `list_by_id_role` | `list_by_id_role` | `list_by_id_role` |
-| Update company | `update_company` | `update_company` | `update_company` |
+
+| Operation             | Controller               | Service                  | Repository             |
+| --------------------- | ------------------------ | ------------------------ | ---------------------- |
+| List users            | `list_user`              | `list_user`              | `list_user`            |
+| Create user           | `create_user`            | `create_user`            | `create_user`          |
+| User form choices     | `get_user_option`        | `get_user_option`        | `get_user_option`      |
+| User filter choices   | `get_user_filter_option` | `get_user_filter_option` | `get_user_filter_data` |
+| Load role for editing | `list_by_id_role`        | `list_by_id_role`        | `list_by_id_role`      |
+| Update company        | `update_company`         | `update_company`         | `update_company`       |
+
 
 Repository names may describe a supporting query used by a service, such as `assignable_user` or `list_by_id_role`. Services can also have internal business helpers. These supporting functions do not need controller endpoints.
 
@@ -127,29 +172,30 @@ If persistence fails after Auth creation, the service attempts to delete the new
 
 ## Response and error conventions
 
-| Status | Use |
-| --- | --- |
-| `200` | Reads, options, updates and deletion |
-| `201` | Resource creation |
-| `400` | Invalid input, invalid pagination or rejected business input |
-| `401` / `403` | Missing/invalid session or denied access |
-| `404` | Missing resource |
-| `409` | Duplicate or conflicting records |
-| `429` | Rate limit reached |
-| `502` | External provider failure where mapped by the resource |
-| `500` | Unexpected failure with a generic response |
 
-Errors use `{ error: "Human-readable message" }`. Controller helpers map application error reasons and known database codes to safe responses. Unexpected failures must not expose SQL, credentials or internal error details. The shared application error handler covers parser errors and failures outside resource controllers.
+| Status        | Use                                                          |
+| ------------- | ------------------------------------------------------------ |
+| `200`         | Reads, options, updates and deletion                         |
+| `201`         | Resource creation                                            |
+| `400`         | Invalid input, invalid pagination or rejected business input |
+| `401` / `403` | Missing/invalid session or denied access                     |
+| `404`         | Missing resource                                             |
+| `409`         | Duplicate or conflicting records                             |
+| `429`         | Rate limit reached                                           |
+| `502`         | External provider failure where mapped by the resource       |
+| `500`         | Unexpected failure with a generic response                   |
+
+
+Errors use `{ error: "Human-readable message" }`. Each handler maps the resource error and known database codes to a safe response. Unexpected failures must not expose SQL, credentials or internal error details. The shared application error handler covers parser errors and failures outside resource controllers.
 
 ## Adding a resource
 
 1. Define the server record and write types in `server/schema/{resource}_schema.ts`. Put the frontend page, response, and options types in `src/types/{resource}.ts`.
-2. Add validation and HTTP error helpers in the resource controller.
-3. Add database operations in `server/repositories/{resource}_repository.ts`.
-4. Add business operations in `server/services/{resource}_service.ts`.
-5. Add matching named async handlers in `server/controllers/{resource}_controller.ts`.
-6. Register routes, access middleware and rate limits, then mount the router in `server/routes/index.ts`.
-7. Document the API in OpenAPI and add Redux requests and feature components.
-8. Verify validation, business conditions, responses and access boundaries. Run the checks appropriate to the change.
+2. Add the five repository queries in `server/repositories/{resource}_repository.ts`.
+3. Add the error class and the five service functions in `server/services/{resource}_service.ts`.
+4. Add the five controller handlers in the [simple catalog shape](#simple-catalog-controllers). Handle `404`, `409`, and `500` inside each function.
+5. Register routes, access middleware and rate limits, then mount the router in `server/routes/index.ts`.
+6. Document the API in OpenAPI and add Redux requests and feature components.
+7. Verify responses and access boundaries. Run the checks appropriate to the change.
 
 See [code conventions](CODE_CONVENTIONS.md) for transaction and naming details, [architecture](ARCHITECTURE.md) for the application layers, and [folder structure](FOLDER_STRUCTURE.md) for the full project layout.

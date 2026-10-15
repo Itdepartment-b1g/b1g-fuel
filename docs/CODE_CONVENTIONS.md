@@ -11,7 +11,7 @@ Component → Redux → Express route → Controller → Service → Repository 
 | Layer | Responsibility | Examples |
 | --- | --- | --- |
 | Routes | Match URL/method, apply authentication/authorization and rate limiting, dispatch controller | GET roles with an ID routes to `list_by_id_role`; without an ID to `list_role` |
-| Controllers | Validate body/query/IDs, normalize input, call services, write JSON/redirects and translate errors into HTTP statuses | Reject malformed UUIDs or missing names; map duplicate database keys to 409 |
+| Controllers | Call services and translate errors into HTTP statuses | Catalog handlers pass `req.body` and `String(req.query.id)`; map a duplicate key to 409 |
 | Services | Evaluate business conditions and orchestrate operations | Protect system roles, reject assigned-role deletion, verify company-role membership, require an admin-provisioned login profile |
 | Repositories | Execute Prisma queries, serialize records, expose transaction-bound queries | `list_by_id_role`, `list_user`, `create_user` |
 | Redux | Make HTTP requests and manage client loading/error/data state | `listRole`, `editRole`, `createRole`, `updateRole`, `deleteRole` |
@@ -23,7 +23,7 @@ The Prisma connection belongs in `src/server/lib/database.ts`; shared query comp
 
 ## Validation versus conditions
 
-**Input validation belongs in controllers:** whether a field exists, whether it has the right type/length/format, whether a UUID is valid, whether a mapping key is registered, whether arrays contain duplicates, and whether the request attempts to change read-only fields. A valid input becomes a typed object before the controller calls the service. Users, Roles, and Companies keep these helpers in their controllers. Controllers declare operation handlers corresponding to their service operations and may also declare `validate_*` and `respond_*` helpers. Routes own rate limiters.
+**Catalog controllers stay thin.** Brands, variants, measurements, and suppliers pass `req.body as CreateXInput` or `UpdateXInput` and `String(req.query.id)`. They do not add local field parsers or a shared `failure()` helper. The full shape is in [Simple catalog controllers](BACKEND_STRUCTURE.md#simple-catalog-controllers). Users, Roles, and Companies still check field shape inside their handlers, including registered keys, UUID format, and read-only fields. Routes own rate limiters. Do not add `validate_*` or `respond_*` helpers to a new catalog controller. `respond_auth_error` stays in the auth controller because session middleware calls it.
 
 **Business conditions belong in services:** whether a role is system-managed, whether a global role can be the default, whether a role is assigned and deletable, whether an email already belongs to an account, whether selected roles are available for a company membership, and whether a login account has an organization profile.
 
@@ -85,13 +85,12 @@ Database constraints remain the final protection against races: unique slugs, th
 ## Adding a resource
 
 1. Define server record and write types in `src/server/schema`. Define frontend page, response, and options types in `src/types`. Do not import either file from the other.
-2. Add raw-input validation and HTTP error helpers in the resource controller.
-3. Add database-only repository operations with singular entity names.
-4. Add services that decide conditions and coordinate transactions/external operations.
-5. Add async operation handlers to controllers with the same names as their service operations. Keep request validation and HTTP error helpers locally, and send explicit success statuses.
-6. Mount protected routes and document them in Swagger.
-7. Add matching Redux actions and update component imports.
-8. Run lint, typecheck, and build. Verify validation, business conditions, authorization, transaction behavior, and failures against a real database.
+2. Add database-only repository operations with singular entity names.
+3. Add the error class and the five service functions. Create passes the input and `access.userId`.
+4. Add async operation handlers with the same names as their service operations, using the [simple catalog controller](BACKEND_STRUCTURE.md#simple-catalog-controllers). Send explicit success statuses from inside each handler.
+5. Mount protected routes and document them in Swagger.
+6. Add matching Redux actions and update component imports.
+7. Run lint, typecheck, and build. Verify authorization, transaction behavior, and failures against a real database.
 
 This refactor preserves existing HTTP URLs, query conventions, response keys and permissions. No schema migration is required.
 

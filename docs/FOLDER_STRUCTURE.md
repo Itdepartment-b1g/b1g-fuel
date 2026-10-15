@@ -55,7 +55,7 @@ b1g-fuel/
   README.md
 ```
 
-Use plural resource folders, `{entity}_controller.ts`, `{entity}_service.ts`, `{entity}_repository.ts`, and `{entity}-slice.ts`. Feature UI lives under its resource folder. Resource controllers declare async operation handlers and may keep request validation and HTTP error helpers locally matching their services. Resource controllers keep validation and HTTP error helpers locally; rate limiters live in routes. Keep business conditions in services, controllers out of `lib`, database access out of components, and generated code out of commits. See [backend structure](BACKEND_STRUCTURE.md) for the request flow and [code conventions](CODE_CONVENTIONS.md) for singular snake_case backend function names.
+Use plural resource folders, `{entity}_controller.ts`, `{entity}_service.ts`, `{entity}_repository.ts`, and `{entity}-slice.ts`. Feature UI lives under its resource folder. New catalog controllers are five handlers with the error handling inside each function; see [simple catalog controllers](BACKEND_STRUCTURE.md#simple-catalog-controllers). Rate limiters live in routes. Keep business conditions in services, controllers out of `lib`, database access out of components, and generated code out of commits. See [backend structure](BACKEND_STRUCTURE.md) for the request flow and [code conventions](CODE_CONVENTIONS.md) for singular snake_case backend function names.
 
 The Supabase Auth client lives under `server/auth` because Express owns authentication. No browser Supabase client is necessary: login and logout use the same-origin API and HttpOnly cookies.
 

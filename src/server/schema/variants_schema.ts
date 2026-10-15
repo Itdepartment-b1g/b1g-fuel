@@ -1,4 +1,9 @@
-export const VARIANT_SORT_FIELDS = ["id", "name", "created_at", "updated_at"] as const;
+export const VARIANT_SORT_FIELDS = [
+  "id",
+  "name",
+  "created_at",
+  "updated_at",
+] as const;
 
 export interface VariantSummary {
   id: string;

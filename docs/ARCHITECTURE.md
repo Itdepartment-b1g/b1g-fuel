@@ -26,7 +26,7 @@ flowchart LR
 | Proxy | `next.config.ts` | Forward `/api/*` to `API_ORIGIN` |
 | API entry | `src/server/index.ts`, `app.ts` | Start Express, middleware, errors |
 | Routes | `src/server/routes/` | index.ts registers endpoints/resource routers/404; resource files apply auth and dispatch controllers |
-| Controllers | `src/server/controllers/` | Async resource operation handlers matching services; validate input, translate errors and send HTTP responses |
+| Controllers | `src/server/controllers/` | Async handlers matching services. Catalog controllers pass the request through and answer inside each function; see [simple catalog controllers](BACKEND_STRUCTURE.md#simple-catalog-controllers) |
 | Services | `src/server/services/` | Business conditions/reasons, workflows and transactions; no HTTP statuses |
 | Repositories | `src/server/repositories/` | Database queries; no HTTP code |
 | Database client | `src/server/lib/database.ts` | Lazy Prisma singleton with pg pool |
@@ -48,7 +48,7 @@ Redux slices own resource types and HTTP requests, using `credentials: "include"
 
 1. Add a model to `prisma/schema.prisma` with snake_case SQL names and `user_id` when the data is per-user. Run `npm run db:generate -- --name add_resource` to create a migration for review. Preserve custom constraints and RLS in the SQL, then apply it with `npm run db:migrate`.
 2. Create `src/server/repositories/{entity}_repository.ts` with generated Prisma model queries; scope every per-user query by the authenticated user. Database queries stay in repositories and use the generated model types.
-3. Create `src/server/services/{entity}_service.ts` for conditions and workflows, `src/server/controllers/{entity}_controller.ts` with matching async operation handlers and request/HTTP helpers as needed. Use singular snake_case function names, such as `list_role`, `create_role`, `list_by_id_role`, `update_role` and `delete_role`; see [backend structure](BACKEND_STRUCTURE.md) and [code conventions](CODE_CONVENTIONS.md).
+3. Create `src/server/services/{entity}_service.ts` with the error class and five functions, and `src/server/controllers/{entity}_controller.ts` in the [simple catalog shape](BACKEND_STRUCTURE.md#simple-catalog-controllers). Use singular snake_case function names, such as `list_role`, `create_role`, `list_by_id_role`, `update_role` and `delete_role`; see [backend structure](BACKEND_STRUCTURE.md) and [code conventions](CODE_CONVENTIONS.md).
 4. Create `src/server/routes/{entity}.ts`, apply `requireAuthUser`, and mount it in `src/server/routes/index.ts`. `app.ts` mounts that root router after shared middleware and before the error handler.
 5. Extend paths and schemas in `src/lib/openapi.ts`.
 6. Create an entity slice and register its reducer in `store.ts`.
