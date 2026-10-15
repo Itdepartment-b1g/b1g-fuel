@@ -14,8 +14,8 @@ const fields = [
   ["name", "Supplier name", "Shell", true],
   ["contact_person", "Contact person", "Ada Lovelace", true],
   ["contact_email", "Email", "ada@example.com", true],
-  ["contact_phone", "Phone", "555-0100", false],
-  ["contact_address", "Address", "Manila", false],
+  ["contact_phone", "Phone (Optional)", "555-0100", false],
+  ["contact_address", "Address (Optional)", "Manila", false],
 ] as const;
 
 type Field = (typeof fields)[number][0];
