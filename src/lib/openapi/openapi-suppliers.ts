@@ -2,6 +2,7 @@ const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const json = (schema: object) => ({ content: { "application/json": { schema } } });
 const id = { type: "string", format: "uuid" };
 const text = { type: "string", minLength: 1, maxLength: 160 };
+const optionalText = { type: "string", maxLength: 160 };
 
 export const supplierSchemas = {
   Supplier: {
@@ -15,21 +16,21 @@ export const supplierSchemas = {
       name: text,
       contact_person: text,
       contact_email: text,
-      contact_phone: text,
-      contact_address: text,
+      contact_phone: optionalText,
+      contact_address: optionalText,
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
     },
   },
   CreateSupplier: {
     type: "object",
-    required: ["name", "contact_person", "contact_email", "contact_phone", "contact_address"],
-    properties: { company_id: id, name: text, contact_person: text, contact_email: text, contact_phone: text, contact_address: text },
+    required: ["name", "contact_person", "contact_email"],
+    properties: { company_id: id, name: text, contact_person: text, contact_email: text, contact_phone: optionalText, contact_address: optionalText },
   },
   UpdateSupplier: {
     type: "object",
     required: ["id"],
-    properties: { id, name: text, contact_person: text, contact_email: text, contact_phone: text, contact_address: text },
+    properties: { id, name: text, contact_person: text, contact_email: text, contact_phone: optionalText, contact_address: optionalText },
   },
   SupplierResponse: {
     type: "object",

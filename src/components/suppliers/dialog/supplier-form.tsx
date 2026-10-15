@@ -11,11 +11,11 @@ import { createSupplier, selectSupplier, updateSupplier } from "@/lib/store/supp
 import type { SupplierSummary } from "@/types/suppliers";
 
 const fields = [
-  ["name", "Supplier name", "Shell"],
-  ["contact_person", "Contact person", "Ada Lovelace"],
-  ["contact_email", "Email", "ada@example.com"],
-  ["contact_phone", "Phone", "555-0100"],
-  ["contact_address", "Address", "Manila"],
+  ["name", "Supplier name", "Shell", true],
+  ["contact_person", "Contact person", "Ada Lovelace", true],
+  ["contact_email", "Email", "ada@example.com", true],
+  ["contact_phone", "Phone", "555-0100", false],
+  ["contact_address", "Address", "Manila", false],
 ] as const;
 
 type Field = (typeof fields)[number][0];
@@ -54,8 +54,8 @@ export function SupplierForm({
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy.current) return;
-    if (fields.some(([field]) => !values[field].trim())) {
-      setError("Complete every supplier field.");
+    if (fields.some(([field, , , required]) => required && !values[field].trim())) {
+      setError("Enter the supplier name, contact person, and email.");
       return;
     }
     if (chooseCompany && !companyId) {
@@ -87,10 +87,10 @@ export function SupplierForm({
   return (
     <form onSubmit={save} aria-busy={pending} className="space-y-5">
       <fieldset disabled={pending} className="space-y-5">
-        {fields.map(([field, label, placeholder]) => (
+        {fields.map(([field, label, placeholder, required]) => (
           <label key={field} className="space-y-2 text-sm font-medium">
             {label}
-            <Input value={values[field]} onChange={(event) => setField(field, event.target.value)} placeholder={placeholder} required maxLength={160} />
+            <Input value={values[field]} onChange={(event) => setField(field, event.target.value)} placeholder={placeholder} required={required} maxLength={160} />
           </label>
         ))}
         {chooseCompany && (

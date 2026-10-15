@@ -49,8 +49,8 @@ export function SuppliersTableView(
         { id: "company", header: "Company", freezable: true, cell: (supplier) => supplier.company?.name ?? "All companies" },
         { id: "contact_person", header: "Contact", value: (supplier) => supplier.contact_person },
         { id: "contact_email", header: "Email", value: (supplier) => supplier.contact_email },
-        { id: "contact_phone", header: "Phone", value: (supplier) => supplier.contact_phone },
-        { id: "contact_address", header: "Address", value: (supplier) => supplier.contact_address },
+        { id: "contact_phone", header: "Phone", cell: (supplier) => supplier.contact_phone || "—" },
+        { id: "contact_address", header: "Address", cell: (supplier) => supplier.contact_address || "—" },
         {
           id: "created_at",
           header: "Created",

@@ -24,8 +24,8 @@ export function SuppliersCards({
           <dl className="mt-3 space-y-1 text-sm">
             <div><dt className="sr-only">Contact</dt><dd>{supplier.contact_person}</dd></div>
             <div><dt className="sr-only">Email</dt><dd className="text-muted-foreground">{supplier.contact_email}</dd></div>
-            <div><dt className="sr-only">Phone</dt><dd className="text-muted-foreground">{supplier.contact_phone}</dd></div>
-            <div><dt className="sr-only">Address</dt><dd className="text-muted-foreground">{supplier.contact_address}</dd></div>
+            <div><dt className="sr-only">Phone</dt><dd className="text-muted-foreground">{supplier.contact_phone || "—"}</dd></div>
+            <div><dt className="sr-only">Address</dt><dd className="text-muted-foreground">{supplier.contact_address || "—"}</dd></div>
           </dl>
           <div className="mt-4 flex justify-end gap-2 border-t pt-3">
             <Button variant="ghost" size="sm" disabled={disabled || !canPerform(access, "suppliers", "edit", supplier)} onClick={() => onEdit(supplier)}>
