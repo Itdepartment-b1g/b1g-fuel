@@ -20,12 +20,12 @@ export interface ListSupplierResponse {
 
 
 export interface CreateSupplierInput {
-    company_id?: string | null;
-    name?: string;
-    contact_person?: string;
-    contact_email?: string;
-    contact_phone?: string;
-    contact_address?: string;
+    company_id?: string;
+    name: string;
+    contact_person: string;
+    contact_email: string;
+    contact_phone: string;
+    contact_address: string;
 }
 
 export interface UpdateSupplierInput {

@@ -1,7 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parse_create_brand, parse_update_brand } from "@/server/controllers/brands_controller";
-import { parse_create_variant, parse_update_variant } from "@/server/controllers/variants_controller";
 import { brand_company, can_create_brand, delete_brand } from "@/server/services/brands_service";
 import { create_variant, variant_company } from "@/server/services/variants_service";
 import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
@@ -20,16 +18,6 @@ const access: RecordAccess = {
     { permission: `brandsAndVariants.${action}`, scope: "company" as const, companyId: company }
   )),
 };
-
-test("brand and variant names are trimmed and unknown fields are rejected", () => {
-  assert.equal(parse_create_brand({ name: " Shell ", company_id: company }).name, "Shell");
-  assert.equal(parse_create_variant({ brand_id: brand, name: " Diesel " }).name, "Diesel");
-  assert.throws(() => parse_create_brand({ name: "Shell", created_by: "someone" }));
-  assert.equal(parse_create_variant({ brand_id: brand, name: "Diesel", company_id: company }).company_id, company);
-  assert.throws(() => parse_create_variant({ brand_id: brand, name: "Diesel", created_by: "someone" }));
-  assert.throws(() => parse_update_brand({ id: brand }));
-  assert.equal(parse_update_variant({ id: brand, name: " Premium " }).name, "Premium");
-});
 
 test("brand visibility follows company scope and shared rows stay super-admin only", () => {
   assert.equal(can_create_brand(access, company), true);

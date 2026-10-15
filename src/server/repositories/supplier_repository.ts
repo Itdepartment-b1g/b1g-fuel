@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { QuickFilterState } from "@/types/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { getDatabase } from "@/server/lib/database";
@@ -74,3 +74,76 @@ export async function list_suppliers(
     }, { isolationLevel: "RepeatableRead" });
 }
 
+export async function list_by_id_supplier(
+  id: string,
+  access: RecordAccess,
+){
+  const record = await getDatabase().supplier.findFirst({
+    where: {AND: [{id}, record_where(access, "suppliers")]}
+  });
+  if(!record) return null;
+  const supplier: ListSupplierResponse = {
+    ...record,
+    created_at: record.created_at.toISOString(),
+    updated_at: record.updated_at.toISOString(),
+  };
+  return supplier;
+}
+
+export async function create_supplier(input: CreateSupplierInput, actor: string){
+  const record = await getDatabase().supplier.create({
+    data: {
+      name: input.name,
+      contact_person: input.contact_person,
+      contact_email: input.contact_email,
+      contact_phone: input.contact_phone,
+      contact_address: input.contact_address,
+      created_by: actor,
+      ...(input.company_id ? { company_id: input.company_id } : {}),
+    }
+  })
+  const supplier: ListSupplierResponse = {
+    ...record, 
+    created_at: record.created_at.toISOString(),
+    updated_at: record.updated_at.toISOString(),
+  }
+  return supplier;
+}
+
+export async function update_supplier(
+  input: UpdateSupplierInput,
+  access: RecordAccess,
+){
+  return getDatabase().$transaction(async (tx) => {
+    const current = await tx.supplier.findFirst({
+      where: {AND: [{id: input.id}, record_where(access, "suppliers", "edit")]}
+    });
+    if(!current) return null;
+    const record = await tx.supplier.update({
+      where: {id: input.id},
+      data: {
+        ...(input.name !== undefined ? {name: input.name}: {}),
+        ...(input.contact_person !== undefined ? {contact_person: input.contact_person}: {}),
+        ...(input.contact_email !== undefined ? {contact_email: input.contact_email}: {}),
+        ...(input.contact_phone !== undefined ? {contact_phone: input.contact_phone}: {}),
+        ...(input.contact_address !== undefined ? {contact_address: input.contact_address}: {}),
+      }
+    })
+  })
+
+}
+
+export async function delete_supplier(
+  id: string,
+  access: RecordAccess,
+){
+return getDatabase().$transaction(async (tx) => {
+  const current = await tx.supplier.findFirst({
+    where: {AND: [{id}, record_where(access, "suppliers", "delete")]},
+    select: {id: true},
+  });
+  if(!current) return "not_found" as const;
+  await tx.supplier.delete({ where: {id} })
+  return "deleted" as const;
+})
+}

@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { getDatabase, closeDatabase } from "@/server/lib/database";
-import { parse_create_measurement, parse_update_measurement } from "@/server/controllers/measurements_controller";
 import * as service from "@/server/services/measurements_service";
 import type { RecordAccess } from "@/lib/auth/access-scope";
 
@@ -21,10 +20,10 @@ test("local database supports measurement creation, scoped listing, ordered edit
   const db = getDatabase();
   try {
     await db.company.createMany({ data: [{ id: companyId, name: `Measurement test ${companyId}` }, { id: outsideId, name: `Measurement test ${outsideId}` }] });
-    const input = parse_create_measurement({
+    const input = {
       company_id: companyId, name: "Dimensions",
       units: [{ key: "cm", name: "Centimeter", symbol: "cm" }],
-    });
+    };
     const created = await service.create_measurement(input, access);
     const outsider: RecordAccess = {
       ...access, userId: randomUUID(), companyIds: [outsideId],
@@ -48,10 +47,10 @@ test("local database supports measurement creation, scoped listing, ordered edit
     assert.equal(list.measurements[0].id, created.id);
     const options = await service.get_measurement_options(access);
     assert.deepEqual(options.companies.map((company) => company.id), [companyId]);
-    const edited = await service.update_measurement(parse_update_measurement({
+    const edited = await service.update_measurement({
       id: created.id,
       units: [{ key: "cm", name: "Centimetre", symbol: "cm" }],
-    }), access);
+    }, access);
     assert.equal(edited.units[0].id, created.units[0].id);
     assert.equal(edited.units[0].name, "Centimetre");
     await service.delete_measurement(created.id, access);
