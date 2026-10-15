@@ -84,7 +84,7 @@ Database constraints remain the final protection against races: unique slugs, th
 
 ## Adding a resource
 
-1. Define shared request/response types without backend imports.
+1. Define server record and write types in `src/server/schema`. Define frontend page, response, and options types in `src/types`. Do not import either file from the other.
 2. Add raw-input validation and HTTP error helpers in the resource controller.
 3. Add database-only repository operations with singular entity names.
 4. Add services that decide conditions and coordinate transactions/external operations.

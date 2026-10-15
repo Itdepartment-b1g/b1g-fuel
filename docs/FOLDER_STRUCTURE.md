@@ -27,6 +27,7 @@ b1g-fuel/
       ui/                   Locally owned shadcn/ui primitives
     hooks/                  Shared React hooks
     proxy.ts                Verifies dashboard sessions through Express
+    types/                  Frontend request and response types; never imported by the server schema
     lib/
       store/                Auth, Users, Roles and Companies slices with typed hooks
       openapi.ts            Shared API specification
@@ -39,7 +40,7 @@ b1g-fuel/
       controllers/          {entity}_controller.ts; async operation handlers matching services
       services/             {entity}_service.ts; business conditions and workflows
       repositories/         {entity}_repository.ts
-      schema/               Shared request and response type contracts
+      schema/               Server-only record and write types; do not import src/types
       utils/                Shared pagination and Prisma connection
     generated/prisma/       Generated Prisma Client; ignored by Git
   .env.example

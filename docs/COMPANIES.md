@@ -4,7 +4,7 @@ Open `/companies` as a global super-admin. The screen supports table/card views,
 
 Components live directly in `src/components/companies`: `list.tsx`, `table.tsx`, `form.tsx`, and `dialog.tsx`. They reuse the shared pagination and deletion confirmation in `src/components/common`. Edits fetch fresh company details. Errors keep forms open, and pending mutations block repeated submission and dismissal.
 
-Company request and response types live in `src/server/schema/companies_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
+Server record and write types live in `src/server/schema/companies_schema.ts`. Frontend components and Redux use `src/types/companies.ts`. These are separate contracts; neither file imports the other.
 
 ## API
 

@@ -29,7 +29,7 @@ src/
   components/users/                 User forms, dialogs, tables and cards
   lib/store/users-slice.ts          API requests and client state
   server/
-    schema/users_schema.ts         Shared request and response types
+    schema/users_schema.ts         Server-only request and record types
     routes/users.ts                URLs, access middleware and rate limiting
     controllers/users_controller.ts
                                    HTTP handlers, input validation and error responses
@@ -39,7 +39,18 @@ src/
     utils/pagination.ts            Shared pagination parsing
 ```
 
-Files use the plural resource name (`users_controller.ts`). Operation names use the singular entity (`create_user`). Shared contracts can be imported by the frontend using `import type`; runtime backend modules remain on the server.
+Files use the plural resource name (`users_controller.ts`). Operation names use the singular entity (`create_user`). Runtime backend modules stay on the server.
+
+## Server schema and frontend types
+
+`src/server/schema` and `src/types` are separate contracts. Do not import one from the other.
+
+| Location | Used by | What belongs here |
+| --- | --- | --- |
+| `src/server/schema/{resource}_schema.ts` | Controllers, services, repositories, and input parsers | Sort-field allowlists, the record the repository returns, and create/update inputs |
+| `src/types/{resource}.ts` | Components and Redux | Page, response, options, and other shapes the UI reads from HTTP JSON |
+
+Declare the server types in the schema file. Copy the fields the server needs, including a nested company as `{ id: string; name: string }`, instead of re-exporting `src/types`. Leave page, response, and options types in `src/types`. Shared auth values such as `AccessScope` may still be imported from `src/lib/auth`.
 
 ## Responsibilities
 
@@ -52,7 +63,7 @@ Files use the plural resource name (`users_controller.ts`). Operation names use 
 | Controller | Field validation, normalization and HTTP error translation | Trim name, normalize email, reject invalid IDs, map duplicate errors to `409` |
 | Service | Business conditions, transactions and external operations | Check assignments, create Auth account, coordinate profile persistence and cleanup |
 | Repository | Database reads/writes and record serialization | Find available assignments and persist the user and memberships |
-| Schema contract | Request/response types | `CreateUserInput`, `UserSummary`, `CreateUserResponse` |
+| Schema contract | Server-only record and write types | `CreateUserInput`, `UpdateUserInput`, `UserSummary` |
 
 ## Controller standard
 
@@ -132,7 +143,7 @@ Errors use `{ error: "Human-readable message" }`. Controller helpers map applica
 
 ## Adding a resource
 
-1. Define request and response contracts in `server/schema/{resource}_schema.ts`.
+1. Define the server record and write types in `server/schema/{resource}_schema.ts`. Put the frontend page, response, and options types in `src/types/{resource}.ts`.
 2. Add validation and HTTP error helpers in the resource controller.
 3. Add database operations in `server/repositories/{resource}_repository.ts`.
 4. Add business operations in `server/services/{resource}_service.ts`.

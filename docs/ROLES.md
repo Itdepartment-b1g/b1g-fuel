@@ -1,6 +1,6 @@
 # Roles UI, API and Redux
 
-Role request and response types live in `src/server/schema/roles_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
+Server record and write types live in `src/server/schema/roles_schema.ts`. Frontend components and Redux use `src/types/roles.ts`. These are separate contracts; neither file imports the other.
 
 All roles endpoints require a verified Supabase session, an existing database profile and the global `super_admin` role. Responses are private/no-store. Mutations require the exact application Origin and are rate limited.
 

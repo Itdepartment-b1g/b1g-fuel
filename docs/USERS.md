@@ -1,6 +1,6 @@
 # User management API and Redux
 
-User request and response types live in `src/server/schema/users_schema.ts`. Frontend components and Redux use `import type`, so these contracts add no server code to the browser bundle.
+Server record and write types live in `src/server/schema/users_schema.ts`. Frontend components and Redux use `src/types/users.ts`. These are separate contracts; neither file imports the other.
 
 Express exposes `GET /api/users`, `GET /api/users/options` and `POST /api/users`. All require a verified session and the global `super_admin` assignment from Postgres. Responses use private, no-store caching. Creation requires the application's Origin and is rate limited.
 
