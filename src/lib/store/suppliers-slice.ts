@@ -148,7 +148,7 @@ const slice = createSlice({
       })
       .addCase(getSupplierFilterOption.pending, (state, action) => { state.filterOptionsStatus = "loading"; state.filterOptionsError = null; state.filterOptionsRequestId = action.meta.requestId; })
       .addCase(getSupplierFilterOption.fulfilled, (state, action) => {
-        if (state.filterOptionsRequestId !== action.meta.requestId) return;
+        if (state.filterOptionsRequestId !== action.meta.requestId || !action.payload?.fields) return;
         state.filterOptions = action.payload;
         state.filterOptionsStatus = "succeeded";
         state.filterOptionsRequestId = null;
@@ -214,4 +214,11 @@ const slice = createSlice({
 
 export const suppliersReducer = slice.reducer;
 export const { resetSuppliers, clearSupplierMutation } = slice.actions;
-export const selectSupplier = (state: RootState) => state.suppliers;
+export function selectSupplier(state: RootState) {
+  const suppliers = state.suppliers;
+  return {
+    ...suppliers,
+    filterOptions: suppliers.filterOptions ?? SUPPLIER_FILTER_OPTIONS,
+    options: suppliers.options ?? { companies: [] },
+  };
+}
