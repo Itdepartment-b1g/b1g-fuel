@@ -1,16 +1,45 @@
 import type { Request, Response } from "express";
+import { SUPPLIER_FILTER_OPTIONS } from "@/utils/management-filters";
 import * as service from "@/server/services/supplier_service";
 import { SupplierError } from "@/server/services/supplier_service";
-import type { CreateSupplierInput, UpdateSupplierInput } from "@/server/schema/supplier_schema";
+import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
+import { parsePagination, PaginationError } from "@/server/lib/pagination";
+import { parse_sort, SortingError } from "@/server/lib/sorting";
+import { SUPPLIER_SORT_FIELDS, type CreateSupplierInput, type UpdateSupplierInput } from "@/server/schema/supplier_schema";
 
 export async function list_suppliers(req: Request, res: Response) {
   try {
+    const search = typeof req.query.search === "string" ? req.query.search : "";
     res.json(await service.list_suppliers(
-      { page: 1, page_size: 10, skip: 0, take: 10 },
-      "",
-      undefined,
+      parsePagination(req.query),
+      search,
+      parse_sort(req.query, SUPPLIER_SORT_FIELDS),
       res.locals.access,
+      typeof req.query.company_id === "string" ? req.query.company_id : undefined,
+      parse_quick_filters(req.query.filters, SUPPLIER_FILTER_OPTIONS),
     ));
+  } catch (error) {
+    if (error instanceof PaginationError || error instanceof SortingError || error instanceof QuickFilterError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    console.error("Supplier request failed:", error);
+    res.status(500).json({ error: "The supplier request could not be completed." });
+  }
+}
+
+export async function get_supplier_filter_options(_req: Request, res: Response) {
+  try {
+    res.json(await service.get_supplier_filter_options(res.locals.access));
+  } catch (error) {
+    console.error("Supplier request failed:", error);
+    res.status(500).json({ error: "The supplier request could not be completed." });
+  }
+}
+
+export async function get_supplier_options(_req: Request, res: Response) {
+  try {
+    res.json(await service.get_supplier_options(res.locals.access));
   } catch (error) {
     console.error("Supplier request failed:", error);
     res.status(500).json({ error: "The supplier request could not be completed." });

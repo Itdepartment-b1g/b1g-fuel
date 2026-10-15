@@ -6,10 +6,11 @@ const text = { type: "string", minLength: 1, maxLength: 160 };
 export const supplierSchemas = {
   Supplier: {
     type: "object",
-    required: ["id", "company_id", "created_by", "name", "contact_person", "contact_email", "contact_phone", "contact_address", "created_at", "updated_at"],
+    required: ["id", "company_id", "company", "created_by", "name", "contact_person", "contact_email", "contact_phone", "contact_address", "created_at", "updated_at"],
     properties: {
       id,
       company_id: { ...id, nullable: true },
+      company: { type: "object", nullable: true, required: ["id", "name"], properties: { id, name: { type: "string" } } },
       created_by: { ...id, nullable: true, readOnly: true },
       name: text,
       contact_person: text,
@@ -55,9 +56,17 @@ export const supplierPaths = {
   "/api/suppliers": {
     get: {
       ...common,
-      summary: "List the first page of suppliers, or get one by ID",
-      description: "Requires suppliers.view. A list request returns the first 10 suppliers the caller can see. Pass id to load one supplier.",
-      parameters: [{ name: "id", in: "query", schema: id }],
+      summary: "List suppliers, or get one by ID",
+      description: "Requires suppliers.view. Pass id to load one supplier. Search, filters, and pagination apply to the list.",
+      parameters: [
+        { name: "id", in: "query", schema: id },
+        { name: "search", in: "query", schema: { type: "string", maxLength: 160 } },
+        { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+        { name: "page_size", in: "query", schema: { type: "integer", default: 10 } },
+        { name: "sort_by", in: "query", schema: { type: "string", enum: ["id", "name", "created_at", "updated_at"] } },
+        { name: "sort_order", in: "query", schema: { type: "string", enum: ["asc", "desc"] } },
+        { name: "filters", in: "query", schema: { type: "string" } },
+      ],
       responses: {
         "200": { description: "Suppliers page or one supplier", ...json({ oneOf: [ref("SuppliersPage"), ref("SupplierResponse")] }) },
         ...errors,

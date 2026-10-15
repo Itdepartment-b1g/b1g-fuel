@@ -1,5 +1,8 @@
 import type { QuickFilterState } from "@/types/quick-filter";
+import { SUPPLIER_FILTER_OPTIONS } from "@/utils/management-filters";
 import type { RecordAccess } from "@/server/auth/record-access";
+import { getDatabase } from "@/server/lib/database";
+import { build_filter_options } from "@/server/lib/quick-filters";
 import type { Pagination } from "@/server/lib/pagination";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateSupplierInput, UpdateSupplierInput } from "@/server/schema/supplier_schema";
@@ -66,4 +69,27 @@ export function list_suppliers(
   export async function delete_supplier(id: string, access: RecordAccess) {
     const result = await repository.delete_supplier(id, access);
     if (result === "not_found") throw new SupplierError("not_found", "Supplier not found.");
+  }
+
+  export async function get_supplier_filter_options(access: RecordAccess) {
+    const records = await repository.get_supplier_filter_data(access);
+    return build_filter_options(
+      records,
+      SUPPLIER_FILTER_OPTIONS,
+      (supplier, field) => field === "company"
+        ? supplier.company ? { value: supplier.company.id, label: supplier.company.name } : null
+        : { value: supplier.name, label: supplier.name },
+      (supplier, status) => status === "all" || (supplier.company_id === null) === (status === "shared"),
+    );
+  }
+
+  export async function get_supplier_options(access: RecordAccess) {
+    const all = access.superAdmin || access.grants.some((grant) => grant.permission === "suppliers.add" && grant.scope === "all" && !grant.companyId);
+    const ids = [...new Set(access.grants.filter((grant) => grant.permission === "suppliers.add").flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+    const companies = await getDatabase().company.findMany({
+      where: all ? {} : { id: { in: ids } },
+      select: { id: true, name: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+    });
+    return { companies };
   }

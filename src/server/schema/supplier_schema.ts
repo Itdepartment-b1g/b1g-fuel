@@ -8,6 +8,7 @@ export const SUPPLIER_SORT_FIELDS = [
 export interface ListSupplierResponse {
     id: string;
     company_id: string | null;
+    company: { id: string; name: string } | null;
     created_by: string | null;
     name: string;
     contact_person: string;

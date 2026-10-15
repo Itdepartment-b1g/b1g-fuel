@@ -1,6 +1,9 @@
+import type { CompanyOption } from "./companies";
+
 export interface Supplier {
   id: string;
   company_id: string | null;
+  company: CompanyOption | null;
   created_by: string | null;
   name: string;
   contact_person: string;
@@ -40,6 +43,10 @@ export interface SuppliersPage {
   total: number;
   page: number;
   page_size: number;
+}
+
+export interface SupplierOptions {
+  companies: CompanyOption[];
 }
 
 export interface DeleteSupplierResponse {

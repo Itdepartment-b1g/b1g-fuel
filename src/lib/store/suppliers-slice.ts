@@ -1,8 +1,13 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
+import type { QuickFilterState } from "@/types/quick-filter";
+import type { ManagementFilterOptions } from "@/types/management-filters";
+import type { TableSort } from "@/types/table-views";
+import { SUPPLIER_FILTER_OPTIONS } from "@/utils/management-filters";
 import type {
   CreateSupplierInput,
   DeleteSupplierResponse,
+  SupplierOptions,
   SupplierResponse,
   SupplierSummary,
   SuppliersPage,
@@ -11,18 +16,27 @@ import type {
 
 export type SupplierFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
+export type SuppliersQuery = { page?: number; page_size?: number; search?: string; company_id?: string; sort_by?: string; sort_order?: TableSort["direction"]; filters?: QuickFilterState };
 type State = {
   suppliers: SupplierSummary[];
   total: number;
   selectedSupplier: SupplierSummary | null;
+  options: SupplierOptions;
+  filterOptions: ManagementFilterOptions;
+  filterOptionsStatus: Status;
+  filterOptionsError: SupplierFailure | null;
+  filterOptionsRequestId: string | null;
   listStatus: Status;
   detailStatus: Status;
+  optionsStatus: Status;
   mutationStatus: Status;
   listError: SupplierFailure | null;
   detailError: SupplierFailure | null;
+  optionsError: SupplierFailure | null;
   mutationError: SupplierFailure | null;
   listRequestId: string | null;
   detailRequestId: string | null;
+  optionsRequestId: string | null;
   mutationRequestId: string | null;
 };
 
@@ -30,14 +44,22 @@ const initialState: State = {
   suppliers: [],
   total: 0,
   selectedSupplier: null,
+  options: { companies: [] },
+  filterOptions: SUPPLIER_FILTER_OPTIONS,
+  filterOptionsStatus: "idle",
+  filterOptionsError: null,
+  filterOptionsRequestId: null,
   listStatus: "idle",
   detailStatus: "idle",
+  optionsStatus: "idle",
   mutationStatus: "idle",
   listError: null,
   detailError: null,
+  optionsError: null,
   mutationError: null,
   listRequestId: null,
   detailRequestId: null,
+  optionsRequestId: null,
   mutationRequestId: null,
 };
 
@@ -59,11 +81,21 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
 
 type Config = { state: RootState; rejectValue: SupplierFailure };
 
-export const listSupplier = createAsyncThunk<SuppliersPage, void, Config>("suppliers/list", async (_, { signal, rejectWithValue }) => {
-  try { return await request<SuppliersPage>("/api/suppliers", { signal }); }
+export const listSupplier = createAsyncThunk<SuppliersPage, SuppliersQuery, Config>("suppliers/list", async (query, { signal, rejectWithValue }) => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, key === "filters" ? JSON.stringify(value) : String(value));
+  try { return await request<SuppliersPage>(`/api/suppliers?${params}`, { signal }); }
   catch (error) { return rejectWithValue(failure(error)); }
 });
 
+export const getSupplierFilterOption = createAsyncThunk<ManagementFilterOptions, void, Config>("suppliers/filter-options", async (_, { signal, rejectWithValue }) => {
+  try { return await request<ManagementFilterOptions>("/api/suppliers/filter-options", { signal }); }
+  catch (error) { return rejectWithValue(failure(error)); }
+});
+export const getSupplierOption = createAsyncThunk<SupplierOptions, void, Config>("suppliers/options", async (_, { signal, rejectWithValue }) => {
+  try { return await request<SupplierOptions>("/api/suppliers/options", { signal }); }
+  catch (error) { return rejectWithValue(failure(error)); }
+});
 export const editSupplier = createAsyncThunk<SupplierResponse, string, Config>("suppliers/detail", async (id, { signal, rejectWithValue }) => {
   try { return await request<SupplierResponse>(`/api/suppliers?id=${encodeURIComponent(id)}`, { signal }); }
   catch (error) { return rejectWithValue(failure(error)); }
@@ -113,6 +145,32 @@ const slice = createSlice({
         state.listStatus = action.meta.aborted ? "idle" : "failed";
         state.listError = action.meta.aborted ? null : action.payload ?? failure(action.error);
         state.listRequestId = null;
+      })
+      .addCase(getSupplierFilterOption.pending, (state, action) => { state.filterOptionsStatus = "loading"; state.filterOptionsError = null; state.filterOptionsRequestId = action.meta.requestId; })
+      .addCase(getSupplierFilterOption.fulfilled, (state, action) => {
+        if (state.filterOptionsRequestId !== action.meta.requestId) return;
+        state.filterOptions = action.payload;
+        state.filterOptionsStatus = "succeeded";
+        state.filterOptionsRequestId = null;
+      })
+      .addCase(getSupplierFilterOption.rejected, (state, action) => {
+        if (state.filterOptionsRequestId !== action.meta.requestId) return;
+        state.filterOptionsStatus = action.meta.aborted ? "idle" : "failed";
+        state.filterOptionsError = action.meta.aborted ? null : action.payload ?? failure(action.error);
+        state.filterOptionsRequestId = null;
+      })
+      .addCase(getSupplierOption.pending, (state, action) => { state.optionsStatus = "loading"; state.optionsError = null; state.optionsRequestId = action.meta.requestId; })
+      .addCase(getSupplierOption.fulfilled, (state, action) => {
+        if (state.optionsRequestId !== action.meta.requestId) return;
+        state.options = action.payload;
+        state.optionsStatus = "succeeded";
+        state.optionsRequestId = null;
+      })
+      .addCase(getSupplierOption.rejected, (state, action) => {
+        if (state.optionsRequestId !== action.meta.requestId) return;
+        state.optionsStatus = action.meta.aborted ? "idle" : "failed";
+        state.optionsError = action.meta.aborted ? null : action.payload ?? failure(action.error);
+        state.optionsRequestId = null;
       })
       .addCase(editSupplier.pending, (state, action) => { state.detailStatus = "loading"; state.selectedSupplier = null; state.detailError = null; state.detailRequestId = action.meta.requestId; })
       .addCase(editSupplier.fulfilled, (state, action) => {

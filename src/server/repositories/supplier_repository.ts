@@ -11,12 +11,22 @@ import type {
   UpdateSupplierInput,
 } from "@/server/schema/supplier_schema";
 
+const company = { company: { select: { id: true, name: true } } } satisfies Prisma.supplierInclude;
+
+function present(record: Prisma.supplierGetPayload<{ include: typeof company }>): ListSupplierResponse {
+  return {
+    ...record,
+    created_at: record.created_at.toISOString(),
+    updated_at: record.updated_at.toISOString(),
+  };
+}
+
 const supplierSort = {
   fields: {
     id: (direction: Prisma.SortOrder) => ({ id: direction }),
     name: (direction: Prisma.SortOrder) => ({ name: direction }),
     created_at: (direction: Prisma.SortOrder) => ({ created_at: direction }),
-    updated_at: (direction: Prisma.SortOrder) => ({ created_at: direction }),
+    updated_at: (direction: Prisma.SortOrder) => ({ updated_at: direction }),
   },
   default: { field: "created_at" as const, direction: "desc" as const },
   tieBreaker: { field: "id" as const, order: { id: "asc" as const } },
@@ -64,12 +74,8 @@ export async function list_suppliers(
 
   const orderBy = build_sort<Prisma.supplierOrderByWithRelationInput>(sorting, supplierSort);
   return getDatabase().$transaction(async(tx) => {
-    const rows = await tx.supplier.findMany({where, orderBy, skip: pagination.skip, take: pagination.take});
-    const suppliers: ListSupplierResponse[] = rows.map((row) => ({
-        ...row,
-        created_at: row.created_at.toISOString(),
-        updated_at: row.updated_at.toISOString(),
-      }));
+    const rows = await tx.supplier.findMany({ where, include: company, orderBy, skip: pagination.skip, take: pagination.take });
+    const suppliers = rows.map(present);
       return { suppliers, ...paginationMetadata(await tx.supplier.count({ where }), pagination) };
     }, { isolationLevel: "RepeatableRead" });
 }
@@ -79,15 +85,18 @@ export async function list_by_id_supplier(
   access: RecordAccess,
 ){
   const record = await getDatabase().supplier.findFirst({
-    where: {AND: [{id}, record_where(access, "suppliers")]}
+    where: {AND: [{id}, record_where(access, "suppliers")]},
+    include: company,
   });
-  if(!record) return null;
-  const supplier: ListSupplierResponse = {
-    ...record,
-    created_at: record.created_at.toISOString(),
-    updated_at: record.updated_at.toISOString(),
-  };
-  return supplier;
+  return record ? present(record) : null;
+}
+
+export function get_supplier_filter_data(access: RecordAccess) {
+  return getDatabase().supplier.findMany({
+    where: record_where(access, "suppliers"),
+    select: { name: true, company_id: true, company: { select: { id: true, name: true } } },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
 }
 
 export async function create_supplier(input: CreateSupplierInput, actor: string){
@@ -100,14 +109,10 @@ export async function create_supplier(input: CreateSupplierInput, actor: string)
       contact_address: input.contact_address,
       created_by: actor,
       ...(input.company_id ? { company_id: input.company_id } : {}),
-    }
-  })
-  const supplier: ListSupplierResponse = {
-    ...record, 
-    created_at: record.created_at.toISOString(),
-    updated_at: record.updated_at.toISOString(),
-  }
-  return supplier;
+    },
+    include: company,
+  });
+  return present(record);
 }
 
 export async function update_supplier(
@@ -127,13 +132,10 @@ export async function update_supplier(
         ...(input.contact_email !== undefined ? {contact_email: input.contact_email}: {}),
         ...(input.contact_phone !== undefined ? {contact_phone: input.contact_phone}: {}),
         ...(input.contact_address !== undefined ? {contact_address: input.contact_address}: {}),
-      }
+      },
+      include: company,
     });
-    return {
-      ...record,
-      created_at: record.created_at.toISOString(),
-      updated_at: record.updated_at.toISOString(),
-    };
+    return present(record);
   })
 
 }

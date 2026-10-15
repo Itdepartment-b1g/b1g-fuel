@@ -68,7 +68,6 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
     label: "Suppliers",
     href: "/suppliers",
     view_permission: "suppliers.view",
-    navigation: false,
   },
 ];
 export const PAGE_GROUPS: readonly PageCatalogGroup[] = [];
