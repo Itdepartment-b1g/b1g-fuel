@@ -36,7 +36,7 @@ test("stored scopes filter real records and reject edits to another creator's co
       const companyUsers = await tx.user.findMany({ where: { AND: [fixtures, record_where(access, "users")] } });
       assert.deepEqual(companyUsers.map((user) => user.id).sort(), [actor, other, owned].sort());
       assert.deepEqual(allowed_company_ids(access, "users"), [companyA]);
-      assert.equal(await list_by_id_company(companyB, tx, false, access), null);
+      assert.equal(await list_by_id_company(companyB, tx, access), null);
       await assert.rejects(update_company({ id: companyB, name: "Forbidden" }, tx, access));
       const renamed = await update_company({ id: companyA, name: "Allowed" }, tx, access);
       assert.equal(renamed.created_by, actor);

@@ -123,7 +123,6 @@ export async function update_measurement(
   access: RecordAccess,
 ) {
   return getDatabase().$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "measurement" WHERE id = ${input.id}::uuid FOR UPDATE`;
     const where = {
       AND: [{ id: input.id }, record_where(access, "measurements", "edit")],
     };
@@ -163,8 +162,7 @@ export async function update_measurement(
 
 /** Remove a measurement and its units. Units are deleted first because the relation restricts parent deletion. */
 export async function delete_measurement(id: string, access: RecordAccess) {
-  await getDatabase().$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "measurement" WHERE id = ${id}::uuid FOR UPDATE`;
+  return getDatabase().$transaction(async (tx) => {
     const current = await tx.measurement.findFirst({
       where: { AND: [{ id }, record_where(access, "measurements", "delete")] },
       select: { id: true },

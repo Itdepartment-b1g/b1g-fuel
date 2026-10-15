@@ -35,12 +35,7 @@ export async function list_by_id_company(
   repository = companiesRepository,
   access?: RecordAccess,
 ) {
-  const company = await repository.list_by_id_company(
-    id,
-    undefined,
-    false,
-    access,
-  );
+  const company = await repository.list_by_id_company(id, undefined, access);
   if (!company)
     throw new CompanyError("company_not_found", "Company not found.");
   return company;
@@ -71,7 +66,6 @@ export async function update_company(
       !(await repository.list_by_id_company(
         input.id,
         transaction,
-        true,
         access,
         "edit",
       ))
@@ -90,7 +84,6 @@ export async function delete_company(
     const company = await repository.list_by_id_company(
       id,
       transaction,
-      true,
       access,
       "delete",
     );

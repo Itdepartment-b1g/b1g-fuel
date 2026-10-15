@@ -84,13 +84,10 @@ test("child updates preserve existing IDs and omitted definitions; invalid updat
     created_at: new Date("2026-10-14T00:00:00Z"), updated_at: new Date("2026-10-14T00:00:00Z"),
     units: parsed.units.map((unit) => ({ ...unit, id: `unit-${unit.key}`, measurement_id: company })),
   };
-  let locked = false;
   let writes = 0;
   const tx = {
-    $queryRaw: async () => { locked = true; },
     measurement: {
       findFirst: async (args: { where: unknown }) => {
-        assert.ok(locked);
         assert.deepEqual(args.where, { AND: [{ id: company }, { OR: [{ created_by: "creator" }] }] });
         return current;
       },
@@ -148,7 +145,6 @@ test("delete removes units before the measurement and skips inaccessible definit
   const state = globalThis as typeof globalThis & { fuelDatabase?: { database: Database } };
   const previous = state.fuelDatabase;
   const denied = {
-    $queryRaw: async () => [],
     measurement: { findFirst: async (args: { where: unknown }) => {
       assert.deepEqual(args.where, { AND: [{ id: company }, { OR: [] }] });
       return null;
@@ -157,7 +153,6 @@ test("delete removes units before the measurement and skips inaccessible definit
   };
   const order: string[] = [];
   const allowed = {
-    $queryRaw: async () => [],
     measurement: {
       findFirst: async () => ({ id: company }),
       delete: async (args: { where: { id: string } }) => { order.push("measurement"); assert.equal(args.where.id, company); },

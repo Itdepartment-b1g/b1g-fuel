@@ -50,7 +50,6 @@ test("deleting a brand with variants writes nothing", async () => {
   const previous = state.fuelDatabase;
   let deleted = false;
   const tx = {
-    $queryRaw: async () => [],
     brand: {
       findFirst: async () => ({ id: brand, _count: { variants: 1 } }),
       delete: async () => { deleted = true; },

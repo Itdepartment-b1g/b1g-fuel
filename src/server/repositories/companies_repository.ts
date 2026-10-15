@@ -67,17 +67,13 @@ export async function list_company(pagination: Pagination, search: string, sorti
   );
 }
 
-/** Find a company by ID with its membership count, returning null when it does not exist. When requested, acquire a row lock through the supplied client before reading the count. */
+/** Find a company by ID with its membership count, returning null when it does not exist. */
 export async function list_by_id_company(
   id: string,
   client: DatabaseExecutor = getDatabase(),
-  lock = false,
   access?: RecordAccess,
   action = "view",
 ) {
-  // Keep the row lock before reading membership counts to protect against concurrent inserts.
-  if (lock)
-    await client.$queryRaw`select id from "company" where id = ${id}::uuid for update`;
   const company = await client.company.findFirst({
     where: { AND: [{ id }, record_where(access, "companies", action)] },
     include: company_include,
@@ -125,7 +121,7 @@ export async function get_company_filter_data(access?: RecordAccess) {
 
 export async function list_company_members(id: string, pagination: Pagination, access?: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
-    const company = await list_by_id_company(id, tx, false, access);
+    const company = await list_by_id_company(id, tx, access);
     if (!company) return null;
     const where = { company_id: id, user: record_where(access, "users") } satisfies Prisma.user_companyWhereInput;
     const memberships = await tx.user_company.findMany({

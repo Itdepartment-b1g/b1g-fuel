@@ -85,7 +85,6 @@ export async function create_brand(input: CreateBrandInput, actor: string) {
 }
 export async function update_brand(input: UpdateBrandInput, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "brand" WHERE id = ${input.id}::uuid FOR UPDATE`;
     const current = await tx.brand.findFirst({
       where: { AND: [{ id: input.id }, record_where(access, "brandsAndVariants", "edit")] },
       include: brandInclude,
@@ -97,8 +96,7 @@ export async function update_brand(input: UpdateBrandInput, access: RecordAccess
   });
 }
 export async function delete_brand(id: string, access: RecordAccess) {
-  await getDatabase().$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "brand" WHERE id = ${id}::uuid FOR UPDATE`;
+  return getDatabase().$transaction(async (tx) => {
     const current = await tx.brand.findFirst({
       where: { AND: [{ id }, record_where(access, "brandsAndVariants", "delete")] },
       include: brandInclude,
