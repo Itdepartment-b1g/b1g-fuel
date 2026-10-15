@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { getDatabase, closeDatabase } from "@/server/lib/database";
-import { parse_create_measurement, parse_update_measurement } from "@/server/lib/measurement-input";
+import { parse_create_measurement, parse_update_measurement } from "@/server/controllers/measurements_controller";
 import * as service from "@/server/services/measurements_service";
 import type { RecordAccess } from "@/lib/auth/access-scope";
 

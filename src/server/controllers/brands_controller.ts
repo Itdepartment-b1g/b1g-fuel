@@ -1,11 +1,43 @@
 import type { Request, Response } from "express";
 import { BRAND_FILTER_OPTIONS } from "@/utils/management-filters";
 import * as service from "@/server/services/brands_service";
-import { BrandError, brand_id, parse_create_brand, parse_update_brand } from "@/server/lib/brands-input";
+import { BrandError } from "@/server/services/brands_service";
 import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
-import { BRAND_SORT_FIELDS } from "@/server/schema/brands_schema";
+import { BRAND_SORT_FIELDS, type CreateBrandInput, type UpdateBrandInput } from "@/server/schema/brands_schema";
+
+const id_pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function invalid(message: string): never { throw new BrandError("invalid_input", message); }
+function object(value: unknown, allowed: string[]) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) invalid("Provide a JSON object.");
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).some((key) => !allowed.includes(key))) invalid("Unknown brand field.");
+  return record;
+}
+function text(value: unknown, label: string, max: number) {
+  if (typeof value !== "string" || !value.trim() || value.trim().length > max) invalid(`${label} must contain between 1 and ${max} characters.`);
+  return value.trim();
+}
+function brand_id(value: unknown) {
+  if (typeof value !== "string" || !id_pattern.test(value)) invalid("Provide a valid ID.");
+  return value.toLowerCase();
+}
+function optional_company(value: unknown) {
+  if (value === undefined || value === null || value === "") return undefined;
+  return brand_id(value);
+}
+export function parse_create_brand(value: unknown): CreateBrandInput {
+  const row = object(value, ["company_id", "name"]);
+  const company_id = optional_company(row.company_id);
+  return { ...(company_id ? { company_id } : {}), name: text(row.name, "Brand name", 160) };
+}
+export function parse_update_brand(value: unknown): UpdateBrandInput {
+  const row = object(value, ["id", "name"]);
+  if (row.name === undefined) invalid("Provide at least one change.");
+  return { id: brand_id(row.id), name: text(row.name, "Brand name", 160) };
+}
 
 function failure(res: Response, error: unknown) {
   if (error instanceof BrandError) {

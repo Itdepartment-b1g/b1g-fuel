@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parse_create_brand, parse_update_brand } from "@/server/lib/brands-input";
-import { parse_create_variant, parse_update_variant } from "@/server/lib/variants-input";
-import { brand_company, can_create_brand } from "@/server/services/brands_service";
+import { parse_create_brand, parse_update_brand } from "@/server/controllers/brands_controller";
+import { parse_create_variant, parse_update_variant } from "@/server/controllers/variants_controller";
+import { brand_company, can_create_brand, delete_brand } from "@/server/services/brands_service";
 import { create_variant, variant_company } from "@/server/services/variants_service";
 import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
 import { record_where } from "@/server/auth/record-access";
 import { openapi } from "@/lib/openapi/openapi";
-import * as repository from "@/server/repositories/brands_repository";
 import { makeStore } from "@/lib/store/store";
 import { createBrand, deleteBrand, listBrand } from "@/lib/store/brands-slice";
 import { createVariant, deleteVariant } from "@/lib/store/variants-slice";
@@ -59,7 +58,7 @@ test("deleting a brand with variants writes nothing", async () => {
   };
   state.fuelDatabase = { database: { $transaction: async (run: (client: typeof tx) => unknown) => run(tx) } as unknown as Database };
   try {
-    await assert.rejects(repository.delete_brand(brand, access), /Delete this brand's variants first/);
+    await assert.rejects(delete_brand(brand, access), /Delete this brand's variants first/);
     assert.equal(deleted, false);
   } finally { state.fuelDatabase = previous; }
 });

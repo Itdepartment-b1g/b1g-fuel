@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parse_create_measurement, parse_update_measurement } from "@/server/lib/measurement-input";
-import { can_create_measurement, get_measurement_options, measurement_company } from "@/server/services/measurements_service";
+import { parse_create_measurement, parse_update_measurement } from "@/server/controllers/measurements_controller";
+import { can_create_measurement, delete_measurement, get_measurement_options, measurement_company, update_measurement } from "@/server/services/measurements_service";
 import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
 import { record_where } from "@/server/auth/record-access";
 import { create_measurement } from "@/server/controllers/measurements_controller";
@@ -112,11 +112,12 @@ test("child updates preserve existing IDs and omitted definitions; invalid updat
   const own = { ...access, grants: [{ permission: "measurements.edit", scope: "own" as const, companyId: company }] };
   try {
     const result = await repository.update_measurement(parse_update_measurement({ id: company, units: [{ key: "cm", name: "Centimetre", symbol: "cm" }] }), own);
+    if (typeof result === "string") assert.fail(result);
     assert.equal(result.units[0].id, "unit-cm");
     assert.equal(result.units[0].name, "Centimetre");
     assert.equal(result.units[1].id, "unit-m");
     const priorWrites = writes;
-    await assert.rejects(repository.update_measurement(parse_update_measurement({
+    await assert.rejects(update_measurement(parse_update_measurement({
       id: company, units: [{ key: "other", name: "Other", symbol: "CM" }],
     }), own), /symbols must be unique/);
     assert.equal(writes, priorWrites);
@@ -169,7 +170,7 @@ test("delete removes units before the measurement and skips inaccessible definit
   const deleter = { ...access, grants: [{ permission: "measurements.delete", scope: "company" as const, companyId: company }] };
   try {
     state.fuelDatabase = { database: { $transaction: async (run: (client: typeof denied) => unknown) => run(denied) } as unknown as Database };
-    await assert.rejects(repository.delete_measurement(company, access), /Measurement not found/);
+    await assert.rejects(delete_measurement(company, access), /Measurement not found/);
     state.fuelDatabase = { database: { $transaction: async (run: (client: typeof allowed) => unknown) => run(allowed) } as unknown as Database };
     await repository.delete_measurement(company, deleter);
     assert.deepEqual(order, ["units", "measurement"]);

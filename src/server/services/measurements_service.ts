@@ -9,8 +9,11 @@ import type {
 import type { Pagination } from "@/server/lib/pagination";
 import type { Sorting } from "@/server/lib/sorting";
 import * as repository from "@/server/repositories/measurements_repository";
-import { MeasurementError } from "@/server/lib/measurement-input";
 import { getDatabase } from "@/server/lib/database";
+
+export class MeasurementError extends Error {
+  constructor(public code: "invalid_input" | "not_found" | "forbidden" | "conflict", message: string) { super(message); }
+}
 
 export function can_create_measurement(
   access: RecordAccess,
@@ -110,14 +113,19 @@ export async function get_measurement(id: string, access: RecordAccess) {
     throw new MeasurementError("not_found", "Measurement not found.");
   return result;
 }
-export function update_measurement(
+export async function update_measurement(
   input: UpdateMeasurementInput,
   access: RecordAccess,
 ) {
-  return repository.update_measurement(input, access);
+  const result = await repository.update_measurement(input, access);
+  if (result === "not_found") throw new MeasurementError("not_found", "Measurement not found.");
+  if (result === "empty") throw new MeasurementError("invalid_input", "Keep at least one unit.");
+  if (result === "duplicate_symbols") throw new MeasurementError("conflict", "Unit symbols must be unique within the measurement.");
+  return result;
 }
-export function delete_measurement(id: string, access: RecordAccess) {
-  return repository.delete_measurement(id, access);
+export async function delete_measurement(id: string, access: RecordAccess) {
+  const result = await repository.delete_measurement(id, access);
+  if (result === "not_found") throw new MeasurementError("not_found", "Measurement not found.");
 }
 
 export async function get_measurement_options(access: RecordAccess) {

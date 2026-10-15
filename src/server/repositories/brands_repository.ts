@@ -2,7 +2,6 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { QuickFilterState } from "@/types/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
-import { BrandError } from "@/server/lib/brands-input";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
@@ -91,7 +90,7 @@ export async function update_brand(input: UpdateBrandInput, access: RecordAccess
       where: { AND: [{ id: input.id }, record_where(access, "brandsAndVariants", "edit")] },
       include: brandInclude,
     });
-    if (!current) throw new BrandError("not_found", "Brand not found.");
+    if (!current) return null;
     const record = await tx.brand.update({ where: { id: input.id }, data: { name: input.name }, include: brandInclude });
     const names = await creator_names([record.created_by], tx);
     return serialize_brand(record, record.created_by ? names.get(record.created_by) ?? null : null);
@@ -104,8 +103,9 @@ export async function delete_brand(id: string, access: RecordAccess) {
       where: { AND: [{ id }, record_where(access, "brandsAndVariants", "delete")] },
       include: brandInclude,
     });
-    if (!current) throw new BrandError("not_found", "Brand not found.");
-    if (current._count.variants) throw new BrandError("conflict", "Delete this brand's variants first.");
+    if (!current) return "not_found" as const;
+    if (current._count.variants) return "conflict" as const;
     await tx.brand.delete({ where: { id } });
+    return "deleted" as const;
   });
 }

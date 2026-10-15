@@ -1,10 +1,13 @@
 import type { RecordAccess } from "@/server/auth/record-access";
 import { getDatabase } from "@/server/lib/database";
-import { VariantError } from "@/server/lib/variants-input";
 import type { Pagination } from "@/server/lib/pagination";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateVariantInput, UpdateVariantInput } from "@/server/schema/variants_schema";
 import * as repository from "@/server/repositories/variants_repository";
+
+export class VariantError extends Error {
+  constructor(public code: "invalid_input" | "not_found" | "forbidden" | "conflict", message: string) { super(message); }
+}
 
 function can_create(access: RecordAccess, companyId: string) {
   return access.superAdmin || access.grants.some((grant) => grant.permission === "brandsAndVariants.add" && (
@@ -54,11 +57,14 @@ export async function get_variant(id: string, access: RecordAccess) {
   if (!result) throw new VariantError("not_found", "Variant not found.");
   return result;
 }
-export function update_variant(input: UpdateVariantInput, access: RecordAccess) {
-  return repository.update_variant(input, access);
+export async function update_variant(input: UpdateVariantInput, access: RecordAccess) {
+  const variant = await repository.update_variant(input, access);
+  if (!variant) throw new VariantError("not_found", "Variant not found.");
+  return variant;
 }
-export function delete_variant(id: string, access: RecordAccess) {
-  return repository.delete_variant(id, access);
+export async function delete_variant(id: string, access: RecordAccess) {
+  const result = await repository.delete_variant(id, access);
+  if (result === "not_found") throw new VariantError("not_found", "Variant not found.");
 }
 export async function get_variant_options(access: RecordAccess) {
   const companies = await company_options(access);

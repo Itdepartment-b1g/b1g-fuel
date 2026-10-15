@@ -1,7 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
-import { VariantError } from "@/server/lib/variants-input";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import type { CreateVariantInput, UpdateVariantInput, VariantSummary } from "@/server/schema/variants_schema";
@@ -83,7 +82,7 @@ export async function update_variant(input: UpdateVariantInput, access: RecordAc
       where: { AND: [{ id: input.id }, scope(access, "edit")] },
       include: variantInclude,
     });
-    if (!current) throw new VariantError("not_found", "Variant not found.");
+    if (!current) return null;
     const record = await tx.variant.update({ where: { id: input.id }, data: { name: input.name }, include: variantInclude });
     const names = await creator_names([record.created_by], tx);
     return serialize_variant(record, record.created_by ? names.get(record.created_by) ?? null : null);
@@ -96,7 +95,8 @@ export async function delete_variant(id: string, access: RecordAccess) {
       where: { AND: [{ id }, scope(access, "delete")] },
       select: { id: true },
     });
-    if (!current) throw new VariantError("not_found", "Variant not found.");
+    if (!current) return "not_found" as const;
     await tx.variant.delete({ where: { id } });
+    return "deleted" as const;
   });
 }

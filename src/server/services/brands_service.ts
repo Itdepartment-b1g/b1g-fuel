@@ -2,12 +2,15 @@ import type { QuickFilterState } from "@/types/quick-filter";
 import { BRAND_FILTER_OPTIONS } from "@/utils/management-filters";
 import type { RecordAccess } from "@/server/auth/record-access";
 import { getDatabase } from "@/server/lib/database";
-import { BrandError } from "@/server/lib/brands-input";
 import { build_filter_options } from "@/server/lib/quick-filters";
 import type { Pagination } from "@/server/lib/pagination";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateBrandInput, UpdateBrandInput } from "@/server/schema/brands_schema";
 import * as repository from "@/server/repositories/brands_repository";
+
+export class BrandError extends Error {
+  constructor(public code: "invalid_input" | "not_found" | "forbidden" | "conflict", message: string) { super(message); }
+}
 
 function can_create(access: RecordAccess, companyId: string) {
   return access.superAdmin || access.grants.some((grant) => grant.permission === "brandsAndVariants.add" && (
@@ -62,11 +65,15 @@ export async function get_brand(id: string, access: RecordAccess) {
   if (!result) throw new BrandError("not_found", "Brand not found.");
   return result;
 }
-export function update_brand(input: UpdateBrandInput, access: RecordAccess) {
-  return repository.update_brand(input, access);
+export async function update_brand(input: UpdateBrandInput, access: RecordAccess) {
+  const brand = await repository.update_brand(input, access);
+  if (!brand) throw new BrandError("not_found", "Brand not found.");
+  return brand;
 }
-export function delete_brand(id: string, access: RecordAccess) {
-  return repository.delete_brand(id, access);
+export async function delete_brand(id: string, access: RecordAccess) {
+  const result = await repository.delete_brand(id, access);
+  if (result === "not_found") throw new BrandError("not_found", "Brand not found.");
+  if (result === "conflict") throw new BrandError("conflict", "Delete this brand's variants first.");
 }
 export async function get_brand_options(access: RecordAccess) {
   return { companies: await company_options(access) };

@@ -10,7 +10,6 @@ import type {
   MeasurementSummary,
   UpdateMeasurementInput,
 } from "@/server/schema/measurements_schema";
-import { MeasurementError } from "@/server/lib/measurement-input";
 
 const include = {
   company: { select: { id: true, name: true } },
@@ -129,8 +128,7 @@ export async function update_measurement(
       AND: [{ id: input.id }, record_where(access, "measurements", "edit")],
     };
     const current = await tx.measurement.findFirst({ where, include });
-    if (!current)
-      throw new MeasurementError("not_found", "Measurement not found.");
+    if (!current) return "not_found" as const;
     const units = new Map(current.units.map((unit) => [unit.key, unit]));
     for (const unit of input.units ?? [])
       units.set(unit.key, {
@@ -138,16 +136,11 @@ export async function update_measurement(
         id: units.get(unit.key)?.id ?? "",
         measurement_id: current.id,
       });
-    if (!units.size)
-      throw new MeasurementError("invalid_input", "Keep at least one unit.");
+    if (!units.size) return "empty" as const;
     const symbols = Array.from(units.values()).map((unit) =>
       unit.symbol.toLowerCase(),
     );
-    if (new Set(symbols).size !== symbols.length)
-      throw new MeasurementError(
-        "conflict",
-        "Unit symbols must be unique within the measurement.",
-      );
+    if (new Set(symbols).size !== symbols.length) return "duplicate_symbols" as const;
     for (const unit of input.units ?? [])
       await tx.measurement_unit.upsert({
         where: {
@@ -176,9 +169,9 @@ export async function delete_measurement(id: string, access: RecordAccess) {
       where: { AND: [{ id }, record_where(access, "measurements", "delete")] },
       select: { id: true },
     });
-    if (!current)
-      throw new MeasurementError("not_found", "Measurement not found.");
+    if (!current) return "not_found" as const;
     await tx.measurement_unit.deleteMany({ where: { measurement_id: id } });
     await tx.measurement.delete({ where: { id } });
+    return "deleted" as const;
   });
 }
