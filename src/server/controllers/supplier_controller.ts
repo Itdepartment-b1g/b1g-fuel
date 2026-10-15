@@ -34,6 +34,11 @@ export async function create_supplier(req: Request, res: Response) {
   try {
     res.status(201).json({ supplier: await service.create_supplier(req.body as CreateSupplierInput, res.locals.access) });
   } catch (error) {
+    if (error instanceof SupplierError) {
+      const status = { invalid_input: 400, not_found: 404, forbidden: 403, conflict: 409 }[error.code];
+      res.status(status).json({ error: error.message });
+      return;
+    }
     if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
       res.status(409).json({ error: "A supplier name already exists." });
       return;

@@ -6,8 +6,9 @@ import { companiesReducer } from "./companies-slice";
 import { measurementsReducer } from "./measurements-slice";
 import { brandsReducer } from "./brands-slice";
 import { variantsReducer } from "./variants-slice";
+import { suppliersReducer } from "./suppliers-slice";
 
-export const makeStore = () => configureStore({ reducer: { users: usersReducer, auth: authReducer, roles: rolesReducer, companies: companiesReducer, measurements: measurementsReducer, brands: brandsReducer, variants: variantsReducer } });
+export const makeStore = () => configureStore({ reducer: { users: usersReducer, auth: authReducer, roles: rolesReducer, companies: companiesReducer, measurements: measurementsReducer, brands: brandsReducer, variants: variantsReducer, suppliers: suppliersReducer } });
 export type AppStore = ReturnType<typeof makeStore>;
 export type RootState = ReturnType<AppStore["getState"]>;
 export type AppDispatch = AppStore["dispatch"];

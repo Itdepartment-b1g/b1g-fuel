@@ -20,7 +20,7 @@ export type RecordAccess = {
 
 export function canPerform(
   access: RecordAccess | null,
-  resource: "users" | "roles" | "companies" | "measurements" | "brandsAndVariants",
+  resource: "users" | "roles" | "companies" | "measurements" | "brandsAndVariants" | "suppliers",
   action: string,
   record?: {
     id: string;
@@ -31,7 +31,7 @@ export function canPerform(
 ) {
   if (!access) return false;
   if (access.superAdmin) return true;
-  if ((resource === "measurements" || resource === "brandsAndVariants") && record?.company_id === null && (action === "edit" || action === "delete")) return false;
+  if ((resource === "measurements" || resource === "brandsAndVariants" || resource === "suppliers") && record?.company_id === null && (action === "edit" || action === "delete")) return false;
   if (resource === "roles" && action !== "view") return false;
   return access.grants.some((grant) => {
     if (grant.permission !== `${resource}.${action}`) return false;
@@ -41,7 +41,7 @@ export function canPerform(
     const companyIds = grant.companyId ? [grant.companyId] : access.companyIds;
     return resource === "companies"
       ? companyIds.includes(record.id)
-      : resource === "roles" || resource === "measurements" || resource === "brandsAndVariants"
+      : resource === "roles" || resource === "measurements" || resource === "brandsAndVariants" || resource === "suppliers"
         ? Boolean(record.company_id && companyIds.includes(record.company_id))
         : Boolean(
             record.companies?.some((company) =>

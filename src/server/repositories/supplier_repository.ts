@@ -128,7 +128,12 @@ export async function update_supplier(
         ...(input.contact_phone !== undefined ? {contact_phone: input.contact_phone}: {}),
         ...(input.contact_address !== undefined ? {contact_address: input.contact_address}: {}),
       }
-    })
+    });
+    return {
+      ...record,
+      created_at: record.created_at.toISOString(),
+      updated_at: record.updated_at.toISOString(),
+    };
   })
 
 }

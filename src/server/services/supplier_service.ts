@@ -1,6 +1,5 @@
 import type { QuickFilterState } from "@/types/quick-filter";
 import type { RecordAccess } from "@/server/auth/record-access";
-import { getDatabase } from "@/server/lib/database";
 import type { Pagination } from "@/server/lib/pagination";
 import type { Sorting } from "@/server/lib/sorting";
 import type { CreateSupplierInput, UpdateSupplierInput } from "@/server/schema/supplier_schema";
@@ -33,8 +32,29 @@ export function list_suppliers(
     return supplier;
   }
   
-  export function create_supplier(input: CreateSupplierInput, access: RecordAccess) {
-    return repository.create_supplier(input, access.userId);
+  function can_create(access: RecordAccess, companyId: string) {
+    return access.superAdmin || access.grants.some((grant) => grant.permission === "suppliers.add" && (
+      (grant.scope === "all" && !grant.companyId) || (grant.companyId ? grant.companyId === companyId : access.companyIds.includes(companyId))
+    ));
+  }
+
+  function supplier_company(access: RecordAccess, requested?: string) {
+    if (access.superAdmin) return null;
+    const unrestricted = access.grants.some((grant) => grant.permission === "suppliers.add" && grant.scope === "all" && !grant.companyId);
+    const granted = [...new Set(access.grants.filter((grant) => grant.permission === "suppliers.add").flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+    const choices = unrestricted ? access.companyIds : granted;
+    if (choices.length === 1) {
+      if (!can_create(access, choices[0])) throw new SupplierError("forbidden", "You cannot create suppliers in this company.");
+      return choices[0];
+    }
+    if (!requested) throw new SupplierError("invalid_input", "Select a company.");
+    if (!can_create(access, requested)) throw new SupplierError("forbidden", "You cannot create suppliers in this company.");
+    return requested;
+  }
+
+  export async function create_supplier(input: CreateSupplierInput, access: RecordAccess) {
+    const company_id = supplier_company(access, input.company_id);
+    return repository.create_supplier({ ...input, company_id: company_id ?? undefined }, access.userId);
   }
   
   export async function update_supplier(input: UpdateSupplierInput, access: RecordAccess) {

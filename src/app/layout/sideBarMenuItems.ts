@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Building2, Folder, LayoutDashboard, Ruler, ShieldCheck, Tag, UsersRound } from "lucide-react";
+import { Building2, Folder, LayoutDashboard, Ruler, ShieldCheck, Tag, Truck, UsersRound } from "lucide-react";
 import { PAGE_CATALOG, PAGE_GROUPS, PAGE_KEYS, type PageKey } from "@/lib/auth/catalog";
 
 type MenuIcon = ComponentType<{ className?: string }>;
@@ -28,6 +28,7 @@ const icons_by_page: Record<PageKey, MenuIcon> = {
   [PAGE_KEYS.companies]: Building2,
   [PAGE_KEYS.measurements]: Ruler,
   [PAGE_KEYS.brandsAndVariants]: Tag,
+  [PAGE_KEYS.suppliers]: Truck,
 };
 
 export function listSidebarMenu(pages: string[], access?: SideBarAccess): SideBarMenuItem[] {
