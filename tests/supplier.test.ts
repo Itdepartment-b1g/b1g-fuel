@@ -23,6 +23,7 @@ test("supplier creation is shared for a super admin and limited to the user's co
       saved.push(args.data.company_id);
       return { ...args.data, id: company, created_by: access.userId, created_at: new Date(), updated_at: new Date() };
     } },
+    user: { findMany: async () => [{ id: access.userId, name: "Ada" }] },
   } as unknown as Database };
   try {
     await create_supplier({ ...input, company_id: "another-company" }, access);

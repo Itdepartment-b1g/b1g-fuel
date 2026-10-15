@@ -7,12 +7,13 @@ const optionalText = { type: "string", maxLength: 160 };
 export const supplierSchemas = {
   Supplier: {
     type: "object",
-    required: ["id", "company_id", "company", "created_by", "name", "contact_person", "contact_email", "contact_phone", "contact_address", "created_at", "updated_at"],
+    required: ["id", "company_id", "company", "created_by", "created_by_name", "name", "contact_person", "contact_email", "contact_phone", "contact_address", "created_at", "updated_at"],
     properties: {
       id,
       company_id: { ...id, nullable: true },
       company: { type: "object", nullable: true, required: ["id", "name"], properties: { id, name: { type: "string" } } },
       created_by: { ...id, nullable: true, readOnly: true },
+      created_by_name: { type: "string", nullable: true, readOnly: true },
       name: text,
       contact_person: text,
       contact_email: text,

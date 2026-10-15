@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { QuickFilterState } from "@/types/quick-filter";
 import { record_where, type RecordAccess } from "@/server/auth/record-access";
-import { getDatabase } from "@/server/lib/database";
+import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
@@ -13,12 +13,24 @@ import type {
 
 const company = { company: { select: { id: true, name: true } } } satisfies Prisma.supplierInclude;
 
-function present(record: Prisma.supplierGetPayload<{ include: typeof company }>): ListSupplierResponse {
+type SupplierRow = Prisma.supplierGetPayload<{ include: typeof company }>;
+
+function present(record: SupplierRow, createdByName: string | null): ListSupplierResponse {
   return {
     ...record,
+    created_by_name: createdByName,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
   };
+}
+
+async function present_all(records: SupplierRow[], client: DatabaseExecutor) {
+  const ids = [...new Set(records.flatMap((record) => record.created_by ? [record.created_by] : []))];
+  const creators = ids.length
+    ? await client.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+    : [];
+  const names = new Map(creators.map((creator) => [creator.id, creator.name]));
+  return records.map((record) => present(record, record.created_by ? names.get(record.created_by) ?? null : null));
 }
 
 const supplierSort = {
@@ -75,7 +87,7 @@ export async function list_suppliers(
   const orderBy = build_sort<Prisma.supplierOrderByWithRelationInput>(sorting, supplierSort);
   return getDatabase().$transaction(async(tx) => {
     const rows = await tx.supplier.findMany({ where, include: company, orderBy, skip: pagination.skip, take: pagination.take });
-    const suppliers = rows.map(present);
+    const suppliers = await present_all(rows, tx);
       return { suppliers, ...paginationMetadata(await tx.supplier.count({ where }), pagination) };
     }, { isolationLevel: "RepeatableRead" });
 }
@@ -84,11 +96,12 @@ export async function list_by_id_supplier(
   id: string,
   access: RecordAccess,
 ){
-  const record = await getDatabase().supplier.findFirst({
+  const client = getDatabase();
+  const record = await client.supplier.findFirst({
     where: {AND: [{id}, record_where(access, "suppliers")]},
     include: company,
   });
-  return record ? present(record) : null;
+  return record ? (await present_all([record], client))[0] : null;
 }
 
 export function get_supplier_filter_data(access: RecordAccess) {
@@ -100,7 +113,8 @@ export function get_supplier_filter_data(access: RecordAccess) {
 }
 
 export async function create_supplier(input: CreateSupplierInput, actor: string){
-  const record = await getDatabase().supplier.create({
+  const client = getDatabase();
+  const record = await client.supplier.create({
     data: {
       name: input.name,
       contact_person: input.contact_person,
@@ -112,7 +126,7 @@ export async function create_supplier(input: CreateSupplierInput, actor: string)
     },
     include: company,
   });
-  return present(record);
+  return (await present_all([record], client))[0];
 }
 
 export async function update_supplier(
@@ -135,7 +149,7 @@ export async function update_supplier(
       },
       include: company,
     });
-    return present(record);
+    return (await present_all([record], tx))[0];
   })
 
 }

@@ -20,7 +20,7 @@ export function SuppliersCards({
         <article key={supplier.id} className="rounded-xl border p-5">
           <Truck className="mb-4 size-7 text-primary" aria-hidden="true" />
           <h2 className="break-words font-semibold">{supplier.name}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{supplier.company?.name ?? "All companies"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{supplier.company?.name ?? "All companies"} · {supplier.created_by_name || "—"}</p>
           <dl className="mt-3 space-y-1 text-sm">
             <div><dt className="sr-only">Contact</dt><dd>{supplier.contact_person}</dd></div>
             <div><dt className="sr-only">Email</dt><dd className="text-muted-foreground">{supplier.contact_email}</dd></div>

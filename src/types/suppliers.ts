@@ -5,6 +5,7 @@ export interface Supplier {
   company_id: string | null;
   company: CompanyOption | null;
   created_by: string | null;
+  created_by_name: string | null;
   name: string;
   contact_person: string;
   contact_email: string;
