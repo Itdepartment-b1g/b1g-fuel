@@ -13,6 +13,12 @@ export interface CompanySummary {
   updated_at: string;
   member_count: number;
   location_count: number;
+  /** True when the company has at least one warehouse location. */
+  is_warehouse: boolean;
+  /** Name of the first warehouse location, when any. */
+  warehouse_name: string | null;
+  /** Address of the first warehouse location, when any. */
+  warehouse_address: string | null;
 }
 
 export type LocationType = "warehouse" | "hub";

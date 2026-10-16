@@ -30,6 +30,7 @@ export function CompanyForm({
   const pending = mutationStatus === "loading";
   const busy = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [withWarehouse, setWithWarehouse] = useState(false);
   async function saveCompany(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy.current) return;
@@ -41,8 +42,8 @@ export function CompanyForm({
       setError("Enter a company name.");
       return;
     }
-    if (location_address && !location_name) {
-      setError("Enter a warehouse name to save a location.");
+    if (withWarehouse && !location_name) {
+      setError("Enter a warehouse name.");
       return;
     }
     busy.current = true;
@@ -57,7 +58,9 @@ export function CompanyForm({
         const result = await dispatch(
           createCompany({
             name,
-            ...(location_name ? { location_name, location_address } : {}),
+            ...(withWarehouse && location_name
+              ? { location_name, location_address }
+              : {}),
           }),
         ).unwrap();
         onSaved(result.company, {
@@ -95,34 +98,53 @@ export function CompanyForm({
         creating users.
       </p>
       {!company && (
-        <fieldset className="space-y-4 rounded-lg border p-4">
-          <legend className="px-1 text-sm font-medium">
-            Default warehouse{" "}
-            <span className="font-normal text-muted-foreground">(optional)</span>
-          </legend>
-          <p className="text-xs text-muted-foreground">
-            Create a warehouse location under this company now, or add locations
-            later from the Locations module.
-          </p>
-          <label className="block space-y-2 text-sm font-medium">
-            Warehouse name
-            <Input
-              name="location_name"
-              maxLength={160}
-              placeholder="Central Warehouse"
+        <div className="space-y-4">
+          <label className="flex cursor-pointer items-start gap-3 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="mt-1 size-4 shrink-0 rounded border"
+              checked={withWarehouse}
               disabled={pending}
+              onChange={(event) => {
+                setWithWarehouse(event.target.checked);
+                setError(null);
+              }}
             />
+            <span>
+              Does this company need a warehouse?
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                Check to create a default warehouse location now. You can skip
+                this and add locations later.
+              </span>
+            </span>
           </label>
-          <label className="block space-y-2 text-sm font-medium">
-            Warehouse address
-            <Input
-              name="location_address"
-              maxLength={160}
-              placeholder="Optional address"
-              disabled={pending}
-            />
-          </label>
-        </fieldset>
+          {withWarehouse && (
+            <fieldset className="space-y-4 rounded-lg border p-4">
+              <legend className="px-1 text-sm font-medium">
+                Default warehouse
+              </legend>
+              <label className="block space-y-2 text-sm font-medium">
+                Warehouse name <span className="text-destructive">*</span>
+                <Input
+                  name="location_name"
+                  maxLength={160}
+                  required={withWarehouse}
+                  placeholder="Central Warehouse"
+                  disabled={pending}
+                />
+              </label>
+              <label className="block space-y-2 text-sm font-medium">
+                Warehouse address
+                <Input
+                  name="location_address"
+                  maxLength={160}
+                  placeholder="Optional address"
+                  disabled={pending}
+                />
+              </label>
+            </fieldset>
+          )}
+        </div>
       )}
       {(error || mutationError) && (
         <p role="alert" className="text-sm text-destructive">

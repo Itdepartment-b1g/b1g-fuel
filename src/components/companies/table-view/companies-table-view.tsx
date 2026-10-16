@@ -73,13 +73,18 @@ export function CompanyDate({ value }: { value: string }) {
     </time>
   );
 }
+function countLabel(count: number, singular: string, plural: string) {
+  if (count <= 0) return "—";
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function CompaniesTableView(props: Props) {
   const access = useRecordAccess();
   return (
     <TableView
       data={props.companies}
       rowKey={(company) => company.id}
-      caption="Organization companies and membership counts"
+      caption="Companies, members, and locations"
       expandedRow={(company) => <CompanyMembers key={company.id} companyId={company.id} />}
       sortingMode={props.onSortingChange ? "server" : "client"}
       sorting={props.sorting}
@@ -91,7 +96,7 @@ export function CompaniesTableView(props: Props) {
         {
           id: "name",
           header: "Company",
-          className:"font-bold",
+          className: "font-semibold",
           sortable: true,
           freezable: true,
           value: (company) => company.name,
@@ -100,21 +105,34 @@ export function CompaniesTableView(props: Props) {
         {
           id: "member_count",
           header: "Members",
-          className:"text-xs text-gray-500",
           freezable: true,
           value: (company) => company.member_count,
+          cell: (company) =>
+            countLabel(company.member_count, "member", "members"),
         },
         {
-          id: "location_count",
-          header: "Locations",
-          className: "text-xs text-gray-500",
+          id: "is_warehouse",
+          header: "Warehouse",
           freezable: true,
-          value: (company) => company.location_count ?? 0,
+          value: (company) => (company.is_warehouse ? "Yes" : "No"),
+          cell: (company) => (company.is_warehouse ? "Yes" : "No"),
+        },
+        {
+          id: "warehouse_name",
+          header: "Warehouse name",
+          freezable: true,
+          value: (company) => company.warehouse_name ?? "",
+          cell: (company) => company.warehouse_name || "—",
+        },
+        {
+          id: "warehouse_address",
+          header: "Warehouse address",
+          value: (company) => company.warehouse_address ?? "",
+          cell: (company) => company.warehouse_address || "—",
         },
         {
           id: "created_at",
           header: "Created",
-          className:"text-sm text-gray-500",
           sortable: true,
           freezable: true,
           cell: (company) => <CompanyDate value={company.created_at} />,

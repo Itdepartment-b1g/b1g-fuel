@@ -20,9 +20,9 @@ All endpoints require an authenticated, provisioned user with the global `super_
 
 Names are trimmed, required, and limited to 160 characters. IDs must be UUIDs. Unknown body fields are rejected. Names are not unique in the current schema. List search is case-insensitive and limited to 160 characters. Pagination uses the shared backend helper with page sizes 10/20/50/100.
 
-Optional create fields: `location_name` creates a default `warehouse` location under the new company in the same transaction; `location_address` is stored only when a warehouse name is set. Company-only create (no location) remains valid. Edit does not change locations.
+Optional create fields: `location_name` creates a default `warehouse` location under the new company in the same transaction; `location_address` is stored only when a warehouse name is set. The create form shows a checkbox (“Does this company need a warehouse?”); warehouse fields appear only when it is checked, and warehouse name is then required. Company-only create (checkbox off) remains valid. Edit does not change locations.
 
-The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, `member_count`, and `location_count`.
+The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, `member_count`, `location_count`, `is_warehouse`, `warehouse_name`, and `warehouse_address` (first warehouse by created date, or null when none).
 
 Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. Locations cascade when a company is deleted. Renaming preserves memberships.
 

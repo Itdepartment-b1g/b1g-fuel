@@ -24,12 +24,20 @@ export function CompaniesCards({
           <Building2 className="mb-4 size-7 text-primary" aria-hidden="true" />
           <h2 className="break-words font-semibold">{company.name}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {company.member_count}{" "}
-            {company.member_count === 1 ? "member" : "members"}
+            {company.member_count === 0
+              ? "No members"
+              : `${company.member_count} ${company.member_count === 1 ? "member" : "members"}`}
             {" · "}
-            {company.location_count ?? 0}{" "}
-            {(company.location_count ?? 0) === 1 ? "location" : "locations"}
+            {company.is_warehouse ? "Has warehouse" : "No warehouse"}
           </p>
+          {company.is_warehouse && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {company.warehouse_name}
+              {company.warehouse_address
+                ? ` · ${company.warehouse_address}`
+                : ""}
+            </p>
+          )}
           <p className="mt-2 text-xs text-muted-foreground">
             Created <CompanyDate value={company.created_at} />
           </p>

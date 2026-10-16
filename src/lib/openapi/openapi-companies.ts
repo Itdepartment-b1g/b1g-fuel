@@ -30,6 +30,9 @@ export const companySchemas = {
       "updated_at",
       "member_count",
       "location_count",
+      "is_warehouse",
+      "warehouse_name",
+      "warehouse_address",
     ],
     properties: {
       id,
@@ -44,6 +47,9 @@ export const companySchemas = {
       updated_at: { type: "string", format: "date-time" },
       member_count: { type: "integer", minimum: 0, readOnly: true },
       location_count: { type: "integer", minimum: 0, readOnly: true },
+      is_warehouse: { type: "boolean", readOnly: true },
+      warehouse_name: { type: "string", nullable: true, readOnly: true },
+      warehouse_address: { type: "string", nullable: true, readOnly: true },
     },
   },
   CompanyLocation: {

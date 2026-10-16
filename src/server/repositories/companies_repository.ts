@@ -15,20 +15,30 @@ import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 
 const company_include = {
   _count: { select: { user_companies: true, locations: true } },
+  locations: {
+    where: { type: "warehouse" },
+    orderBy: [{ created_at: "asc" }, { id: "asc" }],
+    take: 1,
+    select: { name: true, address: true },
+  },
 } satisfies Prisma.companyInclude;
 type CompanyRecord = Prisma.companyGetPayload<{
   include: typeof company_include;
 }>;
 
-/** Convert company timestamps to ISO strings and expose membership and location counts. */
+/** Convert company timestamps to ISO strings and expose membership, location, and warehouse summary fields. */
 function serialize_company(company: CompanyRecord): CompanySummary {
-  const { _count, ...record } = company;
+  const { _count, locations, ...record } = company;
+  const warehouse = locations[0] ?? null;
   return {
     ...record,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
     member_count: _count.user_companies,
     location_count: _count.locations,
+    is_warehouse: Boolean(warehouse),
+    warehouse_name: warehouse?.name ?? null,
+    warehouse_address: warehouse?.address ? warehouse.address : null,
   };
 }
 
