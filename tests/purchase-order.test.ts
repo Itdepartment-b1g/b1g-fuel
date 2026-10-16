@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { RecordAccess } from "@/lib/auth/access-scope";
+import { record_where } from "@/server/auth/record-access";
 import { openapi } from "@/lib/openapi/openapi";
 import {
   confirm_purchase_order,
@@ -20,6 +21,12 @@ const access: RecordAccess = {
     companyId: company,
   })),
 };
+
+test("purchase order visibility stays inside the company", () => {
+  assert.deepEqual(record_where(access, "purchaseOrders"), {
+    OR: [{ company_id: { in: [company] } }],
+  });
+});
 
 test("purchase order company follows the creator and requires a choice for a super admin", () => {
   assert.equal(purchase_order_company(access, "outside"), company);

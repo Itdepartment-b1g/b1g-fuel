@@ -40,10 +40,22 @@ const OWNED_RESOURCES = [
   "purchaseOrders",
 ] as const;
 
+// Catalogs that can be shared have a nullable company_id. Products and purchase orders cannot.
+const SHARED_RESOURCES = [
+  "measurements",
+  "brandsAndVariants",
+  "suppliers",
+  "productTypes",
+] as const;
+
 type OwnedResource = typeof OWNED_RESOURCES[number];
 
 function is_owned(resource: Resource): resource is OwnedResource {
   return (OWNED_RESOURCES as readonly Resource[]).includes(resource);
+}
+
+function is_shared(resource: Resource) {
+  return (SHARED_RESOURCES as readonly Resource[]).includes(resource);
 }
 
 export async function get_record_access(
@@ -127,7 +139,7 @@ export function record_where(
   );
   const owned = is_owned(resource);
   if (grants.some((grant) => grant.scope === "all" && !grant.companyId)) {
-    if (owned && (action === "edit" || action === "delete"))
+    if (is_shared(resource) && (action === "edit" || action === "delete"))
       return { company_id: { not: null } };
     return {};
   }
@@ -138,7 +150,7 @@ export function record_where(
     if (resource === "roles" || owned) return { company_id: { in: ids } };
     return { user_companies: { some: { company_id: { in: ids } } } };
   });
-  if (owned && action === "view")
+  if (is_shared(resource) && action === "view")
     return { OR: [...rules, { company_id: null }] };
   return { OR: rules };
 }

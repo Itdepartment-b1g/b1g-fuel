@@ -26,6 +26,7 @@ type SessionUser = {
   name: string | null;
   email: string | null;
   role: string | null;
+  roleLabel: string | null;
 };
 
 const designer = localFont({
@@ -60,9 +61,16 @@ export default function AppSideBar({
         const data = (await response.json()) as {
           user?: { name?: unknown; email?: unknown };
           global_roles?: unknown;
+          roles?: unknown;
         };
         const roles = Array.isArray(data.global_roles)
           ? data.global_roles.filter(
+              (value): value is string =>
+                typeof value === "string" && Boolean(value.trim()),
+            )
+          : [];
+        const roleNames = Array.isArray(data.roles)
+          ? data.roles.filter(
               (value): value is string =>
                 typeof value === "string" && Boolean(value.trim()),
             )
@@ -80,6 +88,7 @@ export default function AppSideBar({
           role: roles.includes("super_admin")
             ? "super_admin"
             : (roles[0] ?? null),
+          roleLabel: roleNames.length ? roleNames.join(" · ") : null,
         });
       })
       .catch(() => {});
@@ -149,9 +158,9 @@ export default function AppSideBar({
         </span>
         <span
           className="block truncate text-[12px] text-gray-700 font-bold"
-          title={formatRoleLabel(role ?? user?.role)}
+          title={formatRoleLabel(user?.roleLabel ?? role ?? user?.role)}
         >
-          {formatRoleLabel(role ?? user?.role)}
+          {formatRoleLabel(user?.roleLabel ?? role ?? user?.role)}
         </span>
       </span>
     </Link>

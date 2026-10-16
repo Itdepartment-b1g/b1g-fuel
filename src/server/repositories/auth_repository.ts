@@ -65,4 +65,37 @@ export const authRepository = {
       select: { role: { select: { slug: true } } },
     });
   },
+  /** Load display names for every role assigned to the user, including company memberships. */
+  async list_user_role_names(userId: string) {
+    const profile = await getDatabase().user.findUnique({
+      where: { id: userId },
+      select: {
+        user_roles: { select: { role: { select: { name: true, slug: true } } } },
+        user_companies: {
+          select: {
+            roles: { select: { role: { select: { name: true, slug: true } } } },
+          },
+        },
+      },
+    });
+    const assigned = [
+      ...(profile?.user_roles ?? []).map(({ role }) => role),
+      ...(profile?.user_companies ?? []).flatMap((membership) =>
+        membership.roles.map(({ role }) => role),
+      ),
+    ];
+    const seen = new Set<string>();
+    return assigned
+      .filter((role) => {
+        if (seen.has(role.slug)) return false;
+        seen.add(role.slug);
+        return true;
+      })
+      .sort(
+        (left, right) =>
+          Number(right.slug === "super_admin") -
+          Number(left.slug === "super_admin"),
+      )
+      .map((role) => role.name);
+  },
 };

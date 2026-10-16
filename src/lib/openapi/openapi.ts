@@ -258,7 +258,7 @@ export const openapi = {
       },
       Session: {
         type: "object",
-        required: ["user", "global_roles"],
+        required: ["user", "global_roles", "roles"],
         properties: {
           access: {
             type: "object",
@@ -267,6 +267,12 @@ export const openapi = {
           },
           user: { $ref: "#/components/schemas/SessionUser" },
           global_roles: { type: "array", items: { type: "string" } },
+          roles: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Display names of roles assigned globally or through a company membership.",
+          },
         },
       },
       LoginResponse: {

@@ -38,7 +38,7 @@ const typeAccess: RecordAccess = {
 
 test("product visibility is company-scoped and shared product types stay read-only for company users", () => {
   assert.deepEqual(record_where(productAccess, "products"), {
-    OR: [{ company_id: { in: [company] } }, { company_id: null }],
+    OR: [{ company_id: { in: [company] } }],
   });
   assert.deepEqual(record_where(typeAccess, "productTypes"), {
     OR: [{ company_id: { in: [company] } }, { company_id: null }],

@@ -9,10 +9,14 @@ type Auth = ReturnType<typeof createAuthClient>["auth"];
 type Profile = Awaited<ReturnType<typeof authRepository.get_user_profile>>;
 export const authService = {
   async get_user_session(user: User, suppliedProfile?: Profile) {
-    const [roles, profile] = await Promise.all([authRepository.list_user_global_role(user.id), suppliedProfile ?? authRepository.get_user_profile(user.id)]);
+    const [roles, profile, roleNames] = await Promise.all([
+      authRepository.list_user_global_role(user.id),
+      suppliedProfile ?? authRepository.get_user_profile(user.id),
+      authRepository.list_user_role_names(user.id),
+    ]);
     const name = [user.user_metadata?.full_name, user.user_metadata?.name].find(value => typeof value === "string" && value.trim());
     const access = await get_record_access(user.id);
-    return { user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null }, global_roles: roles.map(({ role }) => role.slug), access };
+    return { user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null }, global_roles: roles.map(({ role }) => role.slug), roles: roleNames, access };
   },
   async login_user(auth: Pick<Auth, "signInWithPassword">, input: { email: string; password: string }) {
     const { data, error } = await auth.signInWithPassword(input);
