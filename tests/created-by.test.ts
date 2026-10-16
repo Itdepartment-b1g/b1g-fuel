@@ -7,7 +7,7 @@ import { create_user } from "@/server/controllers/users_controller";
 import * as companies from "@/server/services/companies_service";
 import * as roles from "@/server/services/roles_service";
 import * as users from "@/server/services/users_service";
-import type { CompanySummary } from "@/server/schema/companies_schema";
+import type { CreateCompanyResult } from "@/server/schema/companies_schema";
 import type { RoleSummary } from "@/server/schema/roles_schema";
 import type { UserSummary } from "@/server/schema/users_schema";
 
@@ -21,7 +21,7 @@ function response() {
 test("create endpoints pass the authenticated creator to persistence", async () => {
   const creators: (string | undefined)[] = [];
   const company = response();
-  await create_company({ body: { name: "Company" } } as Request, company.res, undefined, { ...companies, create_company: async (...args) => { creators.push(args[2]); return {} as CompanySummary; } });
+  await create_company({ body: { name: "Company" } } as Request, company.res, undefined, { ...companies, create_company: async (...args) => { creators.push(args[2]); return { company: {} as CreateCompanyResult["company"], location: null }; } });
   const role = response();
   await create_role({ body: { name: "Manager" } } as Request, role.res, undefined, { ...roles, create_role: async (...args) => { creators.push(args[2]); return {} as RoleSummary; } });
   const user = response();

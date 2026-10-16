@@ -26,6 +26,9 @@ export function CompaniesCards({
           <p className="mt-2 text-sm text-muted-foreground">
             {company.member_count}{" "}
             {company.member_count === 1 ? "member" : "members"}
+            {" · "}
+            {company.location_count ?? 0}{" "}
+            {(company.location_count ?? 0) === 1 ? "location" : "locations"}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Created <CompanyDate value={company.created_at} />

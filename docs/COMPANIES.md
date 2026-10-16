@@ -14,17 +14,19 @@ All endpoints require an authenticated, provisioned user with the global `super_
 | --- | --- | --- |
 | GET | `/api/companies` | List with `page`, `page_size` and optional name `search` |
 | GET | `/api/companies?id=UUID` | Read one company as `{ company }` |
-| POST | `/api/companies` | Create using `{ "name": "B1G Branch" }`; returns `{ company }` with 201 |
+| POST | `/api/companies` | Create using `{ "name": "B1G Branch" }` plus optional `location_name` / `location_address`; returns `{ company, location }` with 201 |
 | PATCH | `/api/companies` | Rename using `{ "id": "UUID", "name": "Updated Branch" }` |
 | DELETE | `/api/companies?id=UUID` | Delete an empty company; returns `{ id, message }` |
 
 Names are trimmed, required, and limited to 160 characters. IDs must be UUIDs. Unknown body fields are rejected. Names are not unique in the current schema. List search is case-insensitive and limited to 160 characters. Pagination uses the shared backend helper with page sizes 10/20/50/100.
 
-The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, and `member_count`.
+Optional create fields: `location_name` creates a default `warehouse` location under the new company in the same transaction; `location_address` is stored only when a warehouse name is set. Company-only create (no location) remains valid. Edit does not change locations.
 
-Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. A company row lock also protects the check from concurrent membership creation, preventing unintended cascading deletion. Renaming preserves memberships.
+The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, `member_count`, and `location_count`.
 
-Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Prisma queries and transaction-bound operations live in `companies_repository.ts`. No schema migration is needed. Swagger documents Companies under `/docs`.
+Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. Locations cascade when a company is deleted. Renaming preserves memberships.
+
+Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Prisma queries and transaction-bound operations live in `companies_repository.ts`. Location table migration: `prisma/migrations/20261016080000_location`. Swagger documents Companies under `/docs`. See [Warehouse inventory](WAREHOUSE_INVENTORY.md).
 
 ## Redux
 
@@ -37,7 +39,13 @@ Validation and HTTP errors live in `companies_controller.ts`; business condition
 Requests include session cookies. Thunks support `.unwrap()`; reads support `.abort()`. The slice tracks list/detail/mutation state separately, ignores stale reads, serializes mutations, and invalidates pending reads after a successful write. Components refetch the current list after mutations.
 
 ```ts
-const { company } = await dispatch(createCompany({ name: "B1G Branch" })).unwrap();
+const { company, location } = await dispatch(
+  createCompany({
+    name: "B1G Branch",
+    location_name: "Central Warehouse",
+    location_address: "Optional address",
+  }),
+).unwrap();
 await dispatch(listCompany({ page: 1, page_size: 10 })).unwrap();
 ```
 

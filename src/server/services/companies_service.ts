@@ -16,7 +16,38 @@ export async function create_company(
   repository = companiesRepository,
   createdBy?: string,
 ) {
-  return repository.create_company(input, createdBy);
+  const location_name = input.location_name?.trim();
+  const location_address = input.location_address?.trim();
+  if (location_address && !location_name) {
+    throw new CompanyError(
+      "invalid_input",
+      "Enter a warehouse name to save a location.",
+    );
+  }
+  if (location_name && location_name.length > 160) {
+    throw new CompanyError(
+      "invalid_input",
+      "Provide a warehouse name between 1 and 160 characters.",
+    );
+  }
+  if (location_address && location_address.length > 160) {
+    throw new CompanyError(
+      "invalid_input",
+      "Provide a warehouse address of at most 160 characters.",
+    );
+  }
+  return repository.create_company(
+    {
+      name: input.name,
+      ...(location_name
+        ? {
+            location_name,
+            location_address: location_address || "",
+          }
+        : {}),
+    },
+    createdBy,
+  );
 }
 
 export async function list_company(

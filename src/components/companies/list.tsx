@@ -298,9 +298,13 @@ export default function CompaniesList() {
         <CompanyDialog
           companyId={editor.id}
           onClose={() => setEditor(null)}
-          onSaved={(company) => {
+          onSaved={(company, detail) => {
+            const action = editor.id ? "updated" : "created";
+            const warehouse = detail?.locationName
+              ? ` Default warehouse “${detail.locationName}” was created.`
+              : "";
             toast.success(
-              `${company.name} was ${editor.id ? "updated" : "created"} successfully.`,
+              `${company.name} was ${action} successfully.${warehouse}`,
             );
             if (!editor.id) setPage(1);
             setEditor(null);

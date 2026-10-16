@@ -22,7 +22,10 @@ export function CompanyDialog({
 }: {
   companyId: string | null;
   onClose: () => void;
-  onSaved: (company: CompanySummary) => void;
+  onSaved: (
+    company: CompanySummary,
+    detail?: { locationName?: string },
+  ) => void;
 }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -68,7 +71,7 @@ export function CompanyDialog({
           <DialogDescription>
             {companyId
               ? "Update the company name. Existing memberships will stay assigned."
-              : "Add a company to organize your team and user memberships."}
+              : "Add a company to organize your team. You can optionally create a default warehouse at the same time."}
           </DialogDescription>
         </DialogHeader>
         {ready ? (

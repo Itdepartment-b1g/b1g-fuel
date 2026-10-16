@@ -25,6 +25,11 @@ enum role_scope {
   company
 }
 
+enum location_type {
+  warehouse
+  hub
+}
+
 // Global assignments such as super_admin; migration CHECK enforces global scope.
 model user_role {
   user_id     String     @db.Uuid
@@ -50,6 +55,7 @@ model company {
   brands         brand[]
   variants       variant[]
   suppliers      supplier[]
+  locations      location[]
   @@index([created_by])
 }
 
@@ -196,4 +202,22 @@ model supplier {
   @@index([created_by])
   @@index([company_id])
   @@unique([company_id, name])
+}
+
+model location {
+  id         String        @id @default(uuid()) @db.Uuid
+  company_id String        @db.Uuid
+  created_by String?       @db.Uuid
+  name       String        @db.VarChar(160)
+  type       location_type
+  address    String        @default("") @db.VarChar(160)
+  is_active  Boolean       @default(true)
+  created_at DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at DateTime      @updatedAt @db.Timestamptz(6)
+  company    company       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, name])
+  @@index([created_by])
+  @@index([company_id])
+  @@index([type])
 }

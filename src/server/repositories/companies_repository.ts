@@ -5,20 +5,22 @@ import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type {
   CreateCompanyInput,
+  CreateCompanyResult,
   UpdateCompanyInput,
   CompanySummary,
+  CompanyLocationSummary,
 } from "@/server/schema/companies_schema";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 
 const company_include = {
-  _count: { select: { user_companies: true } },
+  _count: { select: { user_companies: true, locations: true } },
 } satisfies Prisma.companyInclude;
 type CompanyRecord = Prisma.companyGetPayload<{
   include: typeof company_include;
 }>;
 
-/** Convert company timestamps to ISO strings and expose the membership count as member_count in the API summary. */
+/** Convert company timestamps to ISO strings and expose membership and location counts. */
 function serialize_company(company: CompanyRecord): CompanySummary {
   const { _count, ...record } = company;
   return {
@@ -26,6 +28,21 @@ function serialize_company(company: CompanyRecord): CompanySummary {
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
     member_count: _count.user_companies,
+    location_count: _count.locations,
+  };
+}
+
+function serialize_location(location: {
+  id: string;
+  name: string;
+  type: CompanyLocationSummary["type"];
+  address: string;
+}): CompanyLocationSummary {
+  return {
+    id: location.id,
+    name: location.name,
+    type: location.type,
+    address: location.address,
   };
 }
 
@@ -81,14 +98,40 @@ export async function list_by_id_company(
   return company ? serialize_company(company) : null;
 }
 
-/** Insert a company with the supplied name and return its API summary, including timestamps and membership count. */
-export async function create_company(input: CreateCompanyInput, createdBy?: string) {
-  return serialize_company(
-    await getDatabase().company.create({
-      data: { ...input, created_by: createdBy },
+/** Insert a company and optionally a default warehouse location in one transaction. */
+export async function create_company(
+  input: CreateCompanyInput,
+  createdBy?: string,
+): Promise<CreateCompanyResult> {
+  const location_name = input.location_name?.trim();
+  const location_address = input.location_address?.trim() ?? "";
+  return getDatabase().$transaction(async (tx) => {
+    const company = await tx.company.create({
+      data: { name: input.name, created_by: createdBy },
       include: company_include,
-    }),
-  );
+    });
+    if (!location_name) {
+      return { company: serialize_company(company), location: null };
+    }
+    const location = await tx.location.create({
+      data: {
+        company_id: company.id,
+        name: location_name,
+        address: location_address,
+        type: "warehouse",
+        created_by: createdBy,
+      },
+      select: { id: true, name: true, type: true, address: true },
+    });
+    const with_location = await tx.company.findFirstOrThrow({
+      where: { id: company.id },
+      include: company_include,
+    });
+    return {
+      company: serialize_company(with_location),
+      location: serialize_location(location),
+    };
+  });
 }
 
 /** Update the company name through the supplied database client and return the updated summary. The service supplies its transaction client to keep the write within its business checks. */

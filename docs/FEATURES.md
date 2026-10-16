@@ -30,7 +30,7 @@ PayMongo for client checkout is **TBD**; until a gateway is final, use manual pa
 | Feature | Status | Notes |
 | --- | --- | --- |
 | Create and manage companies | Done | Companies module |
-| Create and manage warehouses | Next | Locations module, `type = warehouse`; see inventory doc |
+| Create and manage warehouses | Next | `location` table + optional warehouse on company create Done; full Locations CRUD module still Next |
 | Assign company to users | Done | User ↔ company membership |
 | Create and manage users | Done | Users module |
 | Manage company users | Done | Memberships and company roles |
@@ -260,7 +260,7 @@ Agreed first vertical before hubs, client orders, and PayMongo:
 
 | # | Feature | Status | Doc |
 | --- | --- | --- | --- |
-| 1 | Locations (warehouse) | Next | [Warehouse inventory](WAREHOUSE_INVENTORY.md) |
+| 1 | Locations (warehouse) | Next | Table + optional create with company Done; Locations CRUD module Next — [Warehouse inventory](WAREHOUSE_INVENTORY.md) |
 | 2 | User ↔ location assignment (turnover) | Planned | same |
 | 3 | Products (variant + base unit; NEW vs REFILL) | Next | same |
 | 4 | Location conversions | Planned | same |

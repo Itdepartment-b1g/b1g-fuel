@@ -38,13 +38,26 @@ const prisma_error_codes: Record<string, string> = { P2002: "23505", P2003: "235
 export async function create_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
     const value: unknown = req.body;
-    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => key !== "name"))
-      throw new CompanyError("invalid_input", "Provide company details using only the name field.");
-    const name = (value as Record<string, unknown>).name;
+    const allowed = new Set(["name", "location_name", "location_address"]);
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.has(key)))
+      throw new CompanyError("invalid_input", "Provide company details using name and optional location fields.");
+    const body = value as Record<string, unknown>;
+    const name = body.name;
     if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
       throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
-    const input: CreateCompanyInput = { name: name.trim() };
-    res.status(201).json({ company: await service.create_company(input, undefined, res.locals.user?.id) });
+    const location_name = body.location_name;
+    const location_address = body.location_address;
+    if (location_name !== undefined && (typeof location_name !== "string" || location_name.length > 160))
+      throw new CompanyError("invalid_input", "Provide a warehouse name between 1 and 160 characters.");
+    if (location_address !== undefined && (typeof location_address !== "string" || location_address.length > 160))
+      throw new CompanyError("invalid_input", "Provide a warehouse address of at most 160 characters.");
+    const input: CreateCompanyInput = {
+      name: name.trim(),
+      ...(typeof location_name === "string" ? { location_name } : {}),
+      ...(typeof location_address === "string" ? { location_address } : {}),
+    };
+    const result = await service.create_company(input, undefined, res.locals.user?.id);
+    res.status(201).json({ company: result.company, location: result.location });
   } catch (error) {
 
     if (error instanceof PaginationError) {

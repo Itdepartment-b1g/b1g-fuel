@@ -23,7 +23,14 @@ const id = { type: "string", format: "uuid" };
 export const companySchemas = {
   Company: {
     type: "object",
-    required: ["id", "name", "created_at", "updated_at", "member_count"],
+    required: [
+      "id",
+      "name",
+      "created_at",
+      "updated_at",
+      "member_count",
+      "location_count",
+    ],
     properties: {
       id,
       name,
@@ -36,6 +43,17 @@ export const companySchemas = {
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
       member_count: { type: "integer", minimum: 0, readOnly: true },
+      location_count: { type: "integer", minimum: 0, readOnly: true },
+    },
+  },
+  CompanyLocation: {
+    type: "object",
+    required: ["id", "name", "type", "address"],
+    properties: {
+      id,
+      name: { type: "string", maxLength: 160 },
+      type: { type: "string", enum: ["warehouse", "hub"] },
+      address: { type: "string", maxLength: 160 },
     },
   },
   CompaniesPage: {
@@ -51,13 +69,31 @@ export const companySchemas = {
   CompanyResponse: {
     type: "object",
     required: ["company"],
-    properties: { company: ref("Company") },
+    properties: {
+      company: ref("Company"),
+      location: {
+        nullable: true,
+        allOf: [ref("CompanyLocation")],
+      },
+    },
   },
   CreateCompany: {
     type: "object",
     additionalProperties: false,
     required: ["name"],
-    properties: { name },
+    properties: {
+      name,
+      location_name: {
+        type: "string",
+        maxLength: 160,
+        description: "Optional default warehouse name",
+      },
+      location_address: {
+        type: "string",
+        maxLength: 160,
+        description: "Optional warehouse address when location_name is set",
+      },
+    },
   },
   UpdateCompany: {
     type: "object",

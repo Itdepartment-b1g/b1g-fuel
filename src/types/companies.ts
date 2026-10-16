@@ -14,9 +14,20 @@ export interface Company extends CompanyOption {
   updated_at: string;
   // Number of users with a membership in this company.
   member_count: number;
+  // Number of locations (warehouses/hubs) under this company.
+  location_count: number;
 }
 
 export type CompanySummary = Company;
+
+export type LocationType = "warehouse" | "hub";
+
+export interface CompanyLocationSummary {
+  id: string;
+  name: string;
+  type: LocationType;
+  address: string;
+}
 
 export interface CompaniesPage {
   // Companies returned for the requested page.
@@ -32,6 +43,8 @@ export interface CompaniesPage {
 export interface CompanyResponse {
   // Company returned by a detail, create, or update request.
   company: CompanySummary;
+  // Default warehouse created with the company, when provided on create.
+  location?: CompanyLocationSummary | null;
 }
 
 export interface CompanyMember {
@@ -61,11 +74,17 @@ export interface CompanyMembersPage {
 export interface CreateCompanyInput {
   // Display name of the new company.
   name: string;
+  // Optional default warehouse name.
+  location_name?: string;
+  // Optional warehouse address when location_name is set.
+  location_address?: string;
 }
 
-export interface UpdateCompanyInput extends CreateCompanyInput {
+export interface UpdateCompanyInput {
   // UUID of the company to update.
   id: string;
+  // Display name of the company.
+  name: string;
 }
 
 export interface DeleteCompanyResponse {

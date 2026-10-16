@@ -63,7 +63,7 @@ Locations answer *where* stock sits and *where* a PO will receive goods. Create 
 | `id` | UUID |
 | `company_id` | Required; location always belongs to one company |
 | `name` | e.g. Central Warehouse |
-| `type` | `warehouse` first; `hub` later |
+| `type` | Prisma/Postgres enum `location_type`: `warehouse` \| `hub` |
 | `code` | Optional short code |
 | `address` | Optional |
 | `is_active` | Soft-disable without deleting history |
@@ -72,6 +72,8 @@ Locations answer *where* stock sits and *where* a PO will receive goods. Create 
 Unique per company on `(company_id, name)` and/or `(company_id, code)`.
 
 Locations are **not** shared globally (`company_id` is never null). Start with one warehouse per company when possible so PO create can auto-select it.
+
+**Company create shortcut:** creating a company may optionally include `location_name` / `location_address`. When provided, a `warehouse` location is created in the same transaction. Company-only create remains valid. A dedicated Locations module still manages further warehouses and hubs.
 
 ### RBAC vs location
 

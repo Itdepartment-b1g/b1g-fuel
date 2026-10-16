@@ -105,6 +105,13 @@ export function CompaniesTableView(props: Props) {
           value: (company) => company.member_count,
         },
         {
+          id: "location_count",
+          header: "Locations",
+          className: "text-xs text-gray-500",
+          freezable: true,
+          value: (company) => company.location_count ?? 0,
+        },
+        {
           id: "created_at",
           header: "Created",
           className:"text-sm text-gray-500",
