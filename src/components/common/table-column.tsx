@@ -1,7 +1,13 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pin } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  Pin,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SortValue } from "@/types/table-views";
 import { TableMenu, type TableMenuItem } from "./table-menu";
@@ -64,6 +70,12 @@ export function TableColumnHeader<T>({
         ) : (
           <ArrowUpDown className="size-3.5 text-gray-400" />
         ))}
+      {menu.length > 0 && !column.sortable && (
+        <ChevronDown
+          className="size-3.5 shrink-0 text-gray-400"
+          aria-hidden="true"
+        />
+      )}
     </>
   );
   return (
@@ -85,7 +97,7 @@ export function TableColumnHeader<T>({
         <TableMenu
           label={`${column.header} column options`}
           items={menu}
-          className="-ml-2 min-h-0 py-0 uppercase tracking-wider"
+          className="-ml-2 min-h-0 py-0 uppercase tracking-wider hover:bg-gray-100"
         >
           {heading}
         </TableMenu>

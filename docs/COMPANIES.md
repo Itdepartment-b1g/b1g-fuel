@@ -24,6 +24,8 @@ Optional create fields: `location_name` creates a default `warehouse` location u
 
 The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, `member_count`, `location_count`, `is_warehouse`, `warehouse_name`, and `warehouse_address` (first warehouse by created date, or null when none).
 
+The companies table has a **Columns** menu (`TableMenu`) to show or hide Members, Warehouse, Warehouse name, and Warehouse address. Company and Created stay visible. Those optional columns are also freezable via each header menu.
+
 Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. Locations cascade when a company is deleted. Renaming preserves memberships.
 
 Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Prisma queries and transaction-bound operations live in `companies_repository.ts`. Location table migration: `prisma/migrations/20261016080000_location`. Swagger documents Companies under `/docs`. See [Warehouse inventory](WAREHOUSE_INVENTORY.md).
