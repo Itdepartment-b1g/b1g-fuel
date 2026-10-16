@@ -1,4 +1,31 @@
-export type PurchaseOrderStatus = "draft" | "open" | "closed";
+export type PurchaseOrderStatus =
+  | "draft"
+  | "awaiting_receipt"
+  | "partially_received"
+  | "received"
+  | "closed";
+export type PurchaseOrderEventKind = "created" | "confirmed" | "receipt_posted" | "closed";
+
+export const PURCHASE_ORDER_STATUS_LABEL: Record<PurchaseOrderStatus, string> = {
+  draft: "Draft",
+  awaiting_receipt: "Awaiting receipt",
+  partially_received: "Partially received",
+  received: "Received",
+  closed: "Closed",
+};
+
+export interface PurchaseOrderEvent {
+  id: string;
+  kind: PurchaseOrderEventKind;
+  status: PurchaseOrderStatus;
+  note: string;
+  receiving_id: string | null;
+  receiving_no: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  lines: { purchase_order_item_id: string; display_name: string; qty: string; unit: string }[];
+}
 export type PaymentMethod = "cash" | "bank_transfer" | "gcash" | "check";
 
 export interface PurchaseOrderLine {
@@ -11,6 +38,8 @@ export interface PurchaseOrderLine {
   ordered_qty: string;
   received_qty: string;
   display_name: string;
+  brand: { name: string };
+  variant: { name: string };
   unit: { id: string; name: string; symbol: string; key: string };
   product_type: { id: string; name: string; key: string };
 }
@@ -30,6 +59,7 @@ export interface PurchaseOrderSummary {
   notes: string;
   line_count: number;
   items: PurchaseOrderLine[];
+  events: PurchaseOrderEvent[];
   created_by: string | null;
   created_by_name: string | null;
   created_at: string;

@@ -1,13 +1,11 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { History, PackageCheck, Pencil, Trash2 } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
-import type { PurchaseOrderSummary } from "@/types/purchase-orders";
-
-const STATUS_LABEL = { draft: "Draft", open: "Open", closed: "Closed" };
+import { PURCHASE_ORDER_STATUS_LABEL, type PurchaseOrderSummary } from "@/types/purchase-orders";
 
 export function PurchaseOrdersTableView(props: {
   purchaseOrders: PurchaseOrderSummary[];
@@ -15,6 +13,8 @@ export function PurchaseOrdersTableView(props: {
   sorting: TableSort | null;
   onSortingChange: (sorting: TableSort | null) => void;
   onEdit: (row: PurchaseOrderSummary) => void;
+  onReceive: (row: PurchaseOrderSummary) => void;
+  onTimeline: (row: PurchaseOrderSummary) => void;
   onDelete: (row: PurchaseOrderSummary) => void;
   disabled: boolean;
 }) {
@@ -57,7 +57,7 @@ export function PurchaseOrdersTableView(props: {
           header: "Status",
           sortable: true,
           freezable: true,
-          value: (row) => STATUS_LABEL[row.status],
+          value: (row) => PURCHASE_ORDER_STATUS_LABEL[row.status],
         },
         {
           id: "line_count",
@@ -90,6 +90,22 @@ export function PurchaseOrdersTableView(props: {
           icon: <Pencil />,
           disabled: !canPerform(access, "purchaseOrders", "view", row),
           onSelect: props.onEdit,
+        },
+        ...(row.status === "awaiting_receipt" || row.status === "partially_received"
+          ? [{
+              id: "receive",
+              label: "Receive",
+              icon: <PackageCheck />,
+              disabled: !canPerform(access, "receiving", "add", row),
+              onSelect: props.onReceive,
+            }]
+          : []),
+        {
+          id: "timeline",
+          label: "Timeline",
+          icon: <History />,
+          disabled: !canPerform(access, "purchaseOrders", "view", row),
+          onSelect: props.onTimeline,
         },
         {
           id: "delete",

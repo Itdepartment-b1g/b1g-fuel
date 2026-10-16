@@ -8,6 +8,7 @@ export const PAGE_KEYS = {
   suppliers: "suppliers",
   productTypes: "productTypes",
   purchaseOrders: "purchaseOrders",
+  receiving: "receiving",
 } as const;
 
 export type PageKey = (typeof PAGE_KEYS)[keyof typeof PAGE_KEYS];
@@ -82,6 +83,12 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
     label: "Purchase orders",
     href: "/purchase-orders",
     view_permission: "purchaseOrders.view",
+  },
+  {
+    key: PAGE_KEYS.receiving,
+    label: "Receiving",
+    href: "/receiving",
+    view_permission: "receiving.view",
   },
 ];
 export const PAGE_GROUPS: readonly PageCatalogGroup[] = [];

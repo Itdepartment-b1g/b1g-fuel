@@ -24,6 +24,8 @@ import {
 } from "@/lib/store/purchase-orders-slice";
 import type { PurchaseOrderSummary } from "@/types/purchase-orders";
 import { PurchaseOrderDialog } from "./dialog/purchase-order-dialog";
+import { PurchaseOrderTimelineDialog } from "./dialog/purchase-order-timeline-dialog";
+import { ReceiveOrderDialog } from "./dialog/receive-order-dialog";
 import { PurchaseOrdersTableView } from "./table-view/purchase-orders-table-view";
 
 export default function ListPurchaseOrders() {
@@ -51,6 +53,8 @@ export default function ListPurchaseOrders() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [receiving, setReceiving] = useState<PurchaseOrderSummary | null>(null);
+  const [timelineId, setTimelineId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<PurchaseOrderSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
@@ -160,6 +164,8 @@ export default function ListPurchaseOrders() {
             dispatch(clearPurchaseOrderMutation());
             setEditor({ id: row.id });
           }}
+          onReceive={setReceiving}
+          onTimeline={(row) => setTimelineId(row.id)}
           onDelete={setRemoving}
           disabled={pending}
         />
@@ -176,6 +182,19 @@ export default function ListPurchaseOrders() {
         }}
         limitOptions={PAGE_SIZE_OPTIONS}
       />
+      {receiving && (
+        <ReceiveOrderDialog
+          order={receiving}
+          onClose={() => setReceiving(null)}
+          onSaved={() => {
+            setReceiving(null);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+      {timelineId && (
+        <PurchaseOrderTimelineDialog purchaseOrderId={timelineId} onClose={() => setTimelineId(null)} />
+      )}
       {editor && (
         <PurchaseOrderDialog
           purchaseOrderId={editor.id}

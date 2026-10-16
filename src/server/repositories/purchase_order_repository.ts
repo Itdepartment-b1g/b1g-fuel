@@ -33,6 +33,30 @@ const include = {
       },
     },
   },
+  events: {
+    orderBy: { created_at: "asc" as const },
+    include: {
+      receiving: {
+        select: {
+          receiving_no: true,
+          items: {
+            orderBy: { id: "asc" as const },
+            select: {
+              purchase_order_item_id: true,
+              qty: true,
+              unit: { select: { symbol: true } },
+              product: {
+                select: {
+                  variant: { select: { name: true, brand: { select: { name: true } } } },
+                  product_type: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 } satisfies Prisma.purchase_orderInclude;
 
 type Row = Prisma.purchase_orderGetPayload<{ include: typeof include }>;
@@ -61,7 +85,7 @@ function manila_date(value: Date | null) {
   }).format(value);
 }
 
-function present(record: Row, createdByName: string | null): ListPurchaseOrderResponse {
+function present(record: Row, names: Map<string, string>): ListPurchaseOrderResponse {
   return {
     id: record.id,
     company_id: record.company_id,
@@ -76,6 +100,23 @@ function present(record: Row, createdByName: string | null): ListPurchaseOrderRe
     estimated_delivery_on: manila_date(record.estimated_delivery_at),
     notes: record.notes,
     line_count: record.items.length,
+    events: record.events.map((event) => ({
+      id: event.id,
+      kind: event.kind,
+      status: event.status,
+      note: event.note,
+      receiving_id: event.receiving_id,
+      receiving_no: event.receiving?.receiving_no ?? null,
+      created_by: event.created_by,
+      created_by_name: event.created_by ? (names.get(event.created_by) ?? null) : null,
+      created_at: event.created_at.toISOString(),
+      lines: (event.receiving?.items ?? []).map((item) => ({
+        purchase_order_item_id: item.purchase_order_item_id,
+        display_name: `${item.product.variant.brand.name} ${item.product.variant.name} · ${item.product.product_type.name}`,
+        qty: item.qty.toString(),
+        unit: item.unit.symbol,
+      })),
+    })),
     items: record.items.map((item) => ({
       id: item.id,
       product_id: item.product_id,
@@ -86,11 +127,13 @@ function present(record: Row, createdByName: string | null): ListPurchaseOrderRe
       ordered_qty: item.ordered_qty.toString(),
       received_qty: item.received_qty.toString(),
       display_name: `${item.product.variant.brand.name} ${item.product.variant.name} · ${item.product.product_type.name}`,
+      brand: { name: item.product.variant.brand.name },
+      variant: { name: item.product.variant.name },
       unit: item.unit,
       product_type: item.product.product_type,
     })),
     created_by: record.created_by,
-    created_by_name: createdByName,
+    created_by_name: record.created_by ? (names.get(record.created_by) ?? null) : null,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
   };
@@ -98,7 +141,12 @@ function present(record: Row, createdByName: string | null): ListPurchaseOrderRe
 
 async function present_all(records: Row[], client: DatabaseExecutor) {
   const ids = [
-    ...new Set(records.flatMap((record) => (record.created_by ? [record.created_by] : []))),
+    ...new Set(
+      records.flatMap((record) => [
+        ...(record.created_by ? [record.created_by] : []),
+        ...record.events.flatMap((event) => (event.created_by ? [event.created_by] : [])),
+      ]),
+    ),
   ];
   const creators = ids.length
     ? await client.user.findMany({
@@ -107,9 +155,7 @@ async function present_all(records: Row[], client: DatabaseExecutor) {
       })
     : [];
   const names = new Map(creators.map((creator) => [creator.id, creator.name]));
-  return records.map((record) =>
-    present(record, record.created_by ? (names.get(record.created_by) ?? null) : null),
-  );
+  return records.map((record) => present(record, names));
 }
 
 const sortConfig = {
@@ -234,7 +280,9 @@ export async function list_purchase_orders(
     date: (range) => ({ created_at: range }),
     status: {
       draft: { status: "draft" },
-      open: { status: "open" },
+      awaiting_receipt: { status: "awaiting_receipt" },
+      partially_received: { status: "partially_received" },
+      received: { status: "received" },
       closed: { status: "closed" },
     },
     search: {
@@ -333,7 +381,13 @@ async function write_order(
         include,
       })
     : await tx.purchase_order.create({
-        data: { ...data, created_by: actor },
+        data: {
+          ...data,
+          created_by: actor,
+          events: {
+            create: { kind: "created", status: "draft", created_by: actor },
+          },
+        },
         include,
       });
   return (await present_all([record], tx))[0];
@@ -384,7 +438,16 @@ export function confirm_purchase_order(id: string, access: RecordAccess) {
     if (!current._count.items) return "lines" as const;
     const record = await tx.purchase_order.update({
       where: { id },
-      data: { status: "open" },
+      data: {
+        status: "awaiting_receipt",
+        events: {
+          create: {
+            kind: "confirmed",
+            status: "awaiting_receipt",
+            created_by: access.userId,
+          },
+        },
+      },
       include,
     });
     return (await present_all([record], tx))[0];
@@ -400,10 +463,16 @@ export function close_purchase_order(id: string, access: RecordAccess) {
       select: { id: true, status: true },
     });
     if (!current) return "not_found" as const;
-    if (current.status !== "open") return "not_open" as const;
+    if (current.status !== "awaiting_receipt" && current.status !== "partially_received")
+      return "not_open" as const;
     const record = await tx.purchase_order.update({
       where: { id },
-      data: { status: "closed" },
+      data: {
+        status: "closed",
+        events: {
+          create: { kind: "closed", status: "closed", created_by: access.userId },
+        },
+      },
       include,
     });
     return (await present_all([record], tx))[0];

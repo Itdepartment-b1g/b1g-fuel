@@ -9,6 +9,7 @@ import { variantsReducer } from "./variants-slice";
 import { suppliersReducer } from "./suppliers-slice";
 import { productTypesReducer } from "./product-types-slice";
 import { purchaseOrdersReducer } from "./purchase-orders-slice";
+import { receivingReducer } from "./receiving-slice";
 
 export const makeStore = () =>
   configureStore({
@@ -23,6 +24,7 @@ export const makeStore = () =>
       suppliers: suppliersReducer,
       productTypes: productTypesReducer,
       purchaseOrders: purchaseOrdersReducer,
+      receiving: receivingReducer,
     },
   });
 export type AppStore = ReturnType<typeof makeStore>;

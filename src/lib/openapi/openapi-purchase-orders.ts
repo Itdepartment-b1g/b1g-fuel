@@ -52,7 +52,10 @@ export const purchaseOrderSchemas = {
     required: ["id", "company_id", "supplier_id", "location_id", "status", "items"],
     properties: {
       id,
-      status: { type: "string", enum: ["draft", "open", "closed"] },
+      status: {
+        type: "string",
+        enum: ["draft", "awaiting_receipt", "partially_received", "received", "closed"],
+      },
       payment_terms: { type: "string" },
       line_count: { type: "integer" },
       estimated_delivery_on: { type: "string", nullable: true },

@@ -14,7 +14,36 @@ export const PAYMENT_METHODS = [
 ] as const;
 
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
-export type PurchaseOrderStatus = "draft" | "open" | "closed";
+export const PURCHASE_ORDER_STATUSES = [
+  "draft",
+  "awaiting_receipt",
+  "partially_received",
+  "received",
+  "closed",
+] as const;
+
+export type PurchaseOrderStatus = (typeof PURCHASE_ORDER_STATUSES)[number];
+export type PurchaseOrderEventKind = "created" | "confirmed" | "receipt_posted" | "closed";
+
+export interface PurchaseOrderEventLineResponse {
+  purchase_order_item_id: string;
+  display_name: string;
+  qty: string;
+  unit: string;
+}
+
+export interface PurchaseOrderEventResponse {
+  id: string;
+  kind: PurchaseOrderEventKind;
+  status: PurchaseOrderStatus;
+  note: string;
+  receiving_id: string | null;
+  receiving_no: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  lines: PurchaseOrderEventLineResponse[];
+}
 
 export interface PurchaseOrderLineInput {
   variant_id: string;
@@ -33,6 +62,8 @@ export interface PurchaseOrderLineResponse {
   ordered_qty: string;
   received_qty: string;
   display_name: string;
+  brand: { name: string };
+  variant: { name: string };
   unit: { id: string; name: string; symbol: string; key: string };
   product_type: { id: string; name: string; key: string };
 }
@@ -52,6 +83,7 @@ export interface ListPurchaseOrderResponse {
   notes: string;
   line_count: number;
   items: PurchaseOrderLineResponse[];
+  events: PurchaseOrderEventResponse[];
   created_by: string | null;
   created_by_name: string | null;
   created_at: string;

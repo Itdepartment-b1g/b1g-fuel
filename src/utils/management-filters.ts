@@ -80,12 +80,28 @@ export const PURCHASE_ORDER_FILTER_OPTIONS: ManagementFilterOptions = {
   statusOptions: [
     { value: "all", label: "All orders" },
     { value: "draft", label: "Draft" },
-    { value: "open", label: "Open" },
+    { value: "awaiting_receipt", label: "Awaiting receipt" },
+    { value: "partially_received", label: "Partially received" },
+    { value: "received", label: "Received" },
     { value: "closed", label: "Closed" },
   ],
   additionalFilters: [],
 };
 export const PURCHASE_ORDER_FILTER_DEFAULTS = { status: "all" };
+export const RECEIVING_FILTER_OPTIONS: ManagementFilterOptions = {
+  fields: [
+    { key: "company", label: "Company", options: [] },
+    { key: "supplier", label: "Supplier", options: [] },
+    { key: "location", label: "Warehouse", options: [] },
+  ],
+  statusOptions: [
+    { value: "all", label: "All receipts" },
+    { value: "draft", label: "Draft" },
+    { value: "posted", label: "Posted" },
+  ],
+  additionalFilters: [],
+};
+export const RECEIVING_FILTER_DEFAULTS = { status: "all" };
 export const ROLE_FILTER_OPTIONS: ManagementFilterOptions = {
   fields: [
     { key: "name", label: "Role name", options: [] },

@@ -3,6 +3,9 @@ import { test } from "node:test";
 import type { RecordAccess } from "@/lib/auth/access-scope";
 import { record_where } from "@/server/auth/record-access";
 import { openapi } from "@/lib/openapi/openapi";
+import { Prisma } from "@/generated/prisma/client";
+import { company_code, receiving_number } from "@/server/utils/receiving-number";
+import { receipt_status } from "@/server/repositories/receiving_repository";
 import {
   confirm_purchase_order,
   purchase_order_company,
@@ -73,4 +76,35 @@ test("purchase order endpoints are documented", () => {
   assert.ok(openapi.paths["/api/purchase-orders"]);
   assert.ok(openapi.paths["/api/purchase-orders/confirm"]);
   assert.ok(openapi.components.schemas.CreatePurchaseOrder);
+});
+
+test("a receipt is partial until every ordered quantity is covered", () => {
+  const ordered = new Prisma.Decimal("100");
+  const partial = receipt_status([
+    { ordered_qty: ordered, received_qty: new Prisma.Decimal("80") },
+  ]);
+  const complete = receipt_status([
+    { ordered_qty: ordered, received_qty: ordered },
+  ]);
+  assert.equal(partial, "partially_received");
+  assert.equal(complete, "received");
+});
+
+test("a posted receipt number counts per company", () => {
+  assert.equal(company_code("Warehouse"), "WAR");
+  assert.equal(company_code("AB"), "ABX");
+  assert.equal(
+    receiving_number("Warehouse", new Date("2026-10-16T16:00:00.000Z"), 1),
+    "RR-WAR-202610-0000001",
+  );
+  assert.equal(
+    receiving_number("Warehouse", new Date("2026-11-02T00:00:00.000Z"), 2),
+    "RR-WAR-202611-0000002",
+  );
+});
+
+test("receiving endpoints are documented", () => {
+  assert.ok(openapi.paths["/api/receiving"]);
+  assert.ok(openapi.paths["/api/receiving/post"]);
+  assert.ok(openapi.components.schemas.CreateReceiving);
 });

@@ -17,7 +17,8 @@ export type Resource =
   | "suppliers"
   | "productTypes"
   | "products"
-  | "purchaseOrders";
+  | "purchaseOrders"
+  | "receiving";
 
 type ResourceWhere = {
   users: Prisma.userWhereInput;
@@ -29,6 +30,7 @@ type ResourceWhere = {
   productTypes: Prisma.product_typeWhereInput;
   products: Prisma.productWhereInput;
   purchaseOrders: Prisma.purchase_orderWhereInput;
+  receiving: Prisma.receivingWhereInput;
 }
 
 const OWNED_RESOURCES = [
@@ -38,6 +40,7 @@ const OWNED_RESOURCES = [
   "productTypes",
   "products",
   "purchaseOrders",
+  "receiving",
 ] as const;
 
 // Catalogs that can be shared have a nullable company_id. Products and purchase orders cannot.

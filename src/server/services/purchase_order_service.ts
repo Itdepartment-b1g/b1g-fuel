@@ -227,7 +227,10 @@ export async function close_purchase_order(id: string, access: RecordAccess) {
   if (result === "not_found")
     throw new PurchaseOrderError("not_found", "Purchase order not found.");
   if (result === "not_open")
-    throw new PurchaseOrderError("conflict", "Only an open purchase order can be closed.");
+    throw new PurchaseOrderError(
+      "conflict",
+      "Only an order that is still waiting for stock can be closed.",
+    );
   return result;
 }
 

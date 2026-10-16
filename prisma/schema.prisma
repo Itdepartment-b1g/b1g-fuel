@@ -59,6 +59,7 @@ model company {
   product_types   product_type[]
   products        product[]
   purchase_orders purchase_order[]
+  receivings      receiving[]
   @@index([created_by])
 }
 
@@ -85,6 +86,7 @@ model measurement_unit {
   measurement            measurement            @relation(fields: [measurement_id], references: [id], onDelete: Restrict)
   products               product[]
   purchase_order_items   purchase_order_item[]
+  receiving_items        receiving_item[]
 
   @@unique([measurement_id, key])
   @@unique([measurement_id, symbol])
@@ -223,6 +225,7 @@ model location {
   updated_at DateTime      @updatedAt @db.Timestamptz(6)
   company         company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
   purchase_orders purchase_order[]
+  receivings      receiving[]
 
   @@unique([company_id, name])
   @@index([created_by])
@@ -262,6 +265,7 @@ model product {
   base_unit       measurement_unit @relation(fields: [base_unit_id], references: [id], onDelete: Restrict)
   product_type         product_type         @relation(fields: [product_type_id], references: [id], onDelete: Restrict)
   purchase_order_items purchase_order_item[]
+  receiving_items      receiving_item[]
 
   @@unique([company_id, variant_id, product_type_id])
   @@index([created_by])
@@ -273,8 +277,22 @@ model product {
 
 enum purchase_order_status {
   draft
-  open
+  awaiting_receipt
+  partially_received
+  received
   closed
+}
+
+enum purchase_order_event_kind {
+  created
+  confirmed
+  receipt_posted
+  closed
+}
+
+enum receiving_status {
+  draft
+  posted
 }
 
 model purchase_order {
@@ -294,6 +312,8 @@ model purchase_order {
   location              location               @relation(fields: [location_id], references: [id], onDelete: Restrict)
   supplier              supplier               @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
   items                 purchase_order_item[]
+  receivings            receiving[]
+  events                purchase_order_event[]
 
   @@index([created_by])
   @@index([company_id])
@@ -312,8 +332,75 @@ model purchase_order_item {
   purchase_order    purchase_order   @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
   product           product          @relation(fields: [product_id], references: [id], onDelete: Restrict)
   unit              measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
+  receiving_items   receiving_item[]
 
   @@unique([purchase_order_id, product_id])
+  @@index([product_id])
+  @@index([unit_id])
+}
+
+model purchase_order_event {
+  id                String                     @id @default(uuid()) @db.Uuid
+  purchase_order_id String                     @db.Uuid
+  receiving_id      String?                    @db.Uuid
+  kind              purchase_order_event_kind
+  status            purchase_order_status
+  note              String                     @default("") @db.VarChar(160)
+  created_by        String?                    @db.Uuid
+  created_at        DateTime                   @default(now()) @db.Timestamptz(6)
+  purchase_order    purchase_order             @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
+  receiving         receiving?                 @relation(fields: [receiving_id], references: [id], onDelete: Restrict)
+
+  @@index([purchase_order_id, created_at])
+  @@index([receiving_id])
+  @@index([created_by])
+}
+
+model receiving {
+  id                String                   @id @default(uuid()) @db.Uuid
+  company_id        String                   @db.Uuid
+  purchase_order_id String                   @db.Uuid
+  location_id       String                   @db.Uuid
+  status            receiving_status         @default(draft)
+  receipt_seq       Int?
+  receiving_no      String?                  @db.VarChar(32)
+  notes             String                   @default("") @db.VarChar(1000)
+  created_by        String?                  @db.Uuid
+  posted_by         String?                  @db.Uuid
+  posted_at         DateTime?                @db.Timestamptz(6)
+  created_at        DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                 @updatedAt @db.Timestamptz(6)
+  company           company                  @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  purchase_order    purchase_order           @relation(fields: [purchase_order_id], references: [id], onDelete: Restrict)
+  location          location                 @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  items             receiving_item[]
+  events            purchase_order_event[]
+
+  @@unique([company_id, receipt_seq])
+  @@unique([receiving_no])
+  @@index([company_id])
+  @@index([purchase_order_id])
+  @@index([location_id])
+  @@index([status])
+  @@index([created_by])
+}
+
+model receiving_item {
+  id                     String           @id @default(uuid()) @db.Uuid
+  receiving_id           String           @db.Uuid
+  purchase_order_item_id String           @db.Uuid
+  product_id             String           @db.Uuid
+  unit_id                String           @db.Uuid
+  qty                    Decimal          @db.Decimal(14, 3)
+  content_per_unit       Decimal          @default(1) @db.Decimal(14, 3)
+  base_qty               Decimal          @db.Decimal(14, 3)
+  receiving              receiving        @relation(fields: [receiving_id], references: [id], onDelete: Cascade)
+  purchase_order_item    purchase_order_item @relation(fields: [purchase_order_item_id], references: [id], onDelete: Restrict)
+  product                product          @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  unit                   measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
+
+  @@unique([receiving_id, purchase_order_item_id])
+  @@index([purchase_order_item_id])
   @@index([product_id])
   @@index([unit_id])
 }

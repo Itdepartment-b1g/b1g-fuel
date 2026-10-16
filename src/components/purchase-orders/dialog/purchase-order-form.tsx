@@ -393,7 +393,7 @@ export function PurchaseOrderForm({
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
           {locked ? "Done" : "Cancel"}
         </Button>
-        {locked && order?.status === "open" && (
+        {locked && (order?.status === "awaiting_receipt" || order?.status === "partially_received") && (
           <Button
             type="button"
             disabled={pending}
