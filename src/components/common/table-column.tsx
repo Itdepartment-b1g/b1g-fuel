@@ -13,7 +13,7 @@ import type { SortValue } from "@/types/table-views";
 import { TableMenu, type TableMenuItem } from "./table-menu";
 
 /** Left and right space inside each header. */
-export const columnPadding = "px-3";
+export const columnPadding = "px-4";
 /** Header height. */
 export const columnHeaderHeight = "py-2.5";
 
@@ -97,7 +97,7 @@ export function TableColumnHeader<T>({
         <TableMenu
           label={`${column.header} column options`}
           items={menu}
-          className="-ml-2 min-h-0 py-0 uppercase tracking-wider hover:bg-gray-100"
+          className="-mx-2 min-h-0 py-0 uppercase tracking-wider hover:bg-gray-100"
         >
           {heading}
         </TableMenu>

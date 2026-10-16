@@ -301,6 +301,8 @@ model purchase_order {
   location_id           String                 @db.Uuid
   supplier_id           String                 @db.Uuid
   created_by            String?                @db.Uuid
+  order_seq             Int
+  purchase_order_no     String                 @db.VarChar(48)
   status                purchase_order_status  @default(draft)
   payment_terms         String                 @default("") @db.VarChar(160)
   payment_method        String?                @db.VarChar(32)
@@ -315,6 +317,8 @@ model purchase_order {
   receivings            receiving[]
   events                purchase_order_event[]
 
+  @@unique([company_id, order_seq])
+  @@unique([purchase_order_no])
   @@index([created_by])
   @@index([company_id])
   @@index([location_id])

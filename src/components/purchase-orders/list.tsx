@@ -17,6 +17,7 @@ import type { TableSort } from "@/types/table-views";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   clearPurchaseOrderMutation,
+  closePurchaseOrder,
   deletePurchaseOrder,
   getPurchaseOrderFilterOption,
   listPurchaseOrder,
@@ -141,7 +142,7 @@ export default function ListPurchaseOrders() {
         statusOptions={filterOptions.statusOptions}
         filterLabels={{ date: "Creation date", status: "Status" }}
         loading={loading}
-        placeholder="Search supplier, warehouse, or notes"
+        placeholder="Search PO no., supplier, warehouse, or notes"
         searchLabel="Search purchase orders"
         maxLength={160}
         quickFilterActive={Boolean(activeFilters)}
@@ -163,6 +164,18 @@ export default function ListPurchaseOrders() {
           onEdit={(row) => {
             dispatch(clearPurchaseOrderMutation());
             setEditor({ id: row.id });
+          }}
+          onCloseOrder={(row) => {
+            if (pending) return;
+            void dispatch(closePurchaseOrder(row.id))
+              .unwrap()
+              .then(() => {
+                toast.success("Purchase order was closed.");
+                setRevision((value) => value + 1);
+              })
+              .catch((error) => {
+                toast.error(toastErrorMessage(error, "Could not close the purchase order."));
+              });
           }}
           onReceive={setReceiving}
           onTimeline={(row) => setTimelineId(row.id)}

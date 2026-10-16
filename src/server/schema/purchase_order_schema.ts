@@ -4,6 +4,7 @@ export const PURCHASE_ORDER_SORT_FIELDS = [
   "updated_at",
   "status",
   "estimated_delivery_at",
+  "purchase_order_no",
 ] as const;
 
 export const PAYMENT_METHODS = [
@@ -76,6 +77,7 @@ export interface ListPurchaseOrderResponse {
   location: { id: string; name: string; address: string };
   supplier_id: string;
   supplier: { id: string; name: string };
+  purchase_order_no: string;
   status: PurchaseOrderStatus;
   payment_terms: string;
   payment_method: PaymentMethod | null;

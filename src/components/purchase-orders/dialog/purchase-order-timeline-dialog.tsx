@@ -33,10 +33,18 @@ const EVENT_ICON: Record<PurchaseOrderEvent["kind"], LucideIcon> = {
   closed: CircleCheck,
 };
 
+const EVENT_LEGEND: { kind: PurchaseOrderEvent["kind"]; label: string; swatch: string; mark: string }[] = [
+  { kind: "created", label: "Order created", swatch: "bg-sky-500", mark: "border-sky-300 bg-sky-50 text-sky-700" },
+  { kind: "confirmed", label: "Awaiting receipt", swatch: "bg-amber-500", mark: "border-amber-300 bg-amber-50 text-amber-700" },
+  { kind: "receipt_posted", label: "Order received", swatch: "bg-emerald-500", mark: "border-emerald-300 bg-emerald-50 text-emerald-700" },
+  { kind: "closed", label: "Order closed", swatch: "bg-slate-500", mark: "border-slate-300 bg-slate-100 text-slate-700" },
+];
+
 function EventMark({ kind }: { kind: PurchaseOrderEvent["kind"] }) {
   const Icon = EVENT_ICON[kind];
+  const color = EVENT_LEGEND.find((item) => item.kind === kind)?.mark ?? "";
   return (
-    <span className="absolute -left-[38px] top-0 flex size-7 items-center justify-center rounded-full border border-amber-300 bg-card text-amber-600">
+    <span className={`absolute -left-[38px] top-0 flex size-7 items-center justify-center rounded-full border bg-card ${color}`}>
       <Icon className="size-3.5" aria-hidden="true" />
     </span>
   );
@@ -262,7 +270,7 @@ export function PurchaseOrderTimelineDialog({
             )}
           </DialogTitle>
           <DialogDescription>
-            {order ? `${order.supplier.name} · ${order.location.name}` : "Purchase order history"}
+            {order ? `${order.purchase_order_no} · ${order.supplier.name} · ${order.location.name}` : "Purchase order history"}
           </DialogDescription>
         </DialogHeader>
         {detailStatus === "loading" || !order ? (
@@ -278,6 +286,14 @@ export function PurchaseOrderTimelineDialog({
           )
         ) : (
           <div className="space-y-6">
+          <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Event colors">
+            {EVENT_LEGEND.map((item) => (
+              <li key={item.kind} className="inline-flex items-center gap-1.5">
+                <span className={`size-2.5 rounded-full ${item.swatch}`} aria-hidden="true" />
+                {item.label}
+              </li>
+            ))}
+          </ul>
           <div role="tablist" aria-label="Line display" className="flex w-fit rounded-lg border p-1">
             <button type="button" role="tab" aria-selected={view === "table"} onClick={() => setView("table")} className={`rounded-md px-3 py-1.5 text-sm ${view === "table" ? "bg-gray-50 font-medium" : "text-muted-foreground"}`}>
               Table
@@ -286,7 +302,7 @@ export function PurchaseOrderTimelineDialog({
               Card view
             </button>
           </div>
-          <ol className="space-y-8 border-l border-amber-200 pl-6">
+          <ol className="space-y-8 border-l border-border pl-6">
             <li className="relative">
               <EventMark kind="created" />
               <p className="font-semibold">Order created</p>

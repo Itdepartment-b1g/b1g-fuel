@@ -5,6 +5,7 @@ import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
+import { purchase_order_number } from "@/server/utils/purchase-order-number";
 import type {
   CreatePurchaseOrderInput,
   ListPurchaseOrderResponse,
@@ -94,6 +95,7 @@ function present(record: Row, names: Map<string, string>): ListPurchaseOrderResp
     location: record.location,
     supplier_id: record.supplier_id,
     supplier: record.supplier,
+    purchase_order_no: record.purchase_order_no,
     status: record.status,
     payment_terms: record.payment_terms,
     payment_method: record.payment_method as PaymentMethod | null,
@@ -164,6 +166,7 @@ const sortConfig = {
     created_at: (direction: Prisma.SortOrder) => ({ created_at: direction }),
     updated_at: (direction: Prisma.SortOrder) => ({ updated_at: direction }),
     status: (direction: Prisma.SortOrder) => ({ status: direction }),
+    purchase_order_no: (direction: Prisma.SortOrder) => ({ purchase_order_no: direction }),
     estimated_delivery_at: (direction: Prisma.SortOrder) => ({
       estimated_delivery_at: direction,
     }),
@@ -293,6 +296,7 @@ export async function list_purchase_orders(
         (filter) => ({ supplier: { name: filter } }),
         (filter) => ({ location: { name: filter } }),
         (filter) => ({ company: { name: filter } }),
+        (filter) => ({ purchase_order_no: filter }),
       ],
     },
   });
@@ -380,16 +384,32 @@ async function write_order(
         },
         include,
       })
-    : await tx.purchase_order.create({
-        data: {
-          ...data,
-          created_by: actor,
-          events: {
-            create: { kind: "created", status: "draft", created_by: actor },
+    : await (async () => {
+        const company = await tx.company.findUnique({
+          where: { id: input.company_id },
+          select: { name: true },
+        });
+        const created_at = new Date();
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`po:${input.company_id}`})::bigint)`;
+        const latest = await tx.purchase_order.aggregate({
+          where: { company_id: input.company_id },
+          _max: { order_seq: true },
+        });
+        const order_seq = (latest._max.order_seq ?? 0) + 1;
+        return tx.purchase_order.create({
+          data: {
+            ...data,
+            created_by: actor,
+            created_at,
+            order_seq,
+            purchase_order_no: purchase_order_number(company?.name ?? "", created_at, order_seq),
+            events: {
+              create: { kind: "created", status: "draft", created_by: actor },
+            },
           },
-        },
-        include,
-      });
+          include,
+        });
+      })();
   return (await present_all([record], tx))[0];
 }
 

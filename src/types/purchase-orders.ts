@@ -52,6 +52,7 @@ export interface PurchaseOrderSummary {
   location: { id: string; name: string; address: string };
   supplier_id: string;
   supplier: { id: string; name: string };
+  purchase_order_no: string;
   status: PurchaseOrderStatus;
   payment_terms: string;
   payment_method: PaymentMethod | null;
