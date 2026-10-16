@@ -68,6 +68,8 @@ Prisma manages queries, transactions, seeding, and migrations using the original
 
 ## Guides
 
+- [Project features](docs/FEATURES.md)
+- [Warehouse inventory (locations, PO, receiving, turnover)](docs/WAREHOUSE_INVENTORY.md)
 - [Folder structure](docs/FOLDER_STRUCTURE.md)
 - [Architecture and CRUD playbook](docs/ARCHITECTURE.md)
 - [Backend structure and request flow](docs/BACKEND_STRUCTURE.md)

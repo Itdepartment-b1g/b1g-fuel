@@ -2,6 +2,8 @@
 
 Supabase Auth owns login credentials. `user.id` must be the same UUID as the Supabase Auth account; profiles do not store passwords.
 
+Warehouse locations, purchase orders, receiving, stock, and user ↔ location turnover are designed in [Warehouse inventory](WAREHOUSE_INVENTORY.md). Feature status lives in [FEATURES.md](FEATURES.md). Those modules are not in this schema yet; this document remains the RBAC and company assignment source of truth.
+
 ```mermaid
 erDiagram
   user ||--o{ user_role : "global roles"
