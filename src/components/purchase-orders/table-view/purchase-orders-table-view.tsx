@@ -112,8 +112,8 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
             cell: (row) => <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">{row.type}</span>,
           },
           { id: "ordered", header: "Total Qty", sortable: true, freezable: true, value: (row) => row.ordered, cell: (row) => qty(String(row.ordered)) },
-          { id: "received", header: "Total Received", sortable: true, freezable: true, value: (row) => row.received, cell: (row) => qty(String(row.received)) },
-          { id: "pending", header: "Pending Qty Receive", sortable: true, freezable: true, value: (row) => row.pending, cell: (row) => qty(String(row.pending)), className: "font-semibold" },
+          { id: "received", header: "Received", sortable: true, freezable: true, value: (row) => row.received, cell: (row) => qty(String(row.received)) },
+          { id: "pending", header: "Remaining", sortable: true, freezable: true, value: (row) => row.pending, cell: (row) => qty(String(row.pending)), className: "font-semibold" },
         ]}
       />
       {rows.length > 0 && (

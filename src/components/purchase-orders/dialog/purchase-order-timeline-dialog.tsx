@@ -171,8 +171,8 @@ function LineTable({ title, rows, view }: { title: string; rows: TimelineRow[]; 
                   <th className="px-4 py-3 font-medium">Variant</th>
                   <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 text-right font-medium">Total Qty</th>
-                  <th className="px-4 py-3 text-right font-medium">Total Received</th>
-                  <th className="px-4 py-3 text-right font-medium">Pending Qty Receive</th>
+                  <th className="px-4 py-3 text-right font-medium">Received</th>
+                  <th className="px-4 py-3 text-right font-medium">Remaining</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,8 +205,8 @@ function LineTable({ title, rows, view }: { title: string; rows: TimelineRow[]; 
                 <span className="mt-2 inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">{line.type}</span>
                 <dl className="mt-3 space-y-1 text-sm">
                   <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Total Qty</dt><dd>{Number.isFinite(line.ordered) ? qtyLabel(line.ordered) : "—"}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Total Received</dt><dd>{Number.isFinite(line.received) ? qtyLabel(line.received) : "—"}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Pending Qty Receive</dt><dd className="font-semibold">{qtyLabel(pendingQty(line))}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Received</dt><dd>{Number.isFinite(line.received) ? qtyLabel(line.received) : "—"}</dd></div>
+                  <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Remaining</dt><dd className="font-semibold">{qtyLabel(pendingQty(line))}</dd></div>
                 </dl>
               </article>
             ))}
