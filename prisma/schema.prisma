@@ -56,6 +56,9 @@ model company {
   variants       variant[]
   suppliers      supplier[]
   locations      location[]
+  product_types   product_type[]
+  products        product[]
+  purchase_orders purchase_order[]
   @@index([created_by])
 }
 
@@ -79,7 +82,9 @@ model measurement_unit {
   key            String      @db.VarChar(64)
   name           String      @db.VarChar(100)
   symbol         String      @db.VarChar(20)
-  measurement    measurement @relation(fields: [measurement_id], references: [id], onDelete: Restrict)
+  measurement            measurement            @relation(fields: [measurement_id], references: [id], onDelete: Restrict)
+  products               product[]
+  purchase_order_items   purchase_order_item[]
 
   @@unique([measurement_id, key])
   @@unique([measurement_id, symbol])
@@ -175,8 +180,9 @@ model variant {
   name       String   @db.VarChar(160)
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @updatedAt @db.Timestamptz(6)
-  brand      brand    @relation(fields: [brand_id], references: [id], onDelete: Restrict)
-  company    company? @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  brand      brand     @relation(fields: [brand_id], references: [id], onDelete: Restrict)
+  company    company?  @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  products   product[]
 
   @@unique([brand_id, company_id, name])
   @@index([created_by])
@@ -197,7 +203,8 @@ model supplier {
 
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @updatedAt @db.Timestamptz(6)
-  company company? @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  company         company?         @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  purchase_orders purchase_order[]
 
   @@index([created_by])
   @@index([company_id])
@@ -214,10 +221,99 @@ model location {
   is_active  Boolean       @default(true)
   created_at DateTime      @default(now()) @db.Timestamptz(6)
   updated_at DateTime      @updatedAt @db.Timestamptz(6)
-  company    company       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  company         company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  purchase_orders purchase_order[]
 
   @@unique([company_id, name])
   @@index([created_by])
   @@index([company_id])
   @@index([type])
+}
+
+model product_type {
+  id         String    @id @default(uuid()) @db.Uuid
+  company_id String?   @db.Uuid
+  created_by String?   @db.Uuid
+  name       String    @db.VarChar(160)
+  key        String    @db.VarChar(64)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @db.Timestamptz(6)
+  company    company?  @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  products   product[]
+
+  @@unique([company_id, key])
+  @@unique([company_id, name])
+  @@index([created_by])
+  @@index([company_id])
+}
+
+model product {
+  id              String           @id @default(uuid()) @db.Uuid
+  company_id      String           @db.Uuid
+  variant_id      String           @db.Uuid
+  base_unit_id    String           @db.Uuid
+  product_type_id String           @db.Uuid
+  created_by      String?          @db.Uuid
+  note            String           @default("") @db.VarChar(160)
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime         @updatedAt @db.Timestamptz(6)
+  company         company          @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  variant         variant          @relation(fields: [variant_id], references: [id], onDelete: Restrict)
+  base_unit       measurement_unit @relation(fields: [base_unit_id], references: [id], onDelete: Restrict)
+  product_type         product_type         @relation(fields: [product_type_id], references: [id], onDelete: Restrict)
+  purchase_order_items purchase_order_item[]
+
+  @@unique([company_id, variant_id, product_type_id])
+  @@index([created_by])
+  @@index([company_id])
+  @@index([variant_id])
+  @@index([base_unit_id])
+  @@index([product_type_id])
+}
+
+enum purchase_order_status {
+  draft
+  open
+  closed
+}
+
+model purchase_order {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  company_id            String                 @db.Uuid
+  location_id           String                 @db.Uuid
+  supplier_id           String                 @db.Uuid
+  created_by            String?                @db.Uuid
+  status                purchase_order_status  @default(draft)
+  payment_terms         String                 @default("") @db.VarChar(160)
+  payment_method        String?                @db.VarChar(32)
+  estimated_delivery_at DateTime?              @db.Timestamptz(6)
+  notes                 String                 @default("") @db.VarChar(1000)
+  created_at            DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime               @updatedAt @db.Timestamptz(6)
+  company               company                @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  location              location               @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  supplier              supplier               @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
+  items                 purchase_order_item[]
+
+  @@index([created_by])
+  @@index([company_id])
+  @@index([location_id])
+  @@index([supplier_id])
+  @@index([status])
+}
+
+model purchase_order_item {
+  id                String           @id @default(uuid()) @db.Uuid
+  purchase_order_id String           @db.Uuid
+  product_id        String           @db.Uuid
+  unit_id           String           @db.Uuid
+  ordered_qty       Decimal          @db.Decimal(14, 3)
+  received_qty      Decimal          @default(0) @db.Decimal(14, 3)
+  purchase_order    purchase_order   @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
+  product           product          @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  unit              measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
+
+  @@unique([purchase_order_id, product_id])
+  @@index([product_id])
+  @@index([unit_id])
 }

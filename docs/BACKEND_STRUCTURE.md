@@ -83,7 +83,7 @@ Database queries belong in repositories, and business decisions belong in servic
 
 ## Simple catalog controllers
 
-Brands, variants, measurements, and suppliers use this shape. Use it for the next company-owned catalog. Do not copy the Users, Roles, or Companies handlers into a new catalog, and do not add local parsers back.
+Brands, variants, measurements, suppliers, product types, products, and purchase orders use this shape. Use it for the next company-owned catalog. Do not copy the Users, Roles, or Companies handlers into a new catalog, and do not add local parsers back.
 
 A catalog controller is the five handlers: list, get by id, create, update, and delete. Each handler has its own `try/catch`. Leave out `id_pattern`, `object`, `text`, `search_of`, `optional_id`, `parse_create_*`, and `parse_update_*`.
 

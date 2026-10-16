@@ -49,6 +49,43 @@ export const SUPPLIER_FILTER_OPTIONS: ManagementFilterOptions = {
   additionalFilters: [],
 };
 export const SUPPLIER_FILTER_DEFAULTS = { status: "all" };
+export const PRODUCT_TYPE_FILTER_OPTIONS: ManagementFilterOptions = {
+  fields: [
+    { key: "name", label: "Type name", options: [] },
+    { key: "company", label: "Company", options: [] },
+  ],
+  statusOptions: [
+    { value: "all", label: "All types" },
+    { value: "shared", label: "Shared" },
+    { value: "company", label: "Company" },
+  ],
+  additionalFilters: [],
+};
+export const PRODUCT_TYPE_FILTER_DEFAULTS = { status: "all" };
+export const PRODUCT_FILTER_OPTIONS: ManagementFilterOptions = {
+  fields: [
+    { key: "company", label: "Company", options: [] },
+    { key: "product_type", label: "Product type", options: [] },
+  ],
+  statusOptions: [{ value: "all", label: "All products" }],
+  additionalFilters: [],
+};
+export const PRODUCT_FILTER_DEFAULTS = { status: "all" };
+export const PURCHASE_ORDER_FILTER_OPTIONS: ManagementFilterOptions = {
+  fields: [
+    { key: "company", label: "Company", options: [] },
+    { key: "supplier", label: "Supplier", options: [] },
+    { key: "location", label: "Warehouse", options: [] },
+  ],
+  statusOptions: [
+    { value: "all", label: "All orders" },
+    { value: "draft", label: "Draft" },
+    { value: "open", label: "Open" },
+    { value: "closed", label: "Closed" },
+  ],
+  additionalFilters: [],
+};
+export const PURCHASE_ORDER_FILTER_DEFAULTS = { status: "all" };
 export const ROLE_FILTER_OPTIONS: ManagementFilterOptions = {
   fields: [
     { key: "name", label: "Role name", options: [] },

@@ -71,7 +71,7 @@ export function CompanyDialog({
           <DialogDescription>
             {companyId
               ? "Update the company name. Existing memberships will stay assigned."
-              : "Add a company to organize your team. You can optionally create a default warehouse at the same time."}
+              : "Add a company. The warehouse name and address only create a warehouse location for that company. They are not fields on the company record."}
           </DialogDescription>
         </DialogHeader>
         {ready ? (

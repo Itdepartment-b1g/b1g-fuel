@@ -6,6 +6,8 @@ import { companyPaths, companySchemas } from "./openapi-companies";
 import { measurementPaths, measurementSchemas } from "./openapi-measurements";
 import { brandAndVariantPaths, brandAndVariantSchemas } from "./openapi-brand-and-variant";
 import { supplierPaths, supplierSchemas } from "./openapi-suppliers";
+import { productPaths, productSchemas } from "./openapi-products";
+import { purchaseOrderPaths, purchaseOrderSchemas } from "./openapi-purchase-orders";
 
 const errorResponse = {
   description: "Request failed",
@@ -36,6 +38,9 @@ export const openapi = {
     { name: "Brands" },
     { name: "Variants" },
     { name: "Suppliers" },
+    { name: "Product types" },
+    { name: "Products" },
+    { name: "Purchase orders" },
   ],
   components: {
     securitySchemes: {
@@ -54,6 +59,8 @@ export const openapi = {
       ...measurementSchemas,
       ...brandAndVariantSchemas,
       ...supplierSchemas,
+      ...productSchemas,
+      ...purchaseOrderSchemas,
       Error: {
         type: "object",
         required: ["error"],
@@ -298,6 +305,8 @@ export const openapi = {
     ...measurementPaths,
     ...brandAndVariantPaths,
     ...supplierPaths,
+    ...productPaths,
+    ...purchaseOrderPaths,
     "/api/auth/google": {
       post: {
         tags: ["Auth"],

@@ -14,7 +14,10 @@ export type Resource =
   | "companies"
   | "measurements"
   | "brandsAndVariants"
-  | "suppliers";
+  | "suppliers"
+  | "productTypes"
+  | "products"
+  | "purchaseOrders";
 
 type ResourceWhere = {
   users: Prisma.userWhereInput;
@@ -23,12 +26,18 @@ type ResourceWhere = {
   measurements: Prisma.measurementWhereInput;
   brandsAndVariants: Prisma.brandWhereInput;
   suppliers: Prisma.supplierWhereInput;
+  productTypes: Prisma.product_typeWhereInput;
+  products: Prisma.productWhereInput;
+  purchaseOrders: Prisma.purchase_orderWhereInput;
 }
 
 const OWNED_RESOURCES = [
   "measurements",
   "brandsAndVariants",
   "suppliers",
+  "productTypes",
+  "products",
+  "purchaseOrders",
 ] as const;
 
 type OwnedResource = typeof OWNED_RESOURCES[number];

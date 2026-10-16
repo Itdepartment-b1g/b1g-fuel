@@ -137,7 +137,7 @@ Capabilities below are the product target. They are granted through roles/permis
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Manage products and stock | Next → Planned | Products next; stock after receive |
+| Manage products and stock | Done → Planned | Products Done; stock after receive |
 | Track warehouse inventory | Planned | After locations + posted receipts |
 | Track hub inventory | Later | After hub locations |
 | Track available and reserved stocks | Later | Needs orders / reservations |
@@ -262,9 +262,9 @@ Agreed first vertical before hubs, client orders, and PayMongo:
 | --- | --- | --- | --- |
 | 1 | Locations (warehouse) | Next | Table + optional create with company Done; Locations CRUD module Next — [Warehouse inventory](WAREHOUSE_INVENTORY.md) |
 | 2 | User ↔ location assignment (turnover) | Planned | same |
-| 3 | Products (variant + base unit; NEW vs REFILL) | Next | same |
+| 3 | Products (variant + type + base unit) | Done | Model kept; no Products page. A purchase-order line finds or creates the product |
 | 4 | Location conversions | Planned | same |
-| 5 | Supplier purchase orders (terms, preferred method, ETA) | Planned | same |
+| 5 | Supplier purchase orders (terms, preferred method, ETA) | Done | `/purchase-orders` draft → open → closed. No stock change |
 | 6 | Receiving against supplier PO (draft → post) | Planned | same |
 | 7 | Stock balance + movements | Planned | same |
 | 8 | Supplier payments + proof (manual; PayMongo TBD) | Planned | same |

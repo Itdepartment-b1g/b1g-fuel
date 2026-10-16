@@ -128,10 +128,11 @@ Do not:
 
 ### Product
 
-A sellable/stockable item ties a **variant** to one **base measurement unit** (for example PCS).
+A sellable/stockable item ties a **variant**, a **product type**, and one **base measurement unit** (for example PCS).
 
-- **NEW** and **REFILL** are separate products when the business tracks them separately.
-- Product is company-scoped (or follows the same ownership rules chosen at implementation time).
+- **`product_type`** is a dynamic catalog (no enum): name + key; optional `company_id` (shared when null). Seed **New** / **Refill**.
+- **`product`** is company-owned: `company_id`, `variant_id`, `base_unit_id`, `product_type_id`, optional `note`. No product `name` — UI shows `brand variant · type`.
+- Unique: `(company_id, variant_id, product_type_id)`.
 - PO lines and stock balances reference `product_id`, not raw variant alone.
 
 ### Conversion

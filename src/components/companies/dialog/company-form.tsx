@@ -113,16 +113,19 @@ export function CompanyForm({
             <span>
               Does this company need a warehouse?
               <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                Check to create a default warehouse location now. You can skip
-                this and add locations later.
+                Check this only when this company needs a warehouse. It adds a
+                warehouse location. The company itself stays the company record.
               </span>
             </span>
           </label>
           {withWarehouse && (
             <fieldset className="space-y-4 rounded-lg border p-4">
               <legend className="px-1 text-sm font-medium">
-                Default warehouse
+                Warehouse location
               </legend>
+              <p className="text-xs text-muted-foreground">
+                Saved as a location with type warehouse, linked to this company.
+              </p>
               <label className="block space-y-2 text-sm font-medium">
                 Warehouse name <span className="text-destructive">*</span>
                 <Input
