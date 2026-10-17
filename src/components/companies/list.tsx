@@ -26,7 +26,8 @@ import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter
 import { COMPANY_FILTER_DEFAULTS } from "@/utils/management-filters";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import type { CompanySummary } from "@/types/companies";
-import { CompanyDialog } from "./dialog/company-dialog";
+import { CreateCompanyDialog } from "./dialog/create-company-dialog";
+import { EditCompanyDialog } from "./dialog/edit-company-dialog";
 import { CompaniesTableView } from "./table-view/companies-table-view";
 import { CompaniesCards } from "./card-views/companies-cards";
 
@@ -55,7 +56,8 @@ export default function CompaniesList() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<CompanySummary | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pending = mutationStatus === "loading";
@@ -103,7 +105,8 @@ export default function CompaniesList() {
   }, [listError, mutationError, router]);
   function openCompany(company?: CompanySummary) {
     dispatch(clearCompanyMutation());
-    setEditor({ id: company?.id ?? null });
+    if (company) setEditingId(company.id);
+    else setCreating(true);
   }
   async function removeCompany() {
     if (!removing) return;
@@ -294,20 +297,27 @@ export default function CompaniesList() {
           limitOptions={PAGE_SIZE_OPTIONS}
         />
       </section>
-      {editor && (
-        <CompanyDialog
-          companyId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreateCompanyDialog
+          onClose={() => setCreating(false)}
           onSaved={(company, detail) => {
-            const action = editor.id ? "updated" : "created";
             const warehouse = detail?.locationName
               ? ` Default warehouse “${detail.locationName}” was created.`
               : "";
-            toast.success(
-              `${company.name} was ${action} successfully.${warehouse}`,
-            );
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            toast.success(`${company.name} was created successfully.${warehouse}`);
+            setPage(1);
+            setCreating(false);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+      {editingId && (
+        <EditCompanyDialog
+          companyId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={(company) => {
+            toast.success(`${company.name} was updated successfully.`);
+            setEditingId(null);
             setRevision((value) => value + 1);
           }}
         />

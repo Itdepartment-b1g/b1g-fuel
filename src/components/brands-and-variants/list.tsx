@@ -25,8 +25,10 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils
 import type { TableSort } from "@/types/table-views";
 import type { BrandSummary } from "@/types/brands";
 import type { VariantSummary } from "@/types/variants";
-import { BrandDialog } from "./dialog/brand-dialog";
-import { VariantDialog } from "./dialog/variant-dialog";
+import { CreateBrandDialog } from "./dialog/create-brand-dialog";
+import { EditBrandDialog } from "./dialog/edit-brand-dialog";
+import { CreateVariantDialog } from "./dialog/create-variant-dialog";
+import { EditVariantDialog } from "./dialog/edit-variant-dialog";
 import { BrandsTableView } from "./table-view/brands-table-view";
 import { BrandsCards } from "./card-views/brands-cards";
 
@@ -59,8 +61,10 @@ export default function BrandAndVariantList() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [brandEditor, setBrandEditor] = useState<{ id: string | null } | null>(null);
-  const [variantEditor, setVariantEditor] = useState<{ id: string | null; brandId?: string } | null>(null);
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
+  const [creatingVariant, setCreatingVariant] = useState<{ brandId?: string } | null>(null);
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Removal | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading" || variantMutationStatus === "loading";
@@ -102,11 +106,13 @@ export default function BrandAndVariantList() {
   }
   function openBrand(brand?: BrandSummary) {
     dispatch(clearBrandMutation());
-    setBrandEditor({ id: brand?.id ?? null });
+    if (brand) setEditingBrandId(brand.id);
+    else setCreatingBrand(true);
   }
   function openVariant(brand?: BrandSummary, variant?: VariantSummary) {
     dispatch(clearVariantMutation());
-    setVariantEditor({ id: variant?.id ?? null, brandId: brand?.id ?? variant?.brand_id });
+    if (variant) setEditingVariantId(variant.id);
+    else setCreatingVariant({ brandId: brand?.id });
   }
   async function remove() {
     if (!removing || pending) return;
@@ -295,24 +301,42 @@ export default function BrandAndVariantList() {
           limitOptions={PAGE_SIZE_OPTIONS}
         />
       </section>
-      {brandEditor && (
-        <BrandDialog
-          brandId={brandEditor.id}
-          onClose={() => setBrandEditor(null)}
+      {creatingBrand && (
+        <CreateBrandDialog
+          onClose={() => setCreatingBrand(false)}
           onSaved={() => {
-            if (!brandEditor.id) setPage(1);
-            setBrandEditor(null);
+            setPage(1);
+            setCreatingBrand(false);
             refresh();
           }}
         />
       )}
-      {variantEditor && (
-        <VariantDialog
-          variantId={variantEditor.id}
-          brandId={variantEditor.brandId}
-          onClose={() => setVariantEditor(null)}
+      {editingBrandId && (
+        <EditBrandDialog
+          brandId={editingBrandId}
+          onClose={() => setEditingBrandId(null)}
           onSaved={() => {
-            setVariantEditor(null);
+            setEditingBrandId(null);
+            refresh();
+          }}
+        />
+      )}
+      {creatingVariant && (
+        <CreateVariantDialog
+          brandId={creatingVariant.brandId}
+          onClose={() => setCreatingVariant(null)}
+          onSaved={() => {
+            setCreatingVariant(null);
+            refresh();
+          }}
+        />
+      )}
+      {editingVariantId && (
+        <EditVariantDialog
+          variantId={editingVariantId}
+          onClose={() => setEditingVariantId(null)}
+          onSaved={() => {
+            setEditingVariantId(null);
             refresh();
           }}
         />

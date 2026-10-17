@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Provider } from "react-redux";
-import { RoleForm } from "@/components/roles/dialog/role-form";
+import { CreateRoleFields } from "@/components/roles/dialog/create-role-dialog";
+import { EditRoleFields } from "@/components/roles/dialog/edit-role-dialog";
 import { ToastProvider } from "@/components/providers/toast-provider";
 import { PAGE_CATALOG } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
@@ -25,33 +26,42 @@ const role: RoleSummary = {
   created_at: "2026-10-13T00:00:00Z", updated_at: "2026-10-13T00:00:00Z", assignment_count: 0,
 };
 
-function renderForm(existing?: RoleSummary) {
+function renderCreate() {
   const store = makeStore();
   store.dispatch(getRoleOption.pending("choices", undefined));
   store.dispatch(getRoleOption.fulfilled({
     scopes: ["company", "global"], companies: [role.company!],
     pages: [...PAGE_CATALOG], permissions: [...PERMISSION_CATALOG],
   }, "choices", undefined));
-  return renderToStaticMarkup(<Provider store={store}><ToastProvider><RoleForm role={existing} onCancel={() => {}} onSaved={() => {}} /></ToastProvider></Provider>);
+  return renderToStaticMarkup(<Provider store={store}><ToastProvider><CreateRoleFields onCancel={() => {}} onSaved={() => {}} /></ToastProvider></Provider>);
+}
+
+function renderEdit(existing: RoleSummary = role) {
+  const store = makeStore();
+  store.dispatch(getRoleOption.pending("choices", undefined));
+  store.dispatch(getRoleOption.fulfilled({
+    scopes: ["company", "global"], companies: [role.company!],
+    pages: [...PAGE_CATALOG], permissions: [...PERMISSION_CATALOG],
+  }, "choices", undefined));
+  return renderToStaticMarkup(<Provider store={store}><ToastProvider><EditRoleFields role={existing} onCancel={() => {}} onSaved={() => {}} /></ToastProvider></Provider>);
 }
 
 test("permissions stay hidden until a page is selected", () => {
-  const html = renderForm();
+  const html = renderCreate();
   assert.doesNotMatch(html, /<details/);
-  assert.match(html, /Select a company/);
+  assert.match(html, /Role name/);
 });
 
-test("editing a selected page reveals its saved action permissions and company", () => {
-  const html = renderForm(role);
+test("editing a selected page reveals its saved action permissions", () => {
+  const html = renderEdit();
   assert.equal((html.match(/<details/g) ?? []).length, 1);
   assert.match(html, /Permissions for Dashboard/);
   assert.doesNotMatch(html, /Permissions for Users/);
-  for (const action of ["View", "Edit", "Add", "Delete"]) assert.match(html, new RegExp(`/>${action}</label>`));
-  assert.match(html, new RegExp(`value="${companyId}" selected=""`));
+  for (const action of ["View", "Edit", "Create", "Delete"]) assert.match(html, new RegExp(`/>${action}</label>`));
 });
 
-test("assigned roles lock the company selector", () => {
-  assert.match(renderForm({ ...role, assignment_count: 1 }), /aria-label="Role company"[^>]*disabled=""/);
+test("system roles cannot be edited", () => {
+  assert.match(renderEdit({ ...role, is_system: true }), /cannot be edited/);
 });
 
 test("role creation saves a company and all four page actions", async () => {
@@ -68,14 +78,12 @@ test("permissions without their page and company-linked global roles are rejecte
 });
 
 test("selected View/Edit/Delete permissions have scopes; Add has none", () => {
-  const html = renderForm({ ...role, permission_scopes: { "home.view": "own" } });
+  const html = renderEdit({ ...role, permission_scopes: { "home.view": "own" } });
   assert.match(html, /aria-label="Dashboard View access scope"/);
   assert.match(html, /aria-label="Dashboard Edit access scope"/);
   assert.match(html, /aria-label="Dashboard Delete access scope"/);
-  assert.doesNotMatch(html, /aria-label="Dashboard Add access scope"/);
+  assert.doesNotMatch(html, /aria-label="Dashboard Create access scope"/);
   assert.match(html, /value="own" selected=""/);
-  assert.doesNotMatch(html, /value="all"/);
-  assert.match(renderForm({ ...role, scope: "global", company_id: null, company: null }), /value="all"/);
 });
 
 test("company roles cannot request All or scopes for Add/unselected permissions", async () => {

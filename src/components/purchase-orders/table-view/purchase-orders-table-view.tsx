@@ -28,9 +28,10 @@ function when(value: string | null) {
   return formatDateTime(value);
 }
 
-function fullyReceivedAt(order: PurchaseOrderSummary) {
-  const event = [...order.events].reverse().find((item) => item.kind === "receipt_posted" && item.status === "received");
-  return event?.created_at ?? null;
+function fullyReceivedEvent(order: PurchaseOrderSummary) {
+  return [...order.events]
+    .reverse()
+    .find((item) => item.kind === "receipt_posted" && item.status === "received") ?? null;
 }
 
 function lineValue(row: PurchaseOrderLineRow, field: string): SortValue {
@@ -104,6 +105,7 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
 }
 
 function PurchaseOrderDetails({ order }: { order: PurchaseOrderSummary }) {
+  const received = fullyReceivedEvent(order);
   return (
     <div className="space-y-4">
       <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -130,7 +132,11 @@ function PurchaseOrderDetails({ order }: { order: PurchaseOrderSummary }) {
         <div className="space-y-3">
           <div>
             <dt className="text-muted-foreground">Fully received at</dt>
-            <dd className="mt-1 font-medium">{when(fullyReceivedAt(order))}</dd>
+            <dd className="mt-1 font-medium">{when(received?.created_at ?? null)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Fully received by</dt>
+            <dd className="mt-1 font-medium">{received?.created_by_name || "—"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Warehouse address</dt>

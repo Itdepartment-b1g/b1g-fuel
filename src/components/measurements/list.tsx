@@ -30,7 +30,8 @@ import {
   selectMeasurement,
 } from "@/lib/store/measurements-slice";
 import type { MeasurementSummary } from "@/types/measurements";
-import { MeasurementDialog } from "./dialog/measurement-dialog";
+import { CreateMeasurementDialog } from "./dialog/create-measurement-dialog";
+import { EditMeasurementDialog } from "./dialog/edit-measurement-dialog";
 import { MeasurementsTableView } from "./table-view/measurements-table-view";
 import { MeasurementsCards } from "./card-views/measurements-cards";
 
@@ -59,7 +60,8 @@ export default function MeasurementList() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<MeasurementSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
@@ -98,7 +100,8 @@ export default function MeasurementList() {
   }, [listError, mutationError, router]);
   function openEditor(measurement?: MeasurementSummary) {
     dispatch(clearMeasurementMutation());
-    setEditor({ id: measurement?.id ?? null });
+    if (measurement) setEditingId(measurement.id);
+    else setCreating(true);
   }
   function refresh() {
     setRevision((value) => value + 1);
@@ -291,13 +294,22 @@ export default function MeasurementList() {
           limitOptions={PAGE_SIZE_OPTIONS}
         />
       </section>
-      {editor && (
-        <MeasurementDialog
-          measurementId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreateMeasurementDialog
+          onClose={() => setCreating(false)}
           onSaved={() => {
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            setPage(1);
+            setCreating(false);
+            refresh();
+          }}
+        />
+      )}
+      {editingId && (
+        <EditMeasurementDialog
+          measurementId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null);
             refresh();
           }}
         />

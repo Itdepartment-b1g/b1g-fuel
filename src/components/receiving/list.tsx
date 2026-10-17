@@ -23,7 +23,8 @@ import {
   selectReceiving,
 } from "@/lib/store/receiving-slice";
 import type { ReceivingSummary } from "@/types/receiving";
-import { ReceivingDialog } from "./dialog/receiving-dialog";
+import { CreateReceivingDialog } from "./dialog/create-receiving-dialog";
+import { EditReceivingDialog } from "./dialog/edit-receiving-dialog";
 import { ReceivingCards } from "./card-views/receiving-cards";
 import { ReceivingTableView } from "./table-view/receiving-table-view";
 
@@ -42,7 +43,8 @@ export default function ListReceiving() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<ReceivingSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
@@ -103,7 +105,7 @@ export default function ListReceiving() {
           <Button
             onClick={() => {
               dispatch(clearReceivingMutation());
-              setEditor({ id: null });
+              setCreating(true);
             }}
           >
             <Plus className="size-4" aria-hidden="true" />
@@ -152,7 +154,7 @@ export default function ListReceiving() {
             }}
             onEdit={(row) => {
               dispatch(clearReceivingMutation());
-              setEditor({ id: row.id });
+              setEditingId(row.id);
             }}
             onDelete={setRemoving}
             disabled={pending}
@@ -163,7 +165,7 @@ export default function ListReceiving() {
             disabled={pending}
             onEdit={(row) => {
               dispatch(clearReceivingMutation());
-              setEditor({ id: row.id });
+              setEditingId(row.id);
             }}
             onDelete={setRemoving}
           />
@@ -181,13 +183,22 @@ export default function ListReceiving() {
         }}
         limitOptions={PAGE_SIZE_OPTIONS}
       />
-      {editor && (
-        <ReceivingDialog
-          receivingId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreateReceivingDialog
+          onClose={() => setCreating(false)}
           onSaved={() => {
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            setPage(1);
+            setCreating(false);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+      {editingId && (
+        <EditReceivingDialog
+          receivingId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null);
             setRevision((value) => value + 1);
           }}
         />

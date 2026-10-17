@@ -30,7 +30,8 @@ import {
   selectProductType,
 } from "@/lib/store/product-types-slice";
 import type { ProductTypeSummary } from "@/types/product-types";
-import { ProductTypeDialog } from "./dialog/product-type-dialog";
+import { CreateProductTypeDialog } from "./dialog/create-product-type-dialog";
+import { EditProductTypeDialog } from "./dialog/edit-product-type-dialog";
 import { ProductTypesTableView } from "./table-view/product-types-table-view";
 
 export default function ListProductTypes() {
@@ -57,7 +58,8 @@ export default function ListProductTypes() {
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<ProductTypeSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
@@ -123,7 +125,7 @@ export default function ListProductTypes() {
           <Button
             onClick={() => {
               dispatch(clearProductTypeMutation());
-              setEditor({ id: null });
+              setCreating(true);
             }}
           >
             <Plus className="size-4" aria-hidden="true" />
@@ -167,7 +169,7 @@ export default function ListProductTypes() {
           }}
           onEdit={(row) => {
             dispatch(clearProductTypeMutation());
-            setEditor({ id: row.id });
+            setEditingId(row.id);
           }}
           onDelete={setRemoving}
           disabled={pending}
@@ -185,13 +187,22 @@ export default function ListProductTypes() {
         }}
         limitOptions={PAGE_SIZE_OPTIONS}
       />
-      {editor && (
-        <ProductTypeDialog
-          productTypeId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreateProductTypeDialog
+          onClose={() => setCreating(false)}
           onSaved={() => {
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            setPage(1);
+            setCreating(false);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+      {editingId && (
+        <EditProductTypeDialog
+          productTypeId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null);
             setRevision((value) => value + 1);
           }}
         />

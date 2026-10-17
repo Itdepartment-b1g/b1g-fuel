@@ -26,7 +26,8 @@ import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter
 import { ROLE_FILTER_DEFAULTS } from "@/utils/management-filters";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import type { RoleSummary } from "@/types/roles";
-import { RoleDialog } from "./dialog/role-dialog";
+import { CreateRoleDialog } from "./dialog/create-role-dialog";
+import { EditRoleDialog } from "./dialog/edit-role-dialog";
 import { RolesTableView } from "./table-view/roles-table-view";
 import { RolesCards } from "./card-views/roles-cards";
 
@@ -55,7 +56,8 @@ export default function RolesList() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<RoleSummary | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pending = mutationStatus === "loading";
@@ -103,7 +105,8 @@ export default function RolesList() {
   }, [listError, mutationError, router]);
   function openRole(role?: RoleSummary) {
     dispatch(clearRoleMutation());
-    setEditor({ id: role?.id ?? null });
+    if (role) setEditingId(role.id);
+    else setCreating(true);
   }
   async function removeRole() {
     if (!removing) return;
@@ -293,16 +296,24 @@ export default function RolesList() {
           limitOptions={PAGE_SIZE_OPTIONS}
         />
       </section>
-      {editor && (
-        <RoleDialog
-          roleId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreateRoleDialog
+          onClose={() => setCreating(false)}
           onSaved={(role) => {
-            toast.success(
-              `${role.name} was ${editor.id ? "updated" : "created"} successfully.`,
-            );
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            toast.success(`${role.name} was created successfully.`);
+            setPage(1);
+            setCreating(false);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+      {editingId && (
+        <EditRoleDialog
+          roleId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={(role) => {
+            toast.success(`${role.name} was updated successfully.`);
+            setEditingId(null);
             setRevision((value) => value + 1);
           }}
         />

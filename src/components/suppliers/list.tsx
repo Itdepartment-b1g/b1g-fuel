@@ -17,7 +17,8 @@ import type { TableSort } from "@/types/table-views";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { clearSupplierMutation, deleteSupplier, getSupplierFilterOption, listSupplier, selectSupplier } from "@/lib/store/suppliers-slice";
 import type { SupplierSummary } from "@/types/suppliers";
-import { SupplierDialog } from "./dialog/supplier-dialog";
+import { CreateSupplierDialog } from "./dialog/create-supplier-dialog";
+import { EditSupplierDialog } from "./dialog/edit-supplier-dialog";
 import { SuppliersTableView } from "./table-view/suppliers-table-view";
 import { SuppliersCards } from "./card-views/suppliers-cards";
 
@@ -35,7 +36,8 @@ export default function ListSuppliers() {
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<SupplierSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
@@ -73,7 +75,8 @@ export default function ListSuppliers() {
 
   function openEditor(supplier?: SupplierSummary) {
     dispatch(clearSupplierMutation());
-    setEditor({ id: supplier?.id ?? null });
+    if (supplier) setEditingId(supplier.id);
+    else setCreating(true);
   }
   function refresh() {
     setRevision((value) => value + 1);
@@ -193,13 +196,22 @@ export default function ListSuppliers() {
           limitOptions={PAGE_SIZE_OPTIONS}
         />
       </section>
-      {editor && (
-        <SupplierDialog
-          supplierId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreateSupplierDialog
+          onClose={() => setCreating(false)}
           onSaved={() => {
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            setPage(1);
+            setCreating(false);
+            refresh();
+          }}
+        />
+      )}
+      {editingId && (
+        <EditSupplierDialog
+          supplierId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null);
             refresh();
           }}
         />
