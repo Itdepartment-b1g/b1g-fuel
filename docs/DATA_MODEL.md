@@ -11,6 +11,7 @@ erDiagram
   user ||--o{ user_company : "memberships"
   company ||--o{ user_company : "members"
   user_company ||--o{ user_company_role : "company roles"
+  user_company ||--o{ user_company_page : "assigned dashboards"
   roles ||--o{ user_company_role : "company definitions"
   roles ||--o{ role_pages : "visible pages"
   roles ||--o{ role_permissions : "allowed actions"
@@ -23,6 +24,7 @@ erDiagram
 - `user_company` has a unique `(user_id, company_id)` pair. A user can belong to multiple companies without duplicate memberships.
 - Each membership can have multiple company roles. A user could be manager in Company A and staff in Company B.
 - Company role definitions are shared templates across companies. Assignments, rather than definitions, are company-scoped. If companies later need private custom role definitions, add explicit company ownership to the role model and matching constraints.
+- `user_company.page_grant_mode` is `role_pages` by default: the membership uses every page on its roles. `assigned_pages` uses `user_company_page` for one staff member. Those checks are not written onto the shared role. See [Company supervisors and staff](COMPANY_STAFF.md). View, add, edit, delete, and their All / My company / Only me scopes stay on `role_permissions` and apply only for pages that membership can open.
 - Slugs are globally unique stable identifiers, for example `super_admin`, `manager`, and `staff`. `is_system` marks roles managed by the application; it does not confer privileges by itself.
 - `is_default_role` marks the one optional company role to assign when creating memberships. There is no automatic assignment trigger; the membership service must assign it. A database partial unique index allows at most one default role, and a CHECK forbids default global roles.
 

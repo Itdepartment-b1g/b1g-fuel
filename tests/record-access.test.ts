@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { canPerform, type RecordAccess } from "@/lib/auth/access-scope";
-import { allowed_company_ids, record_where, requirePermission } from "@/server/auth/record-access";
+import { allowed_company_ids, membership_page_keys, record_where, requirePermission } from "@/server/auth/record-access";
 import type { Request, Response } from "express";
 
 const access: RecordAccess = {
@@ -37,6 +37,12 @@ test("global All grants cover all records and scoped grants combine with OR", ()
   assert.deepEqual(record_where(global, "users"), {});
   const own = { ...access, grants: [...access.grants, { permission: "users.view", scope: "own" as const, companyId: "company-a" }] };
   assert.equal(record_where(own, "users").OR?.length, 2);
+});
+
+test("assigned pages keep the overlap with the role", () => {
+  assert.deepEqual(membership_page_keys("role_pages", ["users", "purchaseOrders"], []), ["users", "purchaseOrders"]);
+  assert.deepEqual(membership_page_keys("assigned_pages", ["users", "purchaseOrders", "receiving"], ["purchaseOrders"]), ["purchaseOrders"]);
+  assert.deepEqual(membership_page_keys("assigned_pages", ["purchaseOrders"], []), []);
 });
 
 test("HTTP permission middleware rejects disabled actions", () => {

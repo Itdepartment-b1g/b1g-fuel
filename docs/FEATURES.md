@@ -39,6 +39,7 @@ PayMongo for client checkout is **TBD**; until a gateway is final, use manual pa
 | Assign roles to users | Done | Global and company role assignment |
 | Manage dashboard and module access | Done | Page catalog + sidebar grants |
 | View system-wide activities and audit logs | Later | Audit module not built yet |
+| Let a company supervisor create staff and assign dashboards | Done | [Company supervisors and staff](COMPANY_STAFF.md). Users page on a role marks the supervisor. Checks are saved per membership as `assigned_pages`. |
 
 ---
 

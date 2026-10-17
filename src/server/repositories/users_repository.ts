@@ -42,6 +42,9 @@ const user_select = {
   user_companies: {
     select: {
       company: { select: { id: true, name: true } },
+      page_grant_mode: true,
+      pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
+      permissions: { select: { permission_key: true, access_scope: true }, orderBy: { permission_key: "asc" } },
       roles: {
         select: { role: { select: role_select } },
         orderBy: [{ role: { name: "asc" } }, { role: { id: "asc" } }],
@@ -63,6 +66,10 @@ function serialize_user(user: UserRecord, createdByName: string | null): UserSum
     companies: user_companies.map((membership) => ({
       ...membership.company,
       roles: membership.roles.map((assignment) => assignment.role),
+      page_grant_mode: membership.page_grant_mode,
+      pages: membership.pages.map((page) => page.page_key),
+      permissions: membership.permissions.map((permission) => permission.permission_key),
+      permission_scopes: Object.fromEntries(membership.permissions.filter((permission) => !permission.permission_key.endsWith(".add")).map((permission) => [permission.permission_key, permission.access_scope as AccessScope])),
     })),
   };
 }
@@ -181,6 +188,21 @@ export async function create_user(id: string, input: CreateUserInput, createdBy?
               user_companies: {
                 create: {
                   company_id: input.company_id,
+                  page_grant_mode: input.page_keys ? "assigned_pages" : "role_pages",
+                  ...(input.page_keys?.length
+                    ? {
+                        pages: {
+                          create: input.page_keys.map((page_key) => ({ page_key })),
+                        },
+                      }
+                    : {}),
+                  ...(input.permission_rows?.length
+                    ? {
+                        permissions: {
+                          create: input.permission_rows,
+                        },
+                      }
+                    : {}),
                   ...(input.role_ids?.length
                     ? {
                         roles: {
@@ -288,9 +310,13 @@ export async function get_user_option(access?: RecordAccess) {
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
     db.roles.findMany({
-      where: { scope: "company", ...(access && !access.superAdmin ? { id: { in: [] } } : {}) },
+      where: {
+        scope: "company",
+        ...(companyIds ? { company_id: { in: companyIds } } : {}),
+      },
       select: {
         ...role_select,
+        created_at: true,
         pages: { select: { page_key: true }, orderBy: { page_key: "asc" } },
         permissions: { select: { permission_key: true, access_scope: true }, orderBy: { permission_key: "asc" } },
       },
@@ -302,6 +328,7 @@ export async function get_user_option(access?: RecordAccess) {
     pages: pages.map((page) => page.page_key),
     permissions: permissions.map((permission) => permission.permission_key),
     permission_scopes: Object.fromEntries(permissions.filter((permission) => !permission.permission_key.endsWith(".add")).map((permission) => [permission.permission_key, permission.access_scope as AccessScope])),
+    created_at: role.created_at.toISOString(),
   }));
   return { companies, roles: assignable };
 }
@@ -311,10 +338,11 @@ export async function assignable_user(input: CreateUserInput): Promise<{
   existingUser: { id: string } | null;
   company: { id: string } | null;
   roleCount: number;
+  pageKeys: string[];
 }> {
   const db = getDatabase();
   const roleIds = input.role_ids ?? [];
-  const [existingUser, company, roleCount] = await Promise.all([
+  const [existingUser, company, roles] = await Promise.all([
     db.user.findFirst({
       where: { email: { equals: input.email, mode: "insensitive" } },
       select: { id: true },
@@ -326,35 +354,146 @@ export async function assignable_user(input: CreateUserInput): Promise<{
           select: { id: true },
         }),
     roleIds.length
-      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company" } })
-      : 0,
+      ? db.roles.findMany({
+          where: { id: { in: roleIds }, scope: "company" },
+          select: { pages: { select: { page_key: true } } },
+        })
+      : [],
   ]);
-  return { existingUser, company, roleCount };
+  return {
+    existingUser,
+    company,
+    roleCount: roles.length,
+    pageKeys: roles.flatMap((role) => role.pages.map((page) => page.page_key)),
+  };
 }
 
 /** Confirm the company exists and every selected role is a company role that can be used there. */
 export async function available_assignment(companyId: string, roleIds: string[]) {
   const db = getDatabase();
-  const [company, roleCount] = await Promise.all([
+  const [company, roles] = await Promise.all([
     db.company.findUnique({ where: { id: companyId }, select: { id: true } }),
     roleIds.length
-      ? db.roles.count({ where: { id: { in: roleIds }, scope: "company" } })
-      : 0,
+      ? db.roles.findMany({
+          where: { id: { in: roleIds }, scope: "company" },
+          select: { company_id: true, pages: { select: { page_key: true } }, permissions: { select: { permission_key: true } } },
+        })
+      : [],
   ]);
-  return { company, roleCount };
+  return {
+    company,
+    roleCount: roles.length,
+    companyIds: roles.map((role) => role.company_id),
+    pageKeys: roles.flatMap((role) => role.pages.map((page) => page.page_key)),
+    permissionKeys: roles.flatMap((role) => role.permissions.map((permission) => permission.permission_key)),
+  };
 }
 
-/** Add or update one company membership and replace its company roles. Returns the refreshed user, or null when the user does not exist. */
-export async function assign_user(userId: string, companyId: string, roleIds: string[]) {
+/** Reuse this company's role when the slug already belongs to it. Otherwise create the first globally free slug. */
+export async function ensure_staff_role(input: {
+  companyId: string;
+  name: string;
+  slugs: string[];
+  pages: string[];
+  permissions: { permission_key: string; access_scope: string }[];
+  createdBy?: string;
+}) {
+  const db = getDatabase();
+  const matches = await db.roles.findMany({
+    where: { scope: "company", company_id: input.companyId, slug: { in: input.slugs } },
+    select: {
+      id: true,
+      slug: true,
+      pages: { select: { page_key: true } },
+      permissions: { select: { permission_key: true } },
+    },
+  });
+  const owned = input.slugs
+    .map((slug) => matches.find((role) => role.slug === slug))
+    .find((role) => role);
+  if (owned) {
+    const pages = owned.pages.map((page) => page.page_key);
+    const permissions = new Set(owned.permissions.map((permission) => permission.permission_key));
+    const missingPages = input.pages.filter((page) => !pages.includes(page));
+    const missingPermissions = input.permissions.filter((permission) => !permissions.has(permission.permission_key));
+    if (missingPages.length || missingPermissions.length) {
+      await db.roles.update({
+        where: { id: owned.id },
+        data: {
+          ...(missingPages.length ? { pages: { create: missingPages.map((page_key) => ({ page_key })) } } : {}),
+          ...(missingPermissions.length ? { permissions: { create: missingPermissions } } : {}),
+        },
+      });
+    }
+    return { id: owned.id, pages: [...new Set([...pages, ...input.pages])] };
+  }
+  for (const slug of input.slugs) {
+    const taken = await db.roles.findUnique({ where: { slug }, select: { id: true, company_id: true } });
+    if (taken) continue;
+    try {
+      const role = await db.roles.create({
+        data: {
+          name: input.name,
+          slug,
+          scope: "company",
+          company_id: input.companyId,
+          created_by: input.createdBy,
+          pages: { create: input.pages.map((page_key) => ({ page_key })) },
+          permissions: { create: input.permissions },
+        },
+        select: { id: true },
+      });
+      return { id: role.id, pages: input.pages };
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "P2002") continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+/** Add or update one company membership and replace its company roles and, for assigned_pages, its dashboards. */
+export async function assign_user(
+  userId: string,
+  companyId: string,
+  roleIds: string[],
+  grant: {
+    mode: "role_pages" | "assigned_pages";
+    pageKeys: string[];
+    permissions?: { permission_key: string; access_scope: string }[];
+  } = {
+    mode: "role_pages",
+    pageKeys: [],
+  },
+) {
   return getDatabase().$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return null;
     const membership = await tx.user_company.upsert({
       where: { user_id_company_id: { user_id: userId, company_id: companyId } },
-      create: { user_id: userId, company_id: companyId },
-      update: {},
+      create: { user_id: userId, company_id: companyId, page_grant_mode: grant.mode },
+      update: { page_grant_mode: grant.mode },
       select: { id: true },
     });
+    await tx.user_company_page.deleteMany({ where: { user_company_id: membership.id } });
+    await tx.user_company_permission.deleteMany({ where: { user_company_id: membership.id } });
+    if (grant.mode === "assigned_pages" && grant.permissions?.length) {
+      await tx.user_company_permission.createMany({
+        data: grant.permissions.map((permission) => ({
+          user_company_id: membership.id,
+          permission_key: permission.permission_key,
+          access_scope: permission.access_scope,
+        })),
+      });
+    }
+    if (grant.mode === "assigned_pages" && grant.pageKeys.length) {
+      await tx.user_company_page.createMany({
+        data: grant.pageKeys.map((page_key) => ({
+          user_company_id: membership.id,
+          page_key,
+        })),
+      });
+    }
     await tx.user_company_role.deleteMany({ where: { user_company_id: membership.id } });
     if (roleIds.length) {
       await tx.user_company_role.createMany({

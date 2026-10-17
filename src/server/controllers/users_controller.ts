@@ -13,7 +13,7 @@ import {
   USER_ADDITIONAL_FILTERS,
 } from "@/utils/users-filters";
 import { resolveDateRange } from "@/server/lib/filter";
-import { UserError } from "@/server/services/users_service";
+import { parse_page_keys, parse_staff_permissions, UserError } from "@/server/services/users_service";
 
 const user_database_errors: Record<string, { status: number; message: string }> = {
   "23505": {
@@ -357,10 +357,11 @@ export async function create_user(
     const body: unknown = req.body;
 if (!body || typeof body !== "object" || Array.isArray(body))
     throw new UserError("invalid_input", "Provide user details.");
-const { name, email, password, company_id, role_ids } = body as Record<
+const { name, email, password, company_id, role_ids, role_name, role_id, page_keys, permissions, permission_scopes } = body as Record<
     string,
     unknown
   >;
+const supervisor = Boolean(res.locals.access && !res.locals.access.superAdmin);
 const uuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 if (typeof name !== "string" || !name.trim() || name.trim().length > 250)
@@ -405,25 +406,46 @@ if (
 if (
     Object.keys(body).some(
       (key) =>
-        !["name", "email", "password", "company_id", "role_ids"].includes(key),
+        !["name", "email", "password", "company_id", ...(supervisor ? ["role_name", "role_id", "page_keys", "permissions", "permission_scopes"] : ["role_ids"])].includes(key),
     )
   )
     throw new UserError("invalid_input", "Unknown user field.");
-    if (res.locals.access && !res.locals.access.superAdmin) {
+    let pageKeys: string[] | undefined;
+    let roleName: string | undefined;
+    let roleId: string | undefined;
+    if (supervisor) {
       const companyIds = allowed_company_ids(res.locals.access, "users") ?? [];
-      if (typeof company_id !== "string" || !companyIds.includes(company_id.toLowerCase()) || roleIds.length) {
-        res.status(403).json({ error: roleIds.length ? "Role assignments require an administrator." : "Select one of your permitted companies." });
+      if (typeof company_id !== "string" || !companyIds.includes(company_id.toLowerCase())) {
+        res.status(403).json({ error: "Select one of your permitted companies." });
         return;
       }
+      const named = typeof role_name === "string" ? role_name.trim() : "";
+      const selected = typeof role_id === "string" && uuid.test(role_id) ? role_id.toLowerCase() : "";
+      if (Boolean(named) === Boolean(selected))
+        throw new UserError("invalid_input", "Select an existing role or enter a new role name.");
+      if (named) {
+        if (named.length > 100)
+          throw new UserError("invalid_input", "Enter a role name of at most 100 characters.");
+        roleName = named;
+      } else {
+        roleId = selected;
+      }
+      pageKeys = parse_page_keys(page_keys);
     }
+    const staffPermissions = supervisor ? parse_staff_permissions(permissions, permission_scopes) : undefined;
     const input: CreateUserInput = {
     name: name.trim(),
     email: email.trim().toLowerCase(),
     password,
-    company_id,
-    role_ids: roleIds,
+    company_id: typeof company_id === "string" ? company_id.toLowerCase() : undefined,
+    role_ids: supervisor ? undefined : (roleIds as string[]).map((roleId) => roleId.toLowerCase()),
+    role_name: roleName,
+    role_id: roleId,
+    page_keys: pageKeys,
+    permissions: staffPermissions?.permissions,
+    permission_scopes: staffPermissions?.permission_scopes,
   };
-    res.status(201).json({ user: await service.create_user(input, undefined, undefined, res.locals.user?.id) });
+    res.status(201).json({ user: await service.create_user(input, undefined, undefined, res.locals.user?.id, res.locals.access?.pages ?? [], res.locals.access?.grants ?? []) });
   } catch (error) {
     if (error instanceof PaginationError) {
       res.status(400).json({ error: error.message });
@@ -496,7 +518,8 @@ export async function assign_user(
     const body: unknown = req.body;
     if (!body || typeof body !== "object" || Array.isArray(body))
       throw new UserError("invalid_input", "Provide a company and roles.");
-    const { company_id, role_ids } = body as Record<string, unknown>;
+    const supervisor = Boolean(res.locals.access && !res.locals.access.superAdmin);
+    const { company_id, role_ids, page_keys, permissions, permission_scopes } = body as Record<string, unknown>;
     if (typeof company_id !== "string" || !uuid.test(company_id))
       throw new UserError("invalid_input", "Select a valid company.");
     if (
@@ -507,19 +530,32 @@ export async function assign_user(
       new Set(role_ids).size !== role_ids.length
     )
       throw new UserError("invalid_input", "Select distinct company roles (maximum 50).");
-    if (Object.keys(body).some((key) => !["company_id", "role_ids"].includes(key)))
+    if (Object.keys(body).some((key) => !["company_id", "role_ids", ...(supervisor ? ["page_keys", "permissions", "permission_scopes"] : [])].includes(key)))
       throw new UserError("invalid_input", "Unknown assignment field.");
-    if (res.locals.access && !res.locals.access.superAdmin) {
+    let pageKeys: string[] = [];
+    if (supervisor) {
       const companyIds = allowed_company_ids(res.locals.access, "users", "edit") ?? [];
       if (!companyIds.includes(company_id.toLowerCase())) {
         res.status(403).json({ error: "Select one of your permitted companies." });
         return;
       }
+      pageKeys = parse_page_keys(page_keys);
     }
+    const staffPermissions = supervisor ? parse_staff_permissions(permissions, permission_scopes) : undefined;
     const user = await service.assign_user(
       id.toLowerCase(),
       company_id.toLowerCase(),
       role_ids.map((roleId: string) => roleId.toLowerCase()),
+      {
+        mode: supervisor ? "assigned_pages" : "role_pages",
+        pageKeys,
+        permissions: staffPermissions?.permissions.map((key) => ({
+          permission_key: key,
+          access_scope: staffPermissions.permission_scopes[key] ?? "company",
+        })),
+      },
+      res.locals.access?.pages ?? [],
+      res.locals.access?.grants ?? [],
     );
     res.status(200).json({ user });
   } catch (error) {

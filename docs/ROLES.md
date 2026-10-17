@@ -25,6 +25,8 @@ List uses shared pagination: default 10 rows, allowed page sizes 10/20/50/100, `
 
 Each role contains the model's scalar fields, ISO date strings, `pages` and `permissions` as key arrays, and `assignment_count` covering global and company-role assignments.
 
+Super Admin attaches pages to company roles here. A role that includes the Users page is the warehouse supervisor role. The staff role must not include that page. A supervisor then checks dashboards for one staff member on the Users page, as described in [Company supervisors and staff](COMPANY_STAFF.md). This screen still edits the shared role only.
+
 ## Creation
 
 ```json

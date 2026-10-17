@@ -1,3 +1,4 @@
+import type { AccessScope } from "@/lib/auth/access-scope";
 import type { CompanyOption } from "./companies";
 import type { AssignableRole, RoleOption } from "./roles";
 
@@ -7,6 +8,13 @@ export type { AssignableRole, RoleOption } from "./roles";
 export interface UserCompany extends CompanyOption {
   // Roles assigned to the user's membership in this company.
   roles: RoleOption[];
+  // role_pages uses every page on those roles. assigned_pages uses pages.
+  page_grant_mode: "role_pages" | "assigned_pages";
+  // Dashboards checked for this membership when page_grant_mode is assigned_pages.
+  pages: string[];
+  // Actions checked for this membership when page_grant_mode is assigned_pages.
+  permissions: string[];
+  permission_scopes: Partial<Record<string, AccessScope>>;
 }
 
 export interface User {
@@ -59,6 +67,16 @@ export interface CreateUserInput {
   company_id?: string;
   // Optional role UUIDs for the initial company membership.
   role_ids?: string[];
+  // Role name typed by a company supervisor. The server builds a unique slug from it.
+  role_name?: string;
+  // Existing company role selected by a supervisor instead of a new role name.
+  role_id?: string;
+  // Dashboards checked for a staff membership. Omit for a full role page grant.
+  page_keys?: string[];
+  // Action keys checked for a staff membership.
+  permissions?: string[];
+  // Scope for each checked action except Create.
+  permission_scopes?: Partial<Record<string, AccessScope>>;
 }
 
 export interface UpdateUserInput {
@@ -77,6 +95,11 @@ export interface AssignUserInput {
   company_id: string;
   // Role UUIDs to assign to the company membership.
   role_ids: string[];
+  // Dashboards to save on the membership. Omit to grant every page on the roles.
+  page_keys?: string[];
+  // Actions to save on the membership.
+  permissions?: string[];
+  permission_scopes?: Partial<Record<string, AccessScope>>;
 }
 
 export interface CreateUserResponse {

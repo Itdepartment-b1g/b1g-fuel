@@ -244,7 +244,12 @@ export const assignUser = createAsyncThunk<
     const { user } = await requestUser<CreateUserResponse>(`/api/users/${input.id}/assignments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company_id: input.company_id, role_ids: input.role_ids }),
+      body: JSON.stringify({
+        company_id: input.company_id,
+        role_ids: input.role_ids,
+        ...(input.page_keys !== undefined ? { page_keys: input.page_keys } : {}),
+        ...(input.permissions !== undefined ? { permissions: input.permissions, permission_scopes: input.permission_scopes ?? {} } : {}),
+      }),
     });
     return user;
   } catch (error) {

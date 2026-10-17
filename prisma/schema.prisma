@@ -25,6 +25,11 @@ enum role_scope {
   company
 }
 
+enum page_grant_mode {
+  role_pages
+  assigned_pages
+}
+
 enum location_type {
   warehouse
   hub
@@ -93,18 +98,40 @@ model measurement_unit {
 }
 
 model user_company {
-  id          String              @id @default(uuid()) @db.Uuid
-  user_id     String              @db.Uuid
-  company_id  String              @db.Uuid
-  assigned_at DateTime            @default(now()) @db.Timestamptz(6)
-  created_at  DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime            @updatedAt @db.Timestamptz(6)
-  user        user                @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  company     company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  roles       user_company_role[]
+  id               String              @id @default(uuid()) @db.Uuid
+  user_id          String              @db.Uuid
+  company_id       String              @db.Uuid
+  page_grant_mode  page_grant_mode     @default(role_pages)
+  assigned_at      DateTime            @default(now()) @db.Timestamptz(6)
+  created_at       DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime            @updatedAt @db.Timestamptz(6)
+  user             user                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  company          company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  roles            user_company_role[]
+  pages            user_company_page[]
+  permissions      user_company_permission[]
 
   @@unique([user_id, company_id])
   @@index([company_id])
+}
+
+// Checked dashboards for one membership. Used only when page_grant_mode is assigned_pages.
+model user_company_page {
+  user_company_id String       @db.Uuid
+  page_key        String       @db.VarChar(120)
+  membership      user_company @relation(fields: [user_company_id], references: [id], onDelete: Cascade)
+
+  @@id([user_company_id, page_key])
+}
+
+// Actions chosen for one staff membership. Used when page_grant_mode is assigned_pages.
+model user_company_permission {
+  user_company_id String       @db.Uuid
+  permission_key  String       @db.VarChar(120)
+  access_scope    String       @default("company") @db.VarChar(16)
+  membership      user_company @relation(fields: [user_company_id], references: [id], onDelete: Cascade)
+
+  @@id([user_company_id, permission_key])
 }
 
 model roles {

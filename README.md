@@ -81,6 +81,7 @@ Prisma manages queries, transactions, seeding, and migrations using the original
 - [Authentication and access control](docs/SECURITY.md)
 - [Authentication Redux requests](docs/AUTH_REDUX.md)
 - [Users, roles, and company assignments](docs/DATA_MODEL.md)
+- [Company supervisors and staff](docs/COMPANY_STAFF.md)
 - [Roles UI, API and Redux](docs/ROLES.md)
 - [Companies UI, API and Redux](docs/COMPANIES.md)
 - [Google login setup and production checklist](docs/GOOGLE_AUTH.md)

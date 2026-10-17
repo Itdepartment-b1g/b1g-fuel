@@ -16,8 +16,11 @@ export async function proxy(request: NextRequest) {
     } else if (session.ok) {
       const adminPage = ["/users", "/roles", "/companies"].some((path) => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`));
       if (adminPage) {
-        const data = await session.json();
-        response = Array.isArray(data.global_roles) && data.global_roles.includes("super_admin")
+        const data = await session.json() as { global_roles?: unknown; access?: { pages?: unknown } };
+        const superAdmin = Array.isArray(data.global_roles) && data.global_roles.includes("super_admin");
+        const pages = Array.isArray(data.access?.pages) ? data.access.pages : [];
+        const usersPage = request.nextUrl.pathname === "/users" || request.nextUrl.pathname.startsWith("/users/");
+        response = superAdmin || (usersPage && pages.includes("users"))
           ? NextResponse.next()
           : NextResponse.redirect(new URL("/dashboard", request.url));
       } else response = NextResponse.next();

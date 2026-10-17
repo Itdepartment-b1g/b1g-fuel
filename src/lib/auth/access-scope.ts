@@ -1,10 +1,17 @@
 export const ACCESS_SCOPES = ["all", "company", "own"] as const;
 export type AccessScope = (typeof ACCESS_SCOPES)[number];
+export const STAFF_ACCESS_SCOPES = ["company", "own"] as const;
 export const ACCESS_SCOPE_LABELS: Record<AccessScope, string> = {
   all: "All",
   company: "My company",
   own: "Only me",
 };
+const SCOPE_RANK: Record<AccessScope, number> = { own: 0, company: 1, all: 2 };
+
+/** Scopes no broader than the one the current user already has. */
+export function scopesWithin(scope: AccessScope) {
+  return ACCESS_SCOPES.filter((item) => SCOPE_RANK[item] <= SCOPE_RANK[scope]);
+}
 export type AccessGrant = {
   permission: string;
   scope: AccessScope;

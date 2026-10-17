@@ -120,7 +120,9 @@ export default function UsersList() {
             Users
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create accounts, then assign a company and roles.
+            {access?.superAdmin
+              ? "Create accounts, then assign a company and roles."
+              : "Create staff in your company and choose the dashboards they can open."}
           </p>
         </div>
         {canPerform(access, "users", "add") && <CreateUserDialog

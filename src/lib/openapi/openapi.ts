@@ -109,7 +109,41 @@ export const openapi = {
             uniqueItems: true,
             items: { type: "string", format: "uuid" },
             description:
-              "Optional company-scoped roles; defaults to an empty array. Nonempty role_ids require company_id and super-admin access.",
+              "Company-scoped roles for Super Admin. A company supervisor sends role_name or role_id instead.",
+          },
+          role_name: {
+            type: "string",
+            minLength: 1,
+            maxLength: 100,
+            example: "Warehouse Staff",
+            description:
+              "New role name from a company supervisor. The server saves a unique slug such as warehouse_staff. Send role_id instead to reuse a role this company already has. Super Admin omits this field.",
+          },
+          role_id: {
+            type: "string",
+            format: "uuid",
+            description:
+              "Existing company role selected by a supervisor. Omit when sending role_name.",
+          },
+          page_keys: {
+            type: "array",
+            maxItems: 50,
+            uniqueItems: true,
+            items: { type: "string" },
+            description:
+              "Dashboards checked for this staff membership. Required for a company supervisor, who cannot include users. Omit for Super Admin so the membership uses every page on the role.",
+          },
+          permissions: {
+            type: "array",
+            maxItems: 200,
+            uniqueItems: true,
+            items: { type: "string" },
+            description: "View, edit, add, and delete keys checked for this staff member. Required for a company supervisor. Each key must be one the supervisor already has, and must belong to a checked dashboard.",
+          },
+          permission_scopes: {
+            type: "object",
+            additionalProperties: { type: "string", enum: ["all", "company", "own"] },
+            description: "All, My company, or Only me for each checked action except Create. A supervisor cannot choose a scope broader than their own.",
           },
         },
       },
@@ -125,6 +159,25 @@ export const openapi = {
             maxItems: 50,
             uniqueItems: true,
             items: { type: "string", format: "uuid" },
+          },
+          page_keys: {
+            type: "array",
+            maxItems: 50,
+            uniqueItems: true,
+            items: { type: "string" },
+            description:
+              "Required when a company supervisor updates the membership. Saving switches that membership to assigned pages. Super Admin omits this field and restores every page on the selected roles.",
+          },
+          permissions: {
+            type: "array",
+            maxItems: 200,
+            uniqueItems: true,
+            items: { type: "string" },
+            description: "Actions to save on the membership. Required for a company supervisor.",
+          },
+          permission_scopes: {
+            type: "object",
+            additionalProperties: { type: "string", enum: ["all", "company", "own"] },
           },
         },
       },
@@ -143,10 +196,11 @@ export const openapi = {
           { $ref: "#/components/schemas/RoleOption" },
           {
             type: "object",
-            required: ["pages", "permissions", "permission_scopes"],
+            required: ["pages", "permissions", "permission_scopes", "created_at"],
             properties: {
               pages: { type: "array", items: { type: "string" } },
               permissions: { type: "array", items: { type: "string" } },
+              created_at: { type: "string", format: "date-time" },
               permission_scopes: {
                 type: "object",
                 additionalProperties: {
@@ -204,12 +258,14 @@ export const openapi = {
                 { $ref: "#/components/schemas/CompanyOption" },
                 {
                   type: "object",
-                  required: ["roles"],
+                  required: ["roles", "page_grant_mode", "pages"],
                   properties: {
                     roles: {
                       type: "array",
                       items: { $ref: "#/components/schemas/RoleOption" },
                     },
+                    page_grant_mode: { type: "string", enum: ["role_pages", "assigned_pages"] },
+                    pages: { type: "array", items: { type: "string" } },
                   },
                 },
               ],

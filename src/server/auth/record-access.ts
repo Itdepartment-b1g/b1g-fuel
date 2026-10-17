@@ -1,10 +1,11 @@
 import type { RequestHandler } from "express";
 import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
-import type {
-  AccessScope,
-  AccessGrant,
-  RecordAccess,
+import {
+  scopesWithin,
+  type AccessScope,
+  type AccessGrant,
+  type RecordAccess,
 } from "@/lib/auth/access-scope";
 export type { RecordAccess } from "@/lib/auth/access-scope";
 
@@ -61,6 +62,17 @@ function is_shared(resource: Resource) {
   return (SHARED_RESOURCES as readonly Resource[]).includes(resource);
 }
 
+/** Pages from one company role. role_pages uses the role list. assigned_pages keeps the overlap with that membership. */
+export function membership_page_keys(
+  mode: "role_pages" | "assigned_pages",
+  rolePages: string[],
+  assignedPages: string[],
+) {
+  if (mode !== "assigned_pages") return rolePages;
+  const assigned = new Set(assignedPages);
+  return rolePages.filter((key) => assigned.has(key));
+}
+
 export async function get_record_access(
   userId: string,
   client: DatabaseExecutor = getDatabase(),
@@ -78,6 +90,9 @@ export async function get_record_access(
       user_companies: {
         select: {
           company_id: true,
+          page_grant_mode: true,
+          pages: { select: { page_key: true } },
+          permissions: { select: { permission_key: true, access_scope: true } },
           roles: { select: { role: { select: roleSelect } } },
         },
       },
@@ -87,29 +102,41 @@ export async function get_record_access(
     ...(profile?.user_roles ?? []).map(({ role }) => ({
       role,
       companyId: null as string | null,
+      pageKeys: role.pages.map((page) => page.page_key),
+      permissionScopes: null as Map<string, string> | null,
     })),
     ...(profile?.user_companies ?? []).flatMap((membership) =>
       membership.roles.map(({ role }) => ({
         role,
         companyId: membership.company_id,
+        pageKeys: membership_page_keys(
+          membership.page_grant_mode,
+          role.pages.map((page) => page.page_key),
+          membership.pages.map((page) => page.page_key),
+        ),
+        permissionScopes: membership.page_grant_mode === "assigned_pages"
+          ? new Map(membership.permissions.map((permission) => [permission.permission_key, permission.access_scope]))
+          : null as Map<string, string> | null,
       })),
     ),
   ];
   const pages = new Set<string>();
   const grants: AccessGrant[] = [];
-  for (const { role, companyId } of assignments) {
-    for (const page of role.pages) pages.add(page.page_key);
-    for (const permission of role.permissions) {
-      if (
-        !role.pages.some(
-          (page) => page.page_key === permission.permission_key.split(".")[0],
-        )
-      )
-        continue;
+  for (const assignment of assignments) {
+    const pageKeys = assignment.pageKeys;
+    for (const pageKey of pageKeys) pages.add(pageKey);
+    for (const permission of assignment.role.permissions) {
+      if (!pageKeys.includes(permission.permission_key.split(".")[0])) continue;
+      const chosen = assignment.permissionScopes
+        ? assignment.permissionScopes.get(permission.permission_key)
+        : permission.access_scope;
+      if (assignment.permissionScopes && chosen === undefined) continue;
+      const roleScope = permission.access_scope as AccessScope;
+      const scope = chosen && scopesWithin(roleScope).includes(chosen as AccessScope) ? chosen as AccessScope : roleScope;
       grants.push({
         permission: permission.permission_key,
-        scope: permission.access_scope as AccessScope,
-        companyId: permission.access_scope === "all" ? null : companyId,
+        scope,
+        companyId: scope === "all" ? null : assignment.companyId,
       });
     }
   }

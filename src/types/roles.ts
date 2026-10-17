@@ -21,6 +21,8 @@ export interface AssignableRole extends RoleOption {
   permissions: string[];
   // Optional access scope for each permission.
   permission_scopes: Partial<Record<string, AccessScope>>;
+  // ISO date string when the role was created.
+  created_at: string;
 }
 
 export interface Role {
