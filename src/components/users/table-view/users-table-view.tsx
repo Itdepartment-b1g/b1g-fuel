@@ -12,6 +12,7 @@ import { paginateItems } from "@/utils/pagination";
 import { sortTableRows } from "@/utils/table-views";
 import type { TableSort } from "@/types/table-views";
 import type { UserSummary } from "@/types/users";
+import { formatDate } from "@/utils/date";
 export function UserAssignments({ user }: { user: UserSummary }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -123,12 +124,7 @@ const columns: TableColumn<UserSummary>[] = [
     value: (user) => new Date(user.created_at),
     cell: (user) => (
       <time dateTime={user.created_at} className="text-muted-foreground">
-        {new Date(user.created_at).toLocaleDateString("en-PH", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          timeZone: "Asia/Manila",
-        })}
+        {formatDate(user.created_at)}
       </time>
     ),
   },

@@ -6,7 +6,6 @@ import { ClipboardList, Plus } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/common/delete-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -18,15 +17,15 @@ import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   clearPurchaseOrderMutation,
   closePurchaseOrder,
-  deletePurchaseOrder,
   getPurchaseOrderFilterOption,
   listPurchaseOrder,
   selectPurchaseOrder,
 } from "@/lib/store/purchase-orders-slice";
 import type { PurchaseOrderSummary } from "@/types/purchase-orders";
-import { PurchaseOrderDialog } from "./dialog/purchase-order-dialog";
-import { PurchaseOrderTimelineDialog } from "./dialog/purchase-order-timeline-dialog";
-import { ReceiveOrderDialog } from "./dialog/receive-order-dialog";
+import { CreatePurchaseOrderDialog } from "./dialog/create-purchase-order-dialog";
+import { EditPurchaseOrderDialog } from "./dialog/edit-purchase-order-dialog";
+import { ReceivePurchaseOrderDialog } from "./dialog/receive-purchase-order-dialog";
+import { TimelinePurchaseOrderDialog } from "./dialog/timeline-purchase-order-dialog";
 import { PurchaseOrdersTableView } from "./table-view/purchase-orders-table-view";
 
 export default function ListPurchaseOrders() {
@@ -53,10 +52,10 @@ export default function ListPurchaseOrders() {
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [revision, setRevision] = useState(0);
-  const [editor, setEditor] = useState<{ id: string | null } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [receiving, setReceiving] = useState<PurchaseOrderSummary | null>(null);
   const [timelineId, setTimelineId] = useState<string | null>(null);
-  const [removing, setRemoving] = useState<PurchaseOrderSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
   const pagination = paginationFromApi({ page, page_size: pageSize, total });
@@ -119,7 +118,7 @@ export default function ListPurchaseOrders() {
           <Button
             onClick={() => {
               dispatch(clearPurchaseOrderMutation());
-              setEditor({ id: null });
+              setCreating(true);
             }}
           >
             <Plus className="size-4" aria-hidden="true" />
@@ -163,7 +162,7 @@ export default function ListPurchaseOrders() {
           }}
           onEdit={(row) => {
             dispatch(clearPurchaseOrderMutation());
-            setEditor({ id: row.id });
+            setEditingId(row.id);
           }}
           onCloseOrder={(row) => {
             if (pending) return;
@@ -179,7 +178,6 @@ export default function ListPurchaseOrders() {
           }}
           onReceive={setReceiving}
           onTimeline={(row) => setTimelineId(row.id)}
-          onDelete={setRemoving}
           disabled={pending}
         />
       </div>
@@ -196,7 +194,7 @@ export default function ListPurchaseOrders() {
         limitOptions={PAGE_SIZE_OPTIONS}
       />
       {receiving && (
-        <ReceiveOrderDialog
+        <ReceivePurchaseOrderDialog
           order={receiving}
           onClose={() => setReceiving(null)}
           onSaved={() => {
@@ -206,42 +204,28 @@ export default function ListPurchaseOrders() {
         />
       )}
       {timelineId && (
-        <PurchaseOrderTimelineDialog purchaseOrderId={timelineId} onClose={() => setTimelineId(null)} />
+        <TimelinePurchaseOrderDialog purchaseOrderId={timelineId} onClose={() => setTimelineId(null)} />
       )}
-      {editor && (
-        <PurchaseOrderDialog
-          purchaseOrderId={editor.id}
-          onClose={() => setEditor(null)}
+      {creating && (
+        <CreatePurchaseOrderDialog
+          onClose={() => setCreating(false)}
           onSaved={() => {
-            if (!editor.id) setPage(1);
-            setEditor(null);
+            setPage(1);
+            setCreating(false);
             setRevision((value) => value + 1);
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        title="Delete purchase order?"
-        description="Delete this draft purchase order? This cannot be undone."
-        pending={pending}
-        error={mutationError?.message}
-        onConfirm={() => {
-          if (!removing || pending) return;
-          void (async () => {
-            try {
-              await dispatch(deletePurchaseOrder(removing.id)).unwrap();
-              toast.success("Purchase order was deleted.");
-              setRemoving(null);
-              setRevision((value) => value + 1);
-            } catch (error) {
-              toast.error(toastErrorMessage(error, "Could not delete the purchase order."));
-            }
-          })();
-        }}
-      />
+      {editingId && (
+        <EditPurchaseOrderDialog
+          purchaseOrderId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

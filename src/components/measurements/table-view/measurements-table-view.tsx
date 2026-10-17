@@ -6,6 +6,7 @@ import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { MeasurementSummary } from "@/types/measurements";
+import { formatDate } from "@/utils/date";
 
 export type MeasurementActionProps = {
   onEdit: (measurement: MeasurementSummary) => void;
@@ -123,12 +124,7 @@ export function MeasurementsTableView(
           freezable: true,
           cell: (measurement) => (
             <time dateTime={measurement.created_at}>
-              {new Date(measurement.created_at).toLocaleDateString("en-PH", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                timeZone: "Asia/Manila",
-              })}
+              {formatDate(measurement.created_at)}
             </time>
           ),
         },

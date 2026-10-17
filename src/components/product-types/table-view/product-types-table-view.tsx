@@ -6,6 +6,7 @@ import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { ProductTypeSummary } from "@/types/product-types";
+import { formatDate } from "@/utils/date";
 
 export function ProductTypesTableView(props: {
   productTypes: ProductTypeSummary[];
@@ -57,13 +58,7 @@ export function ProductTypesTableView(props: {
           header: "Created",
           sortable: true,
           freezable: true,
-          cell: (row) =>
-            new Date(row.created_at).toLocaleDateString("en-PH", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "Asia/Manila",
-            }),
+          cell: (row) => formatDate(row.created_at),
         },
       ]}
       actions={(row) => [

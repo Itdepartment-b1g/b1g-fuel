@@ -26,7 +26,7 @@ function outstanding(ordered: string, received: string) {
   return left > 0 ? String(left) : "";
 }
 
-export function ReceiveOrderDialog({
+export function ReceivePurchaseOrderDialog({
   order,
   onClose,
   onSaved,

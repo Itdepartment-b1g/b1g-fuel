@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Building2, ChevronDown } from "lucide-react";
-import { CompanyMembers } from "../company-members";
+import { CompanyMembers } from "../table-view/company-members";
 import type { CompanySummary } from "@/types/companies";
 import {
   CompanyActions,
-  CompanyDate,
   type CompanyActionProps,
 } from "../table-view/companies-table-view";
+import { formatDate } from "@/utils/date";
 
 export function CompaniesCards({
   companies,
@@ -39,7 +39,7 @@ export function CompaniesCards({
             </p>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            Created <CompanyDate value={company.created_at} />
+            Created {formatDate(company.created_at)}
           </p>
           <button
             type="button"

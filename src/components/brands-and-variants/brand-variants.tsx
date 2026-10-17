@@ -8,15 +8,7 @@ import { Button } from "@/components/ui/button";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { BrandSummary } from "@/types/brands";
 import type { VariantSummary, VariantsPage } from "@/types/variants";
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "Asia/Manila",
-  });
-}
+import { formatDate } from "@/utils/date";
 
 export function BrandVariants({
   brand,

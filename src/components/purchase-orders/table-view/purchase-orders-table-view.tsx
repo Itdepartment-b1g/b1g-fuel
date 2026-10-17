@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { CircleX, History, PackageCheck, Pencil, Trash2 } from "lucide-react";
+import { CircleX, History, PackageCheck, Pencil } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { Pagination } from "@/components/common/pagination";
 import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { SortValue, TableSort } from "@/types/table-views";
 import { PURCHASE_ORDER_STATUS_LABEL, type PaymentMethod, type PurchaseOrderLine, type PurchaseOrderSummary } from "@/types/purchase-orders";
+import { formatDate, formatDateTime } from "@/utils/date";
 import { PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import { sortTableRows } from "@/utils/table-views";
 
@@ -24,15 +25,7 @@ function qty(value: string) {
 }
 
 function when(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "Asia/Manila",
-  });
+  return formatDateTime(value);
 }
 
 function fullyReceivedAt(order: PurchaseOrderSummary) {
@@ -187,7 +180,6 @@ export function PurchaseOrdersTableView(props: {
   onCloseOrder: (row: PurchaseOrderSummary) => void;
   onReceive: (row: PurchaseOrderSummary) => void;
   onTimeline: (row: PurchaseOrderSummary) => void;
-  onDelete: (row: PurchaseOrderSummary) => void;
   disabled: boolean;
 }) {
   const access = useRecordAccess();
@@ -255,13 +247,7 @@ export function PurchaseOrdersTableView(props: {
           id: "created_at",
           header: "Created",
           sortable: true,
-          cell: (row) =>
-            new Date(row.created_at).toLocaleDateString("en-PH", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              timeZone: "Asia/Manila",
-            }),
+          cell: (row) => formatDate(row.created_at),
         },
       ]}
       actions={(row) => [
@@ -298,15 +284,6 @@ export function PurchaseOrdersTableView(props: {
           icon: <History />,
           disabled: !canPerform(access, "purchaseOrders", "view", row),
           onSelect: props.onTimeline,
-        },
-        {
-          id: "delete",
-          label: "Delete",
-          icon: <Trash2 />,
-          destructive: true,
-          disabled:
-            row.status !== "draft" || !canPerform(access, "purchaseOrders", "delete", row),
-          onSelect: props.onDelete,
         },
       ]}
     />

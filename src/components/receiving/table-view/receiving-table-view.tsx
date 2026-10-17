@@ -6,6 +6,7 @@ import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { ReceivingSummary } from "@/types/receiving";
+import { formatDateTime } from "@/utils/date";
 
 const STATUS_LABEL = { draft: "Draft", posted: "Posted" };
 
@@ -73,10 +74,7 @@ export function ReceivingTableView(props: {
           id: "posted_at",
           header: "Posted",
           sortable: true,
-          cell: (row) =>
-            row.posted_at
-              ? new Date(row.posted_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })
-              : "—",
+          cell: (row) => formatDateTime(row.posted_at),
         },
       ]}
       actions={(row) => [

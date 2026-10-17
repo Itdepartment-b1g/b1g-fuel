@@ -4,20 +4,23 @@ import type { ManagementFilterOptions } from "@/types/management-filters";
 import type { TableSort } from "@/types/table-views";
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { CompanySummary, CompaniesPage, CompanyResponse, CreateCompanyInput, UpdateCompanyInput, DeleteCompanyResponse } from "@/types/companies";
+import type { CompanySummary, CompaniesPage, CompanyMember, CompanyMembersPage, CompanyResponse, CreateCompanyInput, UpdateCompanyInput, DeleteCompanyResponse } from "@/types/companies";
 import { DEFAULT_PAGE_SIZE } from "@/utils/pagination";
 
 export type CompanyFailure = { status: number; message: string };
 type Status = "idle" | "loading" | "succeeded" | "failed";
 export type CompaniesQuery = { page?: number; page_size?: number; search?: string; sort_by?: string; sort_order?: TableSort["direction"]; filters?: QuickFilterState };
+export type CompanyMembersQuery = { id: string; page?: number; page_size?: number };
 export type CompaniesState = {
   filterOptions: ManagementFilterOptions; filterOptionsStatus: Status; filterOptionsError: CompanyFailure | null; filterOptionsRequestId: string | null;
   companies: CompanySummary[]; total: number; page: number; page_size: number; selectedCompany: CompanySummary | null;
+  members: CompanyMember[]; membersTotal: number; membersPage: number; membersPageSize: number; membersCompanyId: string | null;
+  membersStatus: Status; membersError: CompanyFailure | null; membersRequestId: string | null;
   listStatus: Status; detailStatus: Status; mutationStatus: Status; mutationOperation: "create" | "update" | "delete" | null;
   listError: CompanyFailure | null; detailError: CompanyFailure | null; mutationError: CompanyFailure | null;
   listRequestId: string | null; detailRequestId: string | null; mutationRequestId: string | null;
 };
-const initialState: CompaniesState = { filterOptions: COMPANY_FILTER_OPTIONS, filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null, companies: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE, selectedCompany: null, listStatus: "idle", detailStatus: "idle", mutationStatus: "idle", mutationOperation: null, listError: null, detailError: null, mutationError: null, listRequestId: null, detailRequestId: null, mutationRequestId: null };
+const initialState: CompaniesState = { filterOptions: COMPANY_FILTER_OPTIONS, filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null, companies: [], total: 0, page: 1, page_size: DEFAULT_PAGE_SIZE, selectedCompany: null, members: [], membersTotal: 0, membersPage: 1, membersPageSize: DEFAULT_PAGE_SIZE, membersCompanyId: null, membersStatus: "idle", membersError: null, membersRequestId: null, listStatus: "idle", detailStatus: "idle", mutationStatus: "idle", mutationOperation: null, listError: null, detailError: null, mutationError: null, listRequestId: null, detailRequestId: null, mutationRequestId: null };
 function getCompanyError(error: unknown): CompanyFailure {
   if (error && typeof error === "object" && "status" in error && "message" in error && typeof error.status === "number" && typeof error.message === "string") return { status: error.status, message: error.message };
   return { status: 0, message: "Unable to reach the API. Please try again." };
@@ -37,6 +40,25 @@ export const listCompany = createAsyncThunk<CompaniesPage, CompaniesQuery | unde
 export const getCompanyFilterOption = createAsyncThunk<ManagementFilterOptions, void, Config>("companies/filter-options", async (_, { signal, rejectWithValue }) => {
   try { return await requestCompany<ManagementFilterOptions>("/api/companies/filter-options", { signal }); }
   catch (error) { return rejectWithValue(getCompanyError(error)); }
+});
+export const listCompanyMembers = createAsyncThunk<
+  CompanyMembersPage,
+  CompanyMembersQuery,
+  Config
+>("companies/members", async (query, { signal, rejectWithValue }) => {
+  const params = new URLSearchParams({
+    id: query.id,
+    page: String(query.page ?? 1),
+    page_size: String(query.page_size ?? DEFAULT_PAGE_SIZE),
+  });
+  try {
+    return await requestCompany<CompanyMembersPage>(
+      `/api/companies/members?${params}`,
+      { signal },
+    );
+  } catch (error) {
+    return rejectWithValue(getCompanyError(error));
+  }
 });
 export const editCompany = createAsyncThunk<CompanyResponse, string, Config>("companies/edit", async (id, { signal, rejectWithValue }) => {
   try { return await requestCompany<CompanyResponse>(`/api/companies?id=${encodeURIComponent(id)}`, { signal }); } catch (error) { return rejectWithValue(getCompanyError(error)); }
@@ -64,6 +86,34 @@ const companiesSlice = createSlice({
       .addCase(listCompany.pending, (state, action) => { state.listStatus = "loading"; state.listError = null; state.listRequestId = action.meta.requestId; })
       .addCase(listCompany.fulfilled, (state, action) => { if (state.listRequestId !== action.meta.requestId) return; Object.assign(state, action.payload); state.listStatus = "succeeded"; state.listRequestId = null; })
       .addCase(listCompany.rejected, (state, action) => { if (state.listRequestId !== action.meta.requestId) return; state.listRequestId = null; state.listStatus = action.meta.aborted ? "idle" : "failed"; state.listError = action.meta.aborted ? null : action.payload ?? getCompanyError(action.error); })
+      .addCase(listCompanyMembers.pending, (state, action) => {
+        state.membersStatus = "loading";
+        state.membersError = null;
+        state.membersRequestId = action.meta.requestId;
+        if (state.membersCompanyId !== action.meta.arg.id) {
+          state.members = [];
+          state.membersTotal = 0;
+          state.membersCompanyId = action.meta.arg.id;
+        }
+      })
+      .addCase(listCompanyMembers.fulfilled, (state, action) => {
+        if (state.membersRequestId !== action.meta.requestId) return;
+        state.members = action.payload.members;
+        state.membersTotal = action.payload.total;
+        state.membersPage = action.payload.page;
+        state.membersPageSize = action.payload.page_size;
+        state.membersCompanyId = action.meta.arg.id;
+        state.membersStatus = "succeeded";
+        state.membersRequestId = null;
+      })
+      .addCase(listCompanyMembers.rejected, (state, action) => {
+        if (state.membersRequestId !== action.meta.requestId) return;
+        state.membersRequestId = null;
+        state.membersStatus = action.meta.aborted ? "idle" : "failed";
+        state.membersError = action.meta.aborted
+          ? null
+          : (action.payload ?? getCompanyError(action.error));
+      })
       .addCase(editCompany.pending, (state, action) => { state.detailStatus = "loading"; state.detailError = null; state.selectedCompany = null; state.detailRequestId = action.meta.requestId; })
       .addCase(editCompany.fulfilled, (state, action) => { if (state.detailRequestId !== action.meta.requestId) return; state.detailStatus = "succeeded"; state.selectedCompany = action.payload.company; state.detailRequestId = null; })
       .addCase(editCompany.rejected, (state, action) => { if (state.detailRequestId !== action.meta.requestId) return; state.detailRequestId = null; state.detailStatus = action.meta.aborted ? "idle" : "failed"; state.detailError = action.meta.aborted ? null : action.payload ?? getCompanyError(action.error); })

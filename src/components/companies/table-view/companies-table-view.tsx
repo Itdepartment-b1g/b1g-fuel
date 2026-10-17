@@ -5,11 +5,16 @@ import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import { ChevronDown, Columns3, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TableView, type TableColumn } from "@/components/common/table-view";
+import { TableView } from "@/components/common/table-view";
 import { TableMenu } from "@/components/common/table-menu";
 import type { TableSort } from "@/types/table-views";
 import type { CompanySummary } from "@/types/companies";
-import { CompanyMembers } from "../company-members";
+import { CompanyMembers } from "./company-members";
+import {
+  COMPANY_COLUMNS,
+  TOGGLE_COLUMNS,
+  type ToggleColumnId,
+} from "./table-header";
 
 export type CompanyActionProps = {
   onEdit: (company: CompanySummary) => void;
@@ -23,15 +28,6 @@ type Props = CompanyActionProps & {
   sorting?: TableSort | null;
   onSortingChange?: (sorting: TableSort | null) => void;
 };
-
-const TOGGLE_COLUMNS = [
-  { id: "member_count", label: "Members" },
-  { id: "is_warehouse", label: "Warehouse" },
-  { id: "warehouse_name", label: "Warehouse name" },
-  { id: "warehouse_address", label: "Warehouse address" },
-] as const;
-
-type ToggleColumnId = (typeof TOGGLE_COLUMNS)[number]["id"];
 
 export function CompanyActions({
   company,
@@ -72,23 +68,6 @@ export function CompanyActions({
     </div>
   );
 }
-export function CompanyDate({ value }: { value: string }) {
-  return (
-    <time dateTime={value}>
-      {new Date(value).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "Asia/Manila",
-      })}
-    </time>
-  );
-}
-function countLabel(count: number, singular: string, plural: string) {
-  if (count <= 0) return "—";
-  return `${count} ${count === 1 ? singular : plural}`;
-}
-
 export function CompaniesTableView(props: Props) {
   const access = useRecordAccess();
   const [visible, setVisible] = useState<Record<ToggleColumnId, boolean>>({
@@ -97,60 +76,14 @@ export function CompaniesTableView(props: Props) {
     warehouse_name: true,
     warehouse_address: true,
   });
-  const columns = useMemo(() => {
-    const all: TableColumn<CompanySummary>[] = [
-      {
-        id: "name",
-        header: "Company",
-        className: "font-semibold",
-        sortable: true,
-        freezable: true,
-        value: (company) => company.name,
-        cell: (company) => company.name,
-      },
-      {
-        id: "member_count",
-        header: "Members",
-        freezable: true,
-        value: (company) => company.member_count,
-        cell: (company) =>
-          countLabel(company.member_count, "member", "members"),
-      },
-      {
-        id: "is_warehouse",
-        header: "Warehouse",
-        freezable: true,
-        value: (company) => (company.is_warehouse ? "Yes" : "No"),
-        cell: (company) => (company.is_warehouse ? "Yes" : "No"),
-      },
-      {
-        id: "warehouse_name",
-        header: "Warehouse name",
-        freezable: true,
-        value: (company) => company.warehouse_name ?? "",
-        cell: (company) => company.warehouse_name || "—",
-      },
-      {
-        id: "warehouse_address",
-        header: "Warehouse address",
-        freezable: true,
-        value: (company) => company.warehouse_address ?? "",
-        cell: (company) => company.warehouse_address || "—",
-      },
-      {
-        id: "created_at",
-        header: "Created",
-        sortable: true,
-        freezable: true,
-        cell: (company) => <CompanyDate value={company.created_at} />,
-      },
-    ];
-    return all.filter((column) => {
-      if (column.id in visible)
-        return visible[column.id as ToggleColumnId];
-      return true;
-    });
-  }, [visible]);
+  const columns = useMemo(
+    () =>
+      COMPANY_COLUMNS.filter((column) => {
+        if (column.id in visible) return visible[column.id as ToggleColumnId];
+        return true;
+      }),
+    [visible],
+  );
   return (
     <div>
       <div className="flex justify-end border-b px-3 py-2">

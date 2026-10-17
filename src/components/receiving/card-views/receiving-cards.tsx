@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { ReceivingSummary } from "@/types/receiving";
+import { formatDateTime } from "@/utils/date";
 
 const STATUS_LABEL = { draft: "Draft", posted: "Posted" };
 
@@ -44,9 +45,7 @@ export function ReceivingCards({
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">Posted</dt>
               <dd>
-                {receipt.posted_at
-                  ? new Date(receipt.posted_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })
-                  : "—"}
+                {formatDateTime(receipt.posted_at)}
               </dd>
             </div>
           </dl>

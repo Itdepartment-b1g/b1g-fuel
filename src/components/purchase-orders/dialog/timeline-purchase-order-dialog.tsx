@@ -9,6 +9,7 @@ import { Loading } from "@/components/common/loading";
 import { Pagination } from "@/components/common/pagination";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editPurchaseOrder, selectPurchaseOrder } from "@/lib/store/purchase-orders-slice";
+import { formatDateTime } from "@/utils/date";
 import { paginationFromApi } from "@/utils/pagination";
 import {
   PURCHASE_ORDER_STATUS_LABEL,
@@ -58,14 +59,7 @@ function eventTitle(event: PurchaseOrderEvent) {
 }
 
 function when(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "Asia/Manila",
-  });
+  return formatDateTime(value);
 }
 
 function qtyLabel(value: number) {
@@ -232,7 +226,7 @@ function LineTable({ title, rows, view }: { title: string; rows: TimelineRow[]; 
   );
 }
 
-export function PurchaseOrderTimelineDialog({
+export function TimelinePurchaseOrderDialog({
   purchaseOrderId,
   onClose,
 }: {

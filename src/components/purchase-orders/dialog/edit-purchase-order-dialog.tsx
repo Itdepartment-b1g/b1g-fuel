@@ -1,16 +1,25 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRecordAccess } from "@/components/providers/access-provider";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loading } from "@/components/common/loading";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   closePurchaseOrder,
   confirmPurchaseOrder,
-  createPurchaseOrder,
+  editPurchaseOrder,
+  getPurchaseOrderOption,
   selectPurchaseOrder,
   updatePurchaseOrder,
 } from "@/lib/store/purchase-orders-slice";
@@ -45,32 +54,105 @@ function forCompany<T extends { company_id: string | null }>(rows: T[], companyI
   return rows.filter((row) => !row.company_id || row.company_id === companyId);
 }
 
-export function PurchaseOrderForm({
+export function EditPurchaseOrderDialog({
+  purchaseOrderId,
+  onClose,
+  onSaved,
+}: {
+  purchaseOrderId: string;
+  onClose: () => void;
+  onSaved: (order: PurchaseOrderSummary) => void;
+}) {
+  const dispatch = useAppDispatch();
+  const router = useRouter();
+  const {
+    selectedPurchaseOrder,
+    detailStatus,
+    detailError,
+    optionsStatus,
+    optionsError,
+    mutationStatus,
+    mutationError,
+  } = useAppSelector(selectPurchaseOrder);
+  const pending = mutationStatus === "loading";
+  const order =
+    selectedPurchaseOrder?.id === purchaseOrderId ? selectedPurchaseOrder : null;
+  const ready = optionsStatus === "succeeded" && detailStatus === "succeeded" && order;
+  const error = optionsError ?? detailError;
+
+  useEffect(() => {
+    const options = dispatch(getPurchaseOrderOption());
+    const detail = dispatch(editPurchaseOrder(purchaseOrderId));
+    return () => {
+      options.abort();
+      detail.abort();
+    };
+  }, [dispatch, purchaseOrderId]);
+
+  useEffect(() => {
+    if ([detailError, optionsError, mutationError].some((failure) => failure?.status === 401))
+      router.replace("/login");
+  }, [detailError, optionsError, mutationError, router]);
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}>
+      <DialogContent
+        className={`max-h-[90dvh] w-[calc(100%_-_2rem)] overflow-y-auto sm:max-w-4xl ${pending ? "[&>button]:hidden" : ""}`}
+        onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }}
+        onPointerDownOutside={(event) => { if (pending) event.preventDefault(); }}
+      >
+        <DialogHeader>
+          <DialogTitle>Purchase order</DialogTitle>
+          <DialogDescription>
+            Order from a supplier into the company's warehouse. Saving a line creates the product. Stock does not change until receiving.
+          </DialogDescription>
+        </DialogHeader>
+        {ready && order ? (
+          <EditPurchaseOrderFields order={order} onCancel={onClose} onSaved={onSaved} />
+        ) : error ? (
+          <div>
+            <p role="alert" className="text-sm text-destructive">{error.message}</p>
+            <Button
+              variant="outline"
+              className="mt-3"
+              onClick={() => {
+                dispatch(getPurchaseOrderOption());
+                dispatch(editPurchaseOrder(purchaseOrderId));
+              }}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <Loading />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditPurchaseOrderFields({
   order,
   onSaved,
   onCancel,
 }: {
-  order?: PurchaseOrderSummary;
+  order: PurchaseOrderSummary;
   onSaved: (row: PurchaseOrderSummary) => void;
   onCancel: () => void;
 }) {
   const dispatch = useAppDispatch();
-  const access = useRecordAccess();
   const toast = useToast();
   const { options, mutationStatus, mutationError } = useAppSelector(selectPurchaseOrder);
   const pending = mutationStatus === "loading";
   const busy = useRef(false);
-  const locked = Boolean(order && order.status !== "draft");
-  const [companyId, setCompanyId] = useState(
-    order?.company_id ?? (options.companies.length === 1 ? options.companies[0].id : ""),
-  );
-  const [supplierId, setSupplierId] = useState(order?.supplier_id ?? "");
-  const [paymentTerms, setPaymentTerms] = useState(order?.payment_terms ?? "");
-  const [paymentMethod, setPaymentMethod] = useState(order?.payment_method ?? "");
-  const [deliveryOn, setDeliveryOn] = useState(order?.estimated_delivery_on ?? "");
-  const [notes, setNotes] = useState(order?.notes ?? "");
+  const locked = order.status !== "draft";
+  const [supplierId, setSupplierId] = useState(order.supplier_id);
+  const [paymentTerms, setPaymentTerms] = useState(order.payment_terms);
+  const [paymentMethod, setPaymentMethod] = useState(order.payment_method ?? "");
+  const [deliveryOn, setDeliveryOn] = useState(order.estimated_delivery_on ?? "");
+  const [notes, setNotes] = useState(order.notes);
   const [lines, setLines] = useState<DraftLine[]>(
-    order?.items.length
+    order.items.length
       ? order.items.map((item) => ({
           key: item.id,
           variant_id: item.variant_id,
@@ -80,37 +162,15 @@ export function PurchaseOrderForm({
         }))
       : [blankLine()],
   );
-  const [savedId, setSavedId] = useState(order?.id ?? null);
   const [error, setError] = useState<string | null>(null);
-  const superAdmin = Boolean(access?.superAdmin);
-  const chooseCompany = !order && (superAdmin || options.companies.length > 1);
-  const suppliers = forCompany(options.suppliers, companyId);
-  const locations = options.locations.filter((location) => location.company_id === companyId);
-  const warehouse =
-    locations.length === 1 ? locations[0] : locations.length === 0 ? order?.location : undefined;
-  const variants = forCompany(options.variants, companyId);
-  const productTypes = forCompany(options.product_types, companyId);
-
-  function payload() {
-    return {
-      ...(!order && !chooseCompany ? {} : { company_id: order?.company_id ?? companyId }),
-      supplier_id: supplierId,
-      payment_terms: paymentTerms,
-      payment_method: paymentMethod || null,
-      estimated_delivery_on: deliveryOn || null,
-      notes,
-      lines: lines.map(({ variant_id, product_type_id, base_unit_id, ordered_qty }) => ({
-        variant_id,
-        product_type_id,
-        base_unit_id,
-        ordered_qty,
-      })),
-    };
-  }
+  const suppliers = forCompany(options.suppliers, order.company_id);
+  const locations = options.locations.filter((location) => location.company_id === order.company_id);
+  const warehouse = locations.length === 1 ? locations[0] : locations.length === 0 ? order.location : undefined;
+  const variants = forCompany(options.variants, order.company_id);
+  const productTypes = forCompany(options.product_types, order.company_id);
 
   function validate(confirming: boolean) {
-    if (chooseCompany && !companyId) return "Select a company.";
-    if (companyId && locations.length !== 1)
+    if (locations.length !== 1)
       return locations.length
         ? "This company has more than one warehouse."
         : "This company has no warehouse.";
@@ -139,18 +199,30 @@ export function PurchaseOrderForm({
     busy.current = true;
     setError(null);
     try {
-      const body = payload();
-      const saved = savedId
-        ? await dispatch(updatePurchaseOrder({ id: savedId, ...body })).unwrap()
-        : await dispatch(createPurchaseOrder(body)).unwrap();
-      setSavedId(saved.purchase_order.id);
+      const saved = await dispatch(
+        updatePurchaseOrder({
+          id: order.id,
+          company_id: order.company_id,
+          supplier_id: supplierId,
+          payment_terms: paymentTerms,
+          payment_method: paymentMethod || null,
+          estimated_delivery_on: deliveryOn || null,
+          notes,
+          lines: lines.map(({ variant_id, product_type_id, base_unit_id, ordered_qty }) => ({
+            variant_id,
+            product_type_id,
+            base_unit_id,
+            ordered_qty,
+          })),
+        }),
+      ).unwrap();
       const confirmed = confirming
-        ? await dispatch(confirmPurchaseOrder(saved.purchase_order.id)).unwrap()
+        ? await dispatch(confirmPurchaseOrder(order.id)).unwrap()
         : saved;
       toast.success(
         confirming
           ? "Purchase order confirmed. Stock is unchanged until receiving."
-          : `Draft purchase order was ${order ? "updated" : "created"}.`,
+          : "Draft purchase order was updated.",
       );
       onSaved(confirmed.purchase_order);
     } catch (failure) {
@@ -163,27 +235,6 @@ export function PurchaseOrderForm({
   return (
     <form onSubmit={(event) => void save(event)} aria-busy={pending} className="space-y-5">
       <fieldset disabled={pending || locked} className="space-y-5">
-        {chooseCompany && (
-          <label className="block space-y-2 text-sm font-medium">
-            Company <span className="text-destructive">*</span>
-            <select
-              value={companyId}
-              onChange={(event) => {
-                setCompanyId(event.target.value);
-                setSupplierId("");
-              }}
-              required
-              className="h-10 w-full rounded-md border bg-white px-3 text-sm"
-            >
-              <option value="">Select a company</option>
-              {options.companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-2 text-sm font-medium">
             Supplier <span className="text-destructive">*</span>
@@ -212,11 +263,9 @@ export function PurchaseOrderForm({
               </>
             ) : (
               <span className="block font-normal text-muted-foreground">
-                {!companyId
-                  ? "Select a company to load its warehouse."
-                  : locations.length > 1
-                    ? "This company has more than one warehouse."
-                    : "This company has no warehouse."}
+                {locations.length > 1
+                  ? "This company has more than one warehouse."
+                  : "This company has no warehouse."}
               </span>
             )}
           </div>
@@ -393,12 +442,12 @@ export function PurchaseOrderForm({
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
           {locked ? "Done" : "Cancel"}
         </Button>
-        {locked && (order?.status === "awaiting_receipt" || order?.status === "partially_received") && (
+        {locked && (order.status === "awaiting_receipt" || order.status === "partially_received") && (
           <Button
             type="button"
             disabled={pending}
             onClick={() => {
-              if (busy.current || !order) return;
+              if (busy.current) return;
               busy.current = true;
               void dispatch(closePurchaseOrder(order.id))
                 .unwrap()
@@ -419,19 +468,11 @@ export function PurchaseOrderForm({
         )}
         {!locked && (
           <>
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={pending || (!order && !superAdmin && !options.companies.length)}
-            >
+            <Button type="submit" variant="outline" disabled={pending}>
               {pending && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
               Save draft
             </Button>
-            <Button
-              type="button"
-              disabled={pending || (!order && !superAdmin && !options.companies.length)}
-              onClick={(event) => void save(event, true)}
-            >
+            <Button type="button" disabled={pending} onClick={(event) => void save(event, true)}>
               Confirm order
             </Button>
           </>

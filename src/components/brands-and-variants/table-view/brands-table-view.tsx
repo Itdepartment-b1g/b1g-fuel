@@ -8,6 +8,7 @@ import type { TableSort } from "@/types/table-views";
 import type { BrandSummary } from "@/types/brands";
 import type { VariantSummary } from "@/types/variants";
 import { BrandVariants } from "../brand-variants";
+import { formatDate } from "@/utils/date";
 
 export type BrandActionProps = {
   onEdit: (brand: BrandSummary) => void;
@@ -18,15 +19,6 @@ export type BrandActionProps = {
   disabled: boolean;
   revision: number;
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "Asia/Manila",
-  });
-}
 
 export function BrandsTableView(
   props: BrandActionProps & {

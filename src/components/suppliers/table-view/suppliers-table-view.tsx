@@ -6,21 +6,13 @@ import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { SupplierSummary } from "@/types/suppliers";
+import { formatDate } from "@/utils/date";
 
 export type SupplierActionProps = {
   onEdit: (supplier: SupplierSummary) => void;
   onDelete: (supplier: SupplierSummary) => void;
   disabled: boolean;
 };
-
-function createdOn(value: string) {
-  return new Date(value).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "Asia/Manila",
-  });
-}
 
 export function SuppliersTableView(
   props: SupplierActionProps & {
@@ -57,7 +49,7 @@ export function SuppliersTableView(
           header: "Created",
           sortable: true,
           freezable: true,
-          cell: (supplier) => <time dateTime={supplier.created_at}>{createdOn(supplier.created_at)}</time>,
+          cell: (supplier) => <time dateTime={supplier.created_at}>{formatDate(supplier.created_at)}</time>,
         },
       ]}
       actions={(supplier) => [
