@@ -256,7 +256,7 @@ function CreateUserFields({
               {staffRoles.length > 0 && (
                 <div className="space-y-2 pt-1">
                   <p className="text-xs text-muted-foreground">Choose a role this company already has.</p>
-                  <div role="group" aria-label="Existing roles" className="flex flex-wrap gap-2">
+                  <div role="group" aria-label="Existing roles" className="flex flex-wrap gap-2 border-gray-200 border rounded-md p-3">
                     {staffRoles.map((role) => {
                       const selected = role.id === roleChoice;
                       return (
