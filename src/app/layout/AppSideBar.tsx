@@ -23,6 +23,7 @@ type AppSideBarProps = SideBarAccess & {
 };
 
 type SessionUser = {
+  company?: string | null;
   name: string | null;
   email: string | null;
   role: string | null;
@@ -59,7 +60,7 @@ export default function AppSideBar({
       .then(async (response) => {
         if (!response.ok) return;
         const data = (await response.json()) as {
-          user?: { name?: unknown; email?: unknown };
+          user?: { name?: unknown; email?: unknown; company?: unknown };
           global_roles?: unknown;
           roles?: unknown;
         };
@@ -84,6 +85,10 @@ export default function AppSideBar({
           email:
             typeof data.user?.email === "string"
               ? data.user.email.trim() || null
+              : null,
+          company:
+            typeof data.user?.company === "string"
+              ? data.user.company.trim() || null
               : null,
           role: roles.includes("super_admin")
             ? "super_admin"
@@ -247,6 +252,9 @@ export default function AppSideBar({
             >
               {user.email}
             </p>
+          )}
+          {user.company && (
+            <p className="truncate px-3 text-xs text-primary">{user.company}</p>
           )}
         </div>
       )}

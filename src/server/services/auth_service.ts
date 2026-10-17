@@ -16,7 +16,8 @@ export const authService = {
     ]);
     const name = [user.user_metadata?.full_name, user.user_metadata?.name].find(value => typeof value === "string" && value.trim());
     const access = await get_record_access(user.id);
-    return { user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null }, global_roles: roles.map(({ role }) => role.slug), roles: roleNames, access };
+    const companies = (profile?.user_companies ?? []).map((membership) => membership.company.name.trim()).filter(Boolean);
+    return { user: { id: user.id, email: user.email ?? null, name: profile?.name ?? name?.trim() ?? null, company: companies.length ? companies.join(" · ") : null }, global_roles: roles.map(({ role }) => role.slug), roles: roleNames, access };
   },
   async login_user(auth: Pick<Auth, "signInWithPassword">, input: { email: string; password: string }) {
     const { data, error } = await auth.signInWithPassword(input);

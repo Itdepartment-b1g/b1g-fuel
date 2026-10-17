@@ -313,6 +313,12 @@ export const openapi = {
             description:
               "Database profile name when available; session lookup falls back to Auth metadata.",
           },
+          company: {
+            type: "string",
+            nullable: true,
+            description:
+              "Company names for this user's memberships. Null for Super Admin and accounts with no company.",
+          },
         },
       },
       Session: {

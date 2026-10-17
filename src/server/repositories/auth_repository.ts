@@ -55,7 +55,15 @@ export const authRepository = {
   get_user_profile(userId: string) {
     return getDatabase().user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        user_companies: {
+          select: { company: { select: { name: true } } },
+          orderBy: { company: { name: "asc" } },
+        },
+      },
     });
   },
   /** Load the slugs of roles assigned directly to a user with global scope. Authorization uses these assignments to determine global access. */
