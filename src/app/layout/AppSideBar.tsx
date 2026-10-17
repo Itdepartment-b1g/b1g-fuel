@@ -240,6 +240,9 @@ export default function AppSideBar({
     <div className="shrink-0 border-t p-3">
       {(user?.name || user?.email) && (
         <div aria-label="Signed-in user" className="mb-2 min-w-0 pb-3">
+          {user?.company && (
+            <p className="w-fit truncate px-3 text-xs font-bold border-[#02066F] bg-[#DCE7FF] text-[#02066F] rounded-md p-1 mb-2">{user.company}</p>
+          )}
           {user.name && (
             <p title={user.name} className="truncate px-3 text-sm font-medium">
               {user.name}
@@ -252,9 +255,6 @@ export default function AppSideBar({
             >
               {user.email}
             </p>
-          )}
-          {user.company && (
-            <p className="truncate px-3 text-xs text-primary">{user.company}</p>
           )}
         </div>
       )}

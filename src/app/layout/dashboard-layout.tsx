@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AccessProvider } from "@/components/providers/access-provider";
 import AppSideBar from "./AppSideBar";
+import BottomNavigation from "./BottomNavigation";
 import type { SideBarAccess } from "./sideBarMenuItems";
 import { PAGE_KEYS } from "@/lib/auth/catalog";
 
@@ -47,6 +48,7 @@ export default function DashboardLayout({ children, pages = [PAGE_KEYS.home], pe
         <main aria-label="Dashboard" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
           {children}
         </main>
+        <BottomNavigation pages={pages} permissions={permissions} role={role} />
       </div>
     </div></AccessProvider>
   );
