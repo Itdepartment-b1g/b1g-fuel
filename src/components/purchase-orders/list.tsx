@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, LayoutGrid, List, Plus } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import { CreatePurchaseOrderDialog } from "./dialog/create-purchase-order-dialog
 import { EditPurchaseOrderDialog } from "./dialog/edit-purchase-order-dialog";
 import { ReceivePurchaseOrderDialog } from "./dialog/receive-purchase-order-dialog";
 import { TimelinePurchaseOrderDialog } from "./dialog/timeline-purchase-order-dialog";
+import { PurchaseOrderCards } from "./card-views/purchase-order-cards";
 import { PurchaseOrdersTableView } from "./table-view/purchase-orders-table-view";
 
 export default function ListPurchaseOrders() {
@@ -51,6 +52,7 @@ export default function ListPurchaseOrders() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
+  const [view, setView] = useState<"table" | "cards">("table");
   const [revision, setRevision] = useState(0);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,40 +148,74 @@ export default function ListPurchaseOrders() {
         maxLength={160}
         quickFilterActive={Boolean(activeFilters)}
       />
+      <div className="flex w-fit rounded-lg border p-1" role="group" aria-label="Purchase order display">
+        <button type="button" aria-label="Table view" aria-pressed={view === "table"} onClick={() => setView("table")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}>
+          <List className="size-4" />
+        </button>
+        <button type="button" aria-label="Card view" aria-pressed={view === "cards"} onClick={() => setView("cards")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}>
+          <LayoutGrid className="size-4" />
+        </button>
+      </div>
       {filterOptionsError && (
         <p role="alert" className="text-sm text-destructive">
           Filter choices could not be loaded.
         </p>
       )}
       <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
-        <PurchaseOrdersTableView
-          purchaseOrders={purchase_orders}
-          loading={loading}
-          sorting={sorting}
-          onSortingChange={(next) => {
-            setSorting(next);
-            setPage(1);
-          }}
-          onEdit={(row) => {
-            dispatch(clearPurchaseOrderMutation());
-            setEditingId(row.id);
-          }}
-          onCloseOrder={(row) => {
-            if (pending) return;
-            void dispatch(closePurchaseOrder(row.id))
-              .unwrap()
-              .then(() => {
-                toast.success("Purchase order was closed.");
-                setRevision((value) => value + 1);
-              })
-              .catch((error) => {
-                toast.error(toastErrorMessage(error, "Could not close the purchase order."));
-              });
-          }}
-          onReceive={setReceiving}
-          onTimeline={(row) => setTimelineId(row.id)}
-          disabled={pending}
-        />
+        {view === "table" ? (
+          <PurchaseOrdersTableView
+            purchaseOrders={purchase_orders}
+            loading={loading}
+            sorting={sorting}
+            onSortingChange={(next) => {
+              setSorting(next);
+              setPage(1);
+            }}
+            onEdit={(row) => {
+              dispatch(clearPurchaseOrderMutation());
+              setEditingId(row.id);
+            }}
+            onCloseOrder={(row) => {
+              if (pending) return;
+              void dispatch(closePurchaseOrder(row.id))
+                .unwrap()
+                .then(() => {
+                  toast.success("Purchase order was closed.");
+                  setRevision((value) => value + 1);
+                })
+                .catch((error) => {
+                  toast.error(toastErrorMessage(error, "Could not close the purchase order."));
+                });
+            }}
+            onReceive={setReceiving}
+            onTimeline={(row) => setTimelineId(row.id)}
+            disabled={pending}
+          />
+        ) : (
+          <PurchaseOrderCards
+            purchaseOrders={purchase_orders}
+            loading={loading}
+            disabled={pending}
+            onEdit={(row) => {
+              dispatch(clearPurchaseOrderMutation());
+              setEditingId(row.id);
+            }}
+            onCloseOrder={(row) => {
+              if (pending) return;
+              void dispatch(closePurchaseOrder(row.id))
+                .unwrap()
+                .then(() => {
+                  toast.success("Purchase order was closed.");
+                  setRevision((value) => value + 1);
+                })
+                .catch((error) => {
+                  toast.error(toastErrorMessage(error, "Could not close the purchase order."));
+                });
+            }}
+            onReceive={setReceiving}
+            onTimeline={(row) => setTimelineId(row.id)}
+          />
+        )}
       </div>
       <Pagination
         metadata={pagination}

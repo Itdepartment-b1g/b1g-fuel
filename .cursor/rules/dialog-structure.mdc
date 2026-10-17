@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+# Dialog structure
+
+Read `docs/DIALOG_STRUCTURE.md` before adding or editing a feature dialog.
+
+- One file per screen: `create-{resource}-dialog.tsx` and `edit-{resource}-dialog.tsx`.
+- Put the fields function in that same file. Do not add a `*-form.tsx`, and do not switch create and edit inside one dialog with a nullable id.
+- The list uses `creating` and `editingId`. Edit dialogs take a required id.
+- A different screen (receive, timeline, assign) gets its own dialog file.
+- Purchase-order create, edit, receive, and timeline stay separate. Use the four dialog files the purchase-order list imports.

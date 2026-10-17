@@ -1,0 +1,17 @@
+---
+description: Express server layers, snake_case operations, and separate server schema
+globs: src/server/**/*.ts
+alwaysApply: false
+---
+
+# Server structure
+
+Read `docs/BACKEND_STRUCTURE.md` and `docs/CODE_CONVENTIONS.md` before adding or changing a server resource.
+
+Request flow: component → Redux → Express route → controller → service → repository → Prisma.
+
+- Files use the plural resource name: `users_controller.ts`, `users_service.ts`, `users_repository.ts`, `users_schema.ts`.
+- Operations use snake_case, action plus singular entity, and the same name on the controller and service: `list_user`, `create_user`, `list_by_id_user`, `update_user`, `delete_user`.
+- Routes own URLs, access middleware, and rate limiters. Controllers translate HTTP. Services own business conditions. Repositories own Prisma queries.
+- Each controller handler has its own `try`/`catch`. Do not add a shared `failure()` helper. New catalog controllers pass `req.body` through and do not add field parsers.
+- `src/server/schema` and `src/types` stay separate. Do not import one from the other. Components and Redux do not import `src/server` or generated Prisma code.

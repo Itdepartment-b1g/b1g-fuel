@@ -104,7 +104,7 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
   );
 }
 
-function PurchaseOrderDetails({ order }: { order: PurchaseOrderSummary }) {
+export function PurchaseOrderDetails({ order }: { order: PurchaseOrderSummary }) {
   const received = fullyReceivedEvent(order);
   return (
     <div className="space-y-4">
