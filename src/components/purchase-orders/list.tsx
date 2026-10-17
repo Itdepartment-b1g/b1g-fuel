@@ -7,7 +7,7 @@ import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/search-filter-bar";
+import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
 import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
 import { PURCHASE_ORDER_FILTER_DEFAULTS } from "@/utils/management-filters";

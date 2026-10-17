@@ -14,7 +14,7 @@ Read `docs/PAGE_VIEWS.md`, `docs/CARD_VIEWS.md`, and `docs/DIALOG_STRUCTURE.md` 
 - The list is the client default export. It owns Redux loading, search, filters, sorting, pagination, and dialogs.
 - Table columns live in `table-view/{resource}-table-columns.tsx`. The table view renders shared `TableView` with the rows and callbacks the list passes in. It does not load the list. Pagination stays on the list.
 - A card view in `card-views/{resource}-cards.tsx` receives the same rows and callbacks. Add one only when the list toggles between `"table"` and `"cards"`.
-- Keep `SearchFilterBar`, `Pagination`, `TableView`, and `CardActionsMenu` in `src/components/common`.
+- Filter files live in `src/components/common/filter`. Shared table files live in `src/components/common/table`. `Pagination` and `CardActionsMenu` stay in `src/components/common`.
 
 ## Dialogs
 

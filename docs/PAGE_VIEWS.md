@@ -45,7 +45,7 @@ src/components/{resource}/table-view/
   {resource}-table-view.tsx
 ```
 
-The columns file exports `TableColumn<T>[]` for the shared `TableView` in `src/components/common/table-view.tsx`. The table view file renders `TableView` with those columns, the rows from the list, and row actions. It does not dispatch the list request. Pagination stays in the list.
+The columns file exports `TableColumn<T>[]` for the shared `TableView` in `src/components/common/table/table-view.tsx`. The table view file renders `TableView` with those columns, the rows from the list, and row actions. It does not dispatch the list request. Pagination stays in the list.
 
 ## Card view
 
@@ -58,4 +58,4 @@ The card view receives the same rows and callbacks as the table view. Add one on
 
 ## Shared UI
 
-Search, pagination, and the table shell stay in `src/components/common`. Delete confirmation lives in the resource dialog folder.
+Search and filters live in `src/components/common/filter`. The shared table shell lives in `src/components/common/table`. Pagination stays in `src/components/common`. Delete confirmation lives in the resource dialog folder.

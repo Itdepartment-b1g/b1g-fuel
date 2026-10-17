@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { DateRangeMenu } from "@/components/common/date-range-menu";
+import { DateRangeMenu } from "@/components/common/filter/date-range-menu";
 import { addCondition, changeConditionField, countActiveFilters, createQuickFilterState, emptyCondition, fromDateMenuValue, isActiveCondition, removeCondition, toDateMenuValue } from "@/utils/quick-filter";
 import type { AdditionalFilter, FilterField, FilterOption, QuickFilterState } from "@/types/quick-filter";
 

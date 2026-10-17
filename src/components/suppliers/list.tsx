@@ -8,7 +8,7 @@ import { useToast, toastErrorMessage } from "@/components/providers/toast-provid
 import { Button } from "@/components/ui/button";
 import { DeleteSupplierDialog } from "./dialog/delete-supplier-dialog";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/search-filter-bar";
+import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
 import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
 import { SUPPLIER_FILTER_DEFAULTS } from "@/utils/management-filters";

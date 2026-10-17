@@ -1,6 +1,6 @@
 # Reusable Quick Filter
 
-`src/components/common/quick-filter.tsx` renders a right-side Radix Dialog with the white/navy theme. It fills the viewport width on mobile. The Users page is the implemented example: table and card views share immediate, server-filtered results and pagination.
+`src/components/common/filter/quick-filter.tsx` renders a right-side Radix Dialog with the white/navy theme. It fills the viewport width on mobile. The Users page is the implemented example: table and card views share immediate, server-filtered results and pagination.
 
 ## Controlled state
 
@@ -24,7 +24,7 @@ const [filters, setFilters] = useState(() => createQuickFilterState(defaults));
 />
 ```
 
-Imports: component from `@/components/common/quick-filter`; shared types, date preset choices and UI state helpers from `@/lib/quick-filter`. Server record matching, condition grouping and date resolution live in `@/server/lib/filter`. Fields are `{ key, label, options }`; dropdown options are `{ value, label, count? }`. Additional filters also have a unique `key`. The first status/additional option is unrestricted. Supply nonempty option lists with a distinct unrestricted first value. Labels can customize the button, panel title, section headings, All columns and Any. Optional `onOpenChange` and `maxConditions` support other screens. The date section uses `DateRangeMenu`.
+Imports: component from `@/components/common/filter/quick-filter`; shared types, date preset choices and UI state helpers from `@/lib/quick-filter`. Server record matching, condition grouping and date resolution live in `@/server/lib/filter`. Fields are `{ key, label, options }`; dropdown options are `{ value, label, count? }`. Additional filters also have a unique `key`. The first status/additional option is unrestricted. Supply nonempty option lists with a distinct unrestricted first value. Labels can customize the button, panel title, section headings, All columns and Any. Optional `onOpenChange` and `maxConditions` support other screens. The date section uses `DateRangeMenu`.
 
 ## Column semantics
 

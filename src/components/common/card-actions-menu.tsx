@@ -1,7 +1,7 @@
 "use client";
 
 import { EllipsisVertical } from "lucide-react";
-import { TableMenu, type TableMenuItem } from "./table-menu";
+import { TableMenu, type TableMenuItem } from "./table/table-menu";
 
 export function CardActionsMenu({
   label,

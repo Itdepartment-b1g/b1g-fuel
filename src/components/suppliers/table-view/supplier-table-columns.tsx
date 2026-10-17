@@ -1,4 +1,4 @@
-import type { TableColumn } from "@/components/common/table-view";
+import type { TableColumn } from "@/components/common/table/table-view";
 import type { SupplierSummary } from "@/types/suppliers";
 import { formatDate } from "@/utils/date";
 

@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { Building2, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/search-filter-bar";
+import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
 import { DeleteCompanyDialog } from "./dialog/delete-company-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {

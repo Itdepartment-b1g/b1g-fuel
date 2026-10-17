@@ -1,4 +1,4 @@
-import type { TableColumn } from "@/components/common/table-view";
+import type { TableColumn } from "@/components/common/table/table-view";
 import {
   PURCHASE_ORDER_STATUS_LABEL,
   type PurchaseOrderSummary,

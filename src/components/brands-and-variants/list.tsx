@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DeleteBrandDialog } from "./dialog/delete-brand-dialog";
 import { DeleteVariantDialog } from "./dialog/delete-variant-dialog";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/search-filter-bar";
+import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {

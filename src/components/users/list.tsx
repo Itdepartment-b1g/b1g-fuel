@@ -15,7 +15,7 @@ import {
   getUserFilterOption,
   selectUser,
 } from "@/lib/store/users-slice";
-import { SearchFilterBar } from "@/components/common/search-filter-bar";
+import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
 import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
 import { USER_FILTER_DEFAULTS } from "@/utils/users-filters";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";

@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
-import { TableView } from "@/components/common/table-view";
+import { TableView } from "@/components/common/table/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { ProductTypeSummary } from "@/types/product-types";

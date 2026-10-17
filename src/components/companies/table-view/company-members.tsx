@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { TableView } from "@/components/common/table-view";
+import { TableView } from "@/components/common/table/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { listCompanyMembers, selectCompany } from "@/lib/store/companies-slice";

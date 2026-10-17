@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CircleX, History, PackageCheck, Pencil } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { Pagination } from "@/components/common/pagination";
-import { TableView } from "@/components/common/table-view";
+import { TableView } from "@/components/common/table/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { SortValue, TableSort } from "@/types/table-views";
 import { type PaymentMethod, type PurchaseOrderLine, type PurchaseOrderSummary } from "@/types/purchase-orders";

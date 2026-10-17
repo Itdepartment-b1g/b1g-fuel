@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { UserCheck2 } from "lucide-react";
-import { TableView } from "@/components/common/table-view";
+import { TableView } from "@/components/common/table/table-view";
 import { Pagination } from "@/components/common/pagination";
 import { Input } from "@/components/ui/input";
 import { paginateItems } from "@/utils/pagination";
