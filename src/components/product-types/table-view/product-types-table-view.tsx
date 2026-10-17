@@ -6,7 +6,7 @@ import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { ProductTypeSummary } from "@/types/product-types";
-import { formatDate } from "@/utils/date";
+import { PRODUCT_TYPE_TABLE_COLUMNS } from "./product-type-table-columns";
 
 export function ProductTypesTableView(props: {
   productTypes: ProductTypeSummary[];
@@ -31,36 +31,7 @@ export function ProductTypesTableView(props: {
       actionsDisabled={props.disabled}
       emptyTitle="No product types found"
       emptyDescription="Add New and Refill types, or adjust your search."
-      columns={[
-        {
-          id: "name",
-          header: "Name",
-          sortable: true,
-          freezable: true,
-          value: (row) => row.name,
-          className: "font-semibold",
-        },
-        {
-          id: "key",
-          header: "Key",
-          sortable: true,
-          freezable: true,
-          value: (row) => row.key,
-        },
-        {
-          id: "company",
-          header: "Company",
-          freezable: true,
-          cell: (row) => row.company?.name ?? "All companies",
-        },
-        {
-          id: "created_at",
-          header: "Created",
-          sortable: true,
-          freezable: true,
-          cell: (row) => formatDate(row.created_at),
-        },
-      ]}
+      columns={PRODUCT_TYPE_TABLE_COLUMNS}
       actions={(row) => [
         {
           id: "edit",

@@ -11,10 +11,10 @@ import type { TableSort } from "@/types/table-views";
 import type { CompanySummary } from "@/types/companies";
 import { CompanyMembers } from "./company-members";
 import {
-  COMPANY_COLUMNS,
+  COMPANY_TABLE_COLUMNS,
   TOGGLE_COLUMNS,
   type ToggleColumnId,
-} from "./table-header";
+} from "./company-table-columns";
 
 export type CompanyActionProps = {
   onEdit: (company: CompanySummary) => void;
@@ -78,7 +78,7 @@ export function CompaniesTableView(props: Props) {
   });
   const columns = useMemo(
     () =>
-      COMPANY_COLUMNS.filter((column) => {
+      COMPANY_TABLE_COLUMNS.filter((column) => {
         if (column.id in visible) return visible[column.id as ToggleColumnId];
         return true;
       }),

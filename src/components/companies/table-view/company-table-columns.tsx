@@ -16,7 +16,7 @@ function countLabel(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-export const COMPANY_COLUMNS: TableColumn<CompanySummary>[] = [
+export const COMPANY_TABLE_COLUMNS: TableColumn<CompanySummary>[] = [
   {
     id: "name",
     header: "Company",

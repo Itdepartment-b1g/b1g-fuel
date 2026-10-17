@@ -7,10 +7,15 @@ import { Pagination } from "@/components/common/pagination";
 import { TableView } from "@/components/common/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { SortValue, TableSort } from "@/types/table-views";
-import { PURCHASE_ORDER_STATUS_LABEL, type PaymentMethod, type PurchaseOrderLine, type PurchaseOrderSummary } from "@/types/purchase-orders";
-import { formatDate, formatDateTime } from "@/utils/date";
+import { type PaymentMethod, type PurchaseOrderLine, type PurchaseOrderSummary } from "@/types/purchase-orders";
+import { formatDateTime } from "@/utils/date";
 import { PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import { sortTableRows } from "@/utils/table-views";
+import {
+  PURCHASE_ORDER_LINE_COLUMNS,
+  PURCHASE_ORDER_TABLE_COLUMNS,
+  type PurchaseOrderLineRow,
+} from "./purchase-order-table-columns";
 
 const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   cash: "Cash",
@@ -18,11 +23,6 @@ const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   gcash: "GCash",
   check: "Check",
 };
-
-function qty(value: string) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number.toLocaleString("en-US", { maximumFractionDigits: 3 }) : value;
-}
 
 function when(value: string | null) {
   return formatDateTime(value);
@@ -33,17 +33,7 @@ function fullyReceivedAt(order: PurchaseOrderSummary) {
   return event?.created_at ?? null;
 }
 
-type LineRow = {
-  id: string;
-  brand: string;
-  variant: string;
-  type: string;
-  ordered: number;
-  received: number;
-  pending: number;
-};
-
-function lineValue(row: LineRow, field: string): SortValue {
+function lineValue(row: PurchaseOrderLineRow, field: string): SortValue {
   if (field === "brand") return row.brand;
   if (field === "variant") return row.variant;
   if (field === "type") return row.type;
@@ -57,7 +47,7 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const rows: LineRow[] = items.map((line) => {
+  const rows: PurchaseOrderLineRow[] = items.map((line) => {
     const ordered = Number(line.ordered_qty);
     const received = Number(line.received_qty);
     return {
@@ -93,21 +83,7 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
         multipleFrozenColumns
         emptyTitle="No lines yet"
         emptyDescription="This purchase order has no products."
-        columns={[
-          { id: "brand", header: "Brand", sortable: true, freezable: true, value: (row) => row.brand, className: "font-semibold" },
-          { id: "variant", header: "Variant", sortable: true, freezable: true, value: (row) => row.variant },
-          {
-            id: "type",
-            header: "Type",
-            sortable: true,
-            freezable: true,
-            value: (row) => row.type,
-            cell: (row) => <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">{row.type}</span>,
-          },
-          { id: "ordered", header: "Total Qty", sortable: true, freezable: true, value: (row) => row.ordered, cell: (row) => qty(String(row.ordered)) },
-          { id: "received", header: "Received", sortable: true, freezable: true, value: (row) => row.received, cell: (row) => qty(String(row.received)) },
-          { id: "pending", header: "Remaining", sortable: true, freezable: true, value: (row) => row.pending, cell: (row) => qty(String(row.pending)), className: "font-semibold" },
-        ]}
+        columns={PURCHASE_ORDER_LINE_COLUMNS}
       />
       {rows.length > 0 && (
         <Pagination
@@ -197,59 +173,7 @@ export function PurchaseOrdersTableView(props: {
       actionsDisabled={props.disabled}
       emptyTitle="No purchase orders found"
       emptyDescription="Create a draft order for a supplier warehouse delivery."
-      columns={[
-        {
-          id: "purchase_order_no",
-          header: "PO no.",
-          sortable: true,
-          freezable: true,
-          value: (row) => row.purchase_order_no,
-          className: "font-semibold",
-        },
-        {
-          id: "supplier",
-          header: "Supplier",
-          freezable: true,
-          value: (row) => row.supplier.name,
-          className: "font-semibold",
-        },
-        {
-          id: "location",
-          header: "Warehouse",
-          freezable: true,
-          value: (row) => row.location.name,
-        },
-        {
-          id: "company",
-          header: "Company",
-          freezable: true,
-          value: (row) => row.company.name,
-        },
-        {
-          id: "status",
-          header: "Status",
-          sortable: true,
-          freezable: true,
-          value: (row) => PURCHASE_ORDER_STATUS_LABEL[row.status],
-        },
-        {
-          id: "line_count",
-          header: "Lines",
-          value: (row) => String(row.line_count),
-        },
-        {
-          id: "estimated_delivery_at",
-          header: "Expected",
-          sortable: true,
-          cell: (row) => row.estimated_delivery_on ?? "—",
-        },
-        {
-          id: "created_at",
-          header: "Created",
-          sortable: true,
-          cell: (row) => formatDate(row.created_at),
-        },
-      ]}
+      columns={PURCHASE_ORDER_TABLE_COLUMNS}
       actions={(row) => [
         ...(row.status === "draft"
           ? [{

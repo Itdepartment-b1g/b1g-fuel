@@ -2,17 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { UserCheck2 } from "lucide-react";
-import {
-  TableView,
-  type TableColumn,
-} from "@/components/common/table-view";
+import { TableView } from "@/components/common/table-view";
 import { Pagination } from "@/components/common/pagination";
 import { Input } from "@/components/ui/input";
 import { paginateItems } from "@/utils/pagination";
 import { sortTableRows } from "@/utils/table-views";
 import type { TableSort } from "@/types/table-views";
 import type { UserSummary } from "@/types/users";
-import { formatDate } from "@/utils/date";
+import { USER_TABLE_COLUMNS } from "./user-table-columns";
 export function UserAssignments({ user }: { user: UserSummary }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -67,69 +64,6 @@ export function UserAvatar({ name }: { name: string }) {
   );
 }
 
-const columns: TableColumn<UserSummary>[] = [
-  {
-    id: "name",
-    header: "Name",
-    className:"font-bold",
-    sortable: true,
-    freezable: true,
-    value: (user) => user.name,
-    cell: (user) => user.name,
-  },
-  {
-    id: "email",
-    header: "Email",
-    sortable: true,
-    freezable: true,
-    value: (user) => user.email,
-    cell: (user) => user.email ?? "—",
-  },
-  {
-    id: "company",
-    header: "Company",
-    freezable: true,
-    cell: (user) =>
-      user.companies.length
-        ? user.companies.map((company) => company.name).join(", ")
-        : "—",
-  },
-  {
-    id: "roles",
-    header: "Roles",
-    freezable: true,
-    className:"font-bold uppercase",
-    cell: (user) => {
-      const names = [
-        ...user.global_roles.map((role) => role.name),
-        ...user.companies.flatMap((company) =>
-          company.roles.map((role) => role.name),
-        ),
-      ];
-      return names.length ? names.join(", ") : "—";
-    },
-  },
-  {
-    id: "created_by",
-    header: "Created by",
-    freezable: true,
-    value: (user) => user.created_by_name,
-    cell: (user) => user.created_by_name ?? "—",
-  },
-  {
-    id: "created_at",
-    header: "Created",
-    sortable: true,
-    freezable: true,
-    value: (user) => new Date(user.created_at),
-    cell: (user) => (
-      <time dateTime={user.created_at} className="text-muted-foreground">
-        {formatDate(user.created_at)}
-      </time>
-    ),
-  },
-];
-
 export function UsersTable({
   users,
   sorting,
@@ -146,7 +80,7 @@ export function UsersTable({
   return (
     <TableView
       data={users}
-      columns={columns}
+      columns={USER_TABLE_COLUMNS}
       rowKey={(user) => user.id}
       caption="Organization users and their assignments"
       sortingMode={onSortingChange ? "server" : "client"}

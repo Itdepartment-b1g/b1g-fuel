@@ -8,7 +8,7 @@ import type { TableSort } from "@/types/table-views";
 import type { BrandSummary } from "@/types/brands";
 import type { VariantSummary } from "@/types/variants";
 import { BrandVariants } from "../brand-variants";
-import { formatDate } from "@/utils/date";
+import { BRAND_TABLE_COLUMNS } from "./brand-table-columns";
 
 export type BrandActionProps = {
   onEdit: (brand: BrandSummary) => void;
@@ -52,42 +52,7 @@ export function BrandsTableView(
       actionsDisabled={props.disabled}
       emptyTitle="No brands found"
       emptyDescription="Add a brand or adjust your search."
-      columns={[
-        {
-          id: "name",
-          header: "Brand",
-          sortable: true,
-          freezable: true,
-          value: (brand) => brand.name,
-          className: "font-semibold",
-        },
-        {
-          id: "company",
-          header: "Company",
-          freezable: true,
-          cell: (brand) => brand.company?.name ?? "All companies",
-        },
-        {
-          id: "variants",
-          header: "Variants",
-          cell: (brand) => brand.variant_count,
-        },
-        {
-          id: "created_by",
-          header: "Created by",
-          freezable: true,
-          cell: (brand) => brand.created_by_name ?? "—",
-        },
-        {
-          id: "created_at",
-          header: "Created",
-          sortable: true,
-          freezable: true,
-          cell: (brand) => (
-            <time dateTime={brand.created_at}>{formatDate(brand.created_at)}</time>
-          ),
-        },
-      ]}
+      columns={BRAND_TABLE_COLUMNS}
       actions={(brand) => [
         {
           id: "edit",
