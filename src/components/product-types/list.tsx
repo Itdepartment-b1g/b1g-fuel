@@ -113,7 +113,7 @@ export default function ListProductTypes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">Procurement</p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold">
@@ -123,6 +123,7 @@ export default function ListProductTypes() {
         </div>
         {canPerform(access, "productTypes", "add") && (
           <Button
+            className="w-full lg:w-auto"
             onClick={() => {
               dispatch(clearProductTypeMutation());
               setCreating(true);

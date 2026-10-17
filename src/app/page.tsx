@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Fuel } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   return (
@@ -17,7 +18,7 @@ export default function HomePage() {
         ready for your team’s next step.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/login" className={buttonVariants()}>
+        <Link href="/login" className={cn(buttonVariants(), "w-full sm:w-auto")}>
           Sign in
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>

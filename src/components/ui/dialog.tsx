@@ -41,7 +41,15 @@ export function DialogFooter({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  return <div className={cn("flex justify-end gap-2", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 export function DialogTitle({
   className,

@@ -32,7 +32,7 @@ export function DeleteProductTypeDialog({
           </DialogDescription>
         </DialogHeader>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>Cancel</Button>
           <Button type="button" variant="destructive" onClick={onConfirm} disabled={pending}>
             {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Trash2 className="size-4" aria-hidden="true" />}

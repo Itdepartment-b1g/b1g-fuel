@@ -26,7 +26,7 @@ The `(app)` layout already wraps the page in the dashboard shell. Login, docs, a
 - Passes the current rows and callbacks into the table view and, when the screen has one, the card view.
 
 ```tsx
-const [view, setView] = useState<"table" | "cards">("table");
+const [view, setView] = useListView();
 
 {view === "table" ? (
   <CompaniesTableView {...actions} />
@@ -34,6 +34,8 @@ const [view, setView] = useState<"table" | "cards">("table");
   <CompaniesCards {...actions} />
 )}
 ```
+
+`useListView` starts on cards, then switches to table at `lg` and up. The user's toggle then wins. Import it from `SearchFilterBar`. Product types stay on table.
 
 `actions` carries the rows, `sorting`, `onSortingChange`, `loading`, `disabled`, and the row callbacks (`onEdit`, `onDelete`, and any extra actions). Changing sort or search resets the page to 1.
 

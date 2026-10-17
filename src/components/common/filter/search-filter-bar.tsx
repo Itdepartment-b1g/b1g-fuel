@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
 import { fromDateMenuValue, toDateMenuValue } from "@/utils/quick-filter";
 import type { AdditionalFilter, FilterField, FilterOption, QuickFilterState } from "@/types/quick-filter";
@@ -8,6 +8,29 @@ import { DateRangeMenu } from "./date-range-menu";
 import { SearchQuickFilter } from "./search-quick-filter";
 
 export type ListView = "table" | "cards";
+
+const DESKTOP_VIEW = "(min-width: 1024px)";
+
+/** Cards by default (mobile), table on desktop, until the user picks a view. */
+export function useListView() {
+  const [view, setView] = useState<ListView>("cards");
+  const chosen = useRef(false);
+  useEffect(() => {
+    const desktop = window.matchMedia(DESKTOP_VIEW);
+    const sync = () => {
+      if (chosen.current) return;
+      setView(desktop.matches ? "table" : "cards");
+    };
+    sync();
+    desktop.addEventListener("change", sync);
+    return () => desktop.removeEventListener("change", sync);
+  }, []);
+  function changeView(next: ListView) {
+    chosen.current = true;
+    setView(next);
+  }
+  return [view, changeView] as const;
+}
 
 export function ViewToggle({
   view,
@@ -120,6 +143,8 @@ export function SearchFilterBar({
               }
               align="end"
               disabled={disabled}
+              triggerClassName="min-w-0 w-auto flex-1 sm:flex-none sm:w-[220px]"
+              contentClassName="w-[min(360px,calc(100vw-1.5rem))]"
             />
             {view && onViewChange && (
               <ViewToggle view={view} onViewChange={onViewChange} label={viewLabel} />

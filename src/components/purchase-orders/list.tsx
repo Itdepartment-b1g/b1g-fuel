@@ -7,7 +7,7 @@ import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
+import { SearchFilterBar, useListView } from "@/components/common/filter/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
 import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
 import { PURCHASE_ORDER_FILTER_DEFAULTS } from "@/utils/management-filters";
@@ -52,7 +52,7 @@ export default function ListPurchaseOrders() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function ListPurchaseOrders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">Procurement</p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold">
@@ -118,6 +118,7 @@ export default function ListPurchaseOrders() {
         </div>
         {canPerform(access, "purchaseOrders", "add") && (
           <Button
+            className="w-full lg:w-auto"
             onClick={() => {
               dispatch(clearPurchaseOrderMutation());
               setCreating(true);

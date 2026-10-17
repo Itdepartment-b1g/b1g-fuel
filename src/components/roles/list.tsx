@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
+import { SearchFilterBar, useListView } from "@/components/common/filter/search-filter-bar";
 import { DeleteRoleDialog } from "./dialog/delete-role-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
@@ -54,7 +54,7 @@ export default function RolesList() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export default function RolesList() {
   return (
     <>
       <section className="w-full space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Organization
@@ -159,7 +159,7 @@ export default function RolesList() {
             </p>
           </div>
           {canPerform(access, "roles", "add") && (
-            <Button disabled={pending} onClick={() => openRole()}>
+            <Button className="w-full lg:w-auto" disabled={pending} onClick={() => openRole()}>
               <Plus className="size-4" aria-hidden="true" />
               Add role
             </Button>

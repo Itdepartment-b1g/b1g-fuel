@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { Building2, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
+import { SearchFilterBar, useListView } from "@/components/common/filter/search-filter-bar";
 import { DeleteCompanyDialog } from "./dialog/delete-company-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
@@ -54,7 +54,7 @@ export default function CompaniesList() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export default function CompaniesList() {
   return (
     <>
       <section className="w-full space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Organization
@@ -159,7 +159,7 @@ export default function CompaniesList() {
             </p>
           </div>
           {canPerform(access, "companies", "add") && (
-            <Button disabled={pending} onClick={() => openCompany()}>
+            <Button className="w-full lg:w-auto" disabled={pending} onClick={() => openCompany()}>
               <Plus className="size-4" aria-hidden="true" />
               Add company
             </Button>

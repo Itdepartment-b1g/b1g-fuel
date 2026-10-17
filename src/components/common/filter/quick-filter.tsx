@@ -280,7 +280,7 @@ export function QuickFilter({
               </section>
             ))}
           </div>
-          <footer className="flex items-center justify-end gap-3 border-t px-6 py-4">
+          <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end [&>*]:w-full sm:[&>*]:w-auto border-t px-6 py-4">
             {count > 0 && (
               <Button
                 variant="ghost"

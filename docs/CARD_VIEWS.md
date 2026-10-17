@@ -47,10 +47,12 @@ export function CompaniesCards({
 The list switches views. Empty and loading states for the whole page stay in the list, next to the table branch.
 
 ```tsx
-const [view, setView] = useState<"table" | "cards">("table");
+const [view, setView] = useListView();
 
 {view === "table" ? <CompaniesTableView {...actions} /> : <CompaniesCards {...actions} />}
 ```
+
+`useListView` from `SearchFilterBar` defaults to cards on mobile and table on desktop.
 
 ## What a card contains
 

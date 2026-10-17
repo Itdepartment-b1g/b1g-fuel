@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DeleteBrandDialog } from "./dialog/delete-brand-dialog";
 import { DeleteVariantDialog } from "./dialog/delete-variant-dialog";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
+import { SearchFilterBar, useListView } from "@/components/common/filter/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
@@ -60,7 +60,7 @@ export default function BrandAndVariantList() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
@@ -172,7 +172,7 @@ export default function BrandAndVariantList() {
   return (
     <>
       <section className="w-full space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Procurement
@@ -182,13 +182,13 @@ export default function BrandAndVariantList() {
               Keep the brands your company buys, and the variants under each brand.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap">
             {canPerform(access, "brandsAndVariants", "add") && (
               <>
-                <Button variant="outline" disabled={pending} onClick={() => openVariant()}>
+                <Button className="w-full lg:w-auto" variant="outline" disabled={pending} onClick={() => openVariant()}>
                   <Plus className="size-4" aria-hidden="true" /> Add variant
                 </Button>
-                <Button disabled={pending} onClick={() => openBrand()}>
+                <Button className="w-full lg:w-auto" disabled={pending} onClick={() => openBrand()}>
                   <Plus className="size-4" aria-hidden="true" /> Add brand
                 </Button>
               </>

@@ -159,7 +159,7 @@ function CreateSupplierFields({
         )}
       </fieldset>
       {(error || mutationError) && <p role="alert" className="text-sm text-destructive">{error ?? mutationError?.message}</p>}
-      <div className="flex justify-end gap-3 border-t pt-4">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto border-t pt-4">
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending || (!shared && !options.companies.length)}>
           {pending && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}

@@ -75,7 +75,7 @@ export function SearchToolbar({
   return (
     <div
       className={cn(
-        "flex w-full min-w-0 flex-wrap items-center justify-between gap-3",
+        "flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
         className,
       )}
     >
@@ -87,7 +87,7 @@ export function SearchToolbar({
           event.preventDefault();
           void submit();
         }}
-        className="flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-0 sm:max-w-2xl"
+        className="flex min-w-0 w-full items-center gap-2 sm:max-w-2xl sm:flex-1 sm:basis-0"
       >
         <div className="relative min-w-0 flex-1">
           <Search
@@ -124,19 +124,23 @@ export function SearchToolbar({
         <Button
           type="submit"
           disabled={disabled || busy}
-          className="shrink-0 rounded-lg px-5"
+          className="shrink-0 rounded-lg px-3 sm:px-5"
         >
-          {busy && (
+          {busy ? (
             <LoaderCircle
               className="size-4 animate-spin motion-reduce:animate-none"
               aria-hidden="true"
             />
+          ) : (
+            <Search className="size-4 sm:hidden" aria-hidden="true" />
           )}
-          {busy ? loadingLabel : searchButtonLabel}
+          <span className="sr-only sm:not-sr-only">
+            {busy ? loadingLabel : searchButtonLabel}
+          </span>
         </Button>
       </form>
       {(onQuickFilterClick || trailingContent) && (
-        <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-2">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:ml-auto sm:w-auto sm:max-w-full sm:shrink-0">
           {trailingContent}
           {onQuickFilterClick && (
             <Button
@@ -150,13 +154,19 @@ export function SearchToolbar({
                 quickFilterOpen === undefined ? undefined : "dialog"
               }
               className={cn(
-                "rounded-lg",
+                "shrink-0 rounded-lg px-3 sm:px-4",
                 quickFilterActive &&
                   "border-primary bg-primary/10 text-primary",
               )}
             >
               <SlidersHorizontal className="size-4" aria-hidden="true" />
-              {quickFilterLabel}
+              <span className="sr-only sm:not-sr-only">{quickFilterLabel}</span>
+              {quickFilterActive && (
+                <span
+                  className="size-1.5 rounded-full bg-primary sm:hidden"
+                  aria-hidden="true"
+                />
+              )}
             </Button>
           )}
         </div>

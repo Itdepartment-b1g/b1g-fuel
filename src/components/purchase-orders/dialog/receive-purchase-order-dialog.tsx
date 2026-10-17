@@ -154,7 +154,7 @@ export function ReceivePurchaseOrderDialog({
         {(error || mutationError) && (
           <p role="alert" className="text-sm text-destructive">{error ?? mutationError?.message}</p>
         )}
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto">
           <Button type="button" variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>
           <Button type="button" disabled={pending || !lines.length} onClick={() => void receive()}>
             {pending && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}

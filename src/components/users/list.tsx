@@ -15,7 +15,7 @@ import {
   getUserFilterOption,
   selectUser,
 } from "@/lib/store/users-slice";
-import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
+import { SearchFilterBar, useListView } from "@/components/common/filter/search-filter-bar";
 import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
 import { USER_FILTER_DEFAULTS } from "@/utils/users-filters";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
@@ -46,7 +46,7 @@ export default function UsersList() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);
   const [assigning, setAssigning] = useState<UserSummary | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
@@ -101,7 +101,7 @@ export default function UsersList() {
         </p>
         <Button
           variant="outline"
-          className="mt-4"
+          className="mt-4 w-full lg:w-auto"
           onClick={() => router.replace("/dashboard")}
         >
           Back to dashboard
@@ -111,7 +111,7 @@ export default function UsersList() {
   return (
     <>
     <section className="w-full space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Organization

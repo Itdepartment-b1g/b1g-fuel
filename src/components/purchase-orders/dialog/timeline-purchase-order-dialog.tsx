@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loading } from "@/components/common/loading";
 import { Pagination } from "@/components/common/pagination";
+import { useListView } from "@/components/common/filter/search-filter-bar";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { editPurchaseOrder, selectPurchaseOrder } from "@/lib/store/purchase-orders-slice";
 import { formatDateTime } from "@/utils/date";
@@ -239,7 +240,7 @@ export function TimelinePurchaseOrderDialog({
   const order = selectedPurchaseOrder?.id === purchaseOrderId ? selectedPurchaseOrder : null;
   const stepCount = order ? 1 + order.events.filter((event) => event.kind !== "created").length : 0;
   const receivedByStep = order ? receivedAfterEachStep(order) : new Map<string, Map<string, number>>();
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
 
   useEffect(() => {
     const request = dispatch(editPurchaseOrder(purchaseOrderId));

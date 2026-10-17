@@ -51,7 +51,7 @@ export function CreateUserDialog({ onCreated }: { onCreated: (user: UserSummary)
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
-        <Button><UserPlus className="size-4" aria-hidden="true" />Add user</Button>
+        <Button className="w-full lg:w-auto"><UserPlus className="size-4" aria-hidden="true" />Add user</Button>
       </DialogTrigger>
       <DialogContent
         className={`max-h-[90svh] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto ${pending ? "[&>button]:hidden" : ""}`}
@@ -370,7 +370,7 @@ function CreateUserFields({
         )}
       </fieldset>
       {(formError || createError) && <p role="alert" className="text-sm text-destructive">{formError ?? createError?.message}</p>}
-      <div className="flex justify-end gap-3 border-t pt-4">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto border-t pt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button>
         <Button type="submit" disabled={pending || (supervisor && (!companyId || (creatingRole && !roleName.trim())))}>
           {pending && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}

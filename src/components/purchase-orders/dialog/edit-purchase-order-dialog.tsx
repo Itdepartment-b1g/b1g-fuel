@@ -438,7 +438,7 @@ function EditPurchaseOrderFields({
           {error ?? mutationError?.message}
         </p>
       )}
-      <div className="flex flex-wrap justify-end gap-3 border-t pt-4">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>*]:w-full sm:[&>*]:w-auto border-t pt-4">
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
           {locked ? "Done" : "Cancel"}
         </Button>

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DeleteMeasurementDialog } from "./dialog/delete-measurement-dialog";
 import { Pagination } from "@/components/common/pagination";
-import { SearchFilterBar } from "@/components/common/filter/search-filter-bar";
+import { SearchFilterBar, useListView } from "@/components/common/filter/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
 import { countActiveFilters, createQuickFilterState } from "@/utils/quick-filter";
 import { MEASUREMENT_FILTER_DEFAULTS } from "@/utils/management-filters";
@@ -58,7 +58,7 @@ export default function MeasurementList() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<TableSort | null>(null);
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -140,7 +140,7 @@ export default function MeasurementList() {
   return (
     <>
       <section className="w-full space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Procurement
@@ -153,7 +153,7 @@ export default function MeasurementList() {
             </p>
           </div>
           {canPerform(access, "measurements", "add") && (
-            <Button disabled={pending} onClick={() => openEditor()}>
+            <Button className="w-full lg:w-auto" disabled={pending} onClick={() => openEditor()}>
               <Plus className="size-4" aria-hidden="true" /> Add measurement
             </Button>
           )}
