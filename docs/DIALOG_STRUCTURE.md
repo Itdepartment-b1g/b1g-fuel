@@ -21,7 +21,9 @@ File and component names:
 | `create-company-dialog.tsx` | `CreateCompanyDialog` |
 | `edit-company-dialog.tsx` | `EditCompanyDialog` |
 
-A screen that is not create or edit gets its own file. Purchase orders use `create-purchase-order-dialog.tsx`, `edit-purchase-order-dialog.tsx`, `receive-purchase-order-dialog.tsx`, and `timeline-purchase-order-dialog.tsx`. Users use `create-user-dialog.tsx` and `assign-user-dialog.tsx`.
+A screen that is not create or edit gets its own file. Purchase orders use `create-purchase-order-dialog.tsx`, `edit-purchase-order-dialog.tsx`, `receive-purchase-order-dialog.tsx`, and `timeline-purchase-order-dialog.tsx`. Users use `create-user-dialog.tsx` and `assign-user-dialog.tsx`. Card views open `view-{resource}-dialog.tsx` from a View button. That dialog shows the detail the table expands in a row. The card view owns that dialog.
+
+Delete confirmation is `delete-{resource}-dialog.tsx`. The list renders it only while it holds the record to remove. Brands and variants use separate delete dialogs.
 
 ## Inside one dialog file
 
@@ -82,4 +84,4 @@ Reset to page 1 after create. Leave the current page after edit.
 
 - Do not merge purchase-order create, edit, receive, and timeline into one dialog.
 - The purchase-order list imports `create-purchase-order-dialog.tsx`, `edit-purchase-order-dialog.tsx`, `receive-purchase-order-dialog.tsx`, and `timeline-purchase-order-dialog.tsx`. Ignore older dialog files in that folder that the list does not import.
-- Delete confirmation stays in `src/components/common/delete-dialog.tsx`.
+- Do not add a shared delete dialog. Each resource confirms deletion in its own `delete-{resource}-dialog.tsx`.

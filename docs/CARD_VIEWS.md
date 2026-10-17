@@ -56,13 +56,14 @@ const [view, setView] = useState<"table" | "cards">("table");
 
 - One `<article>` per record, keyed by `record.id`.
 - A resource icon, the record name, and the short facts a person needs without opening the table.
-- The same row actions as the table: Edit, Delete, Assign, or the extra brand actions. Call `canPerform` before enabling an action, or reuse the action component exported by the table view (`CompanyActions`, `RoleActions`).
+- The same row actions as the table, inside `CardActionsMenu`: a vertical three-dot button in the card header. View, Edit, Delete, Assign, and the extra purchase-order actions open from that menu. Call `canPerform` before enabling an action.
 - `disabled` from the list while a save or delete is in progress.
+- A View button that opens `dialog/view-{resource}-dialog.tsx`. That dialog shows the same detail the table expands in a row: members, units, variants, role access, or purchase-order lines. The card does not expand that detail in place.
 
-An expanded section, such as company members, role details, or brand variants, uses local state for the open card id. Render that detail only while it is open. Do not start a second copy of the list request.
+The view dialog keeps its own open record in the card view. Do not start a second copy of the list request.
 
 ## What stays out of the card view
 
 - Do not dispatch `list*` from the card view. The list already loaded the page.
 - Do not render `Pagination`, `SearchFilterBar`, or the page heading here.
-- Do not open create or edit dialogs here. Call `onEdit`, `onDelete`, or the other callback and let the list open the dialog.
+- Do not open create or edit dialogs here. Call `onEdit`, `onDelete`, or the other callback and let the list open the dialog. The View dialog is the exception: the card opens it.

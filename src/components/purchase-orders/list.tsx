@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardList, LayoutGrid, List, Plus } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
@@ -147,15 +147,10 @@ export default function ListPurchaseOrders() {
         searchLabel="Search purchase orders"
         maxLength={160}
         quickFilterActive={Boolean(activeFilters)}
+        view={view}
+        onViewChange={setView}
+        viewLabel="Purchase order display"
       />
-      <div className="flex w-fit rounded-lg border p-1" role="group" aria-label="Purchase order display">
-        <button type="button" aria-label="Table view" aria-pressed={view === "table"} onClick={() => setView("table")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}>
-          <List className="size-4" />
-        </button>
-        <button type="button" aria-label="Card view" aria-pressed={view === "cards"} onClick={() => setView("cards")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}>
-          <LayoutGrid className="size-4" />
-        </button>
-      </div>
       {filterOptionsError && (
         <p role="alert" className="text-sm text-destructive">
           Filter choices could not be loaded.

@@ -14,12 +14,12 @@ Read `docs/PAGE_VIEWS.md`, `docs/CARD_VIEWS.md`, and `docs/DIALOG_STRUCTURE.md` 
 - The list is the client default export. It owns Redux loading, search, filters, sorting, pagination, and dialogs.
 - Table columns live in `table-view/{resource}-table-columns.tsx`. The table view renders shared `TableView` with the rows and callbacks the list passes in. It does not load the list. Pagination stays on the list.
 - A card view in `card-views/{resource}-cards.tsx` receives the same rows and callbacks. Add one only when the list toggles between `"table"` and `"cards"`.
-- Keep `SearchFilterBar`, `Pagination`, `DeleteDialog`, and `TableView` in `src/components/common`.
+- Keep `SearchFilterBar`, `Pagination`, `TableView`, and `CardActionsMenu` in `src/components/common`.
 
 ## Dialogs
 
 - One file per screen: `create-{resource}-dialog.tsx` and `edit-{resource}-dialog.tsx`.
 - Put the fields function in that same file. Do not add a `*-form.tsx`, and do not switch create and edit inside one dialog with a nullable id.
 - The list uses `creating` and `editingId`. Edit dialogs take a required id.
-- A different screen (receive, timeline, assign) gets its own dialog file.
+- A different screen (receive, timeline, assign, delete, view) gets its own dialog file. Delete confirmation is `delete-{resource}-dialog.tsx`.
 - Purchase-order create, edit, receive, and timeline stay separate. Use the four dialog files the purchase-order list imports.

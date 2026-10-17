@@ -6,12 +6,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import type { TableSort } from "@/types/table-views";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  LayoutGrid,
-  List,
-  LoaderCircle,
-  UsersRound,
-} from "lucide-react";
+import { LoaderCircle, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
@@ -136,8 +131,7 @@ export default function UsersList() {
           }}
         />}
       </header>
-   <div className="flex flex-wrap items-center justify-between gap-4">
-   <SearchFilterBar
+      <SearchFilterBar
         search={search}
         onSearch={(value) => {
           setSearch(value);
@@ -158,32 +152,10 @@ export default function UsersList() {
         placeholder="Search by name or email"
         maxLength={254}
         quickFilterActive={activeFilters > 0}
+        view={view}
+        onViewChange={setView}
+        viewLabel="User display"
       />
-         <div
-              className="flex rounded-lg border p-1"
-              role="group"
-              aria-label="User display"
-            >
-              <button
-                type="button"
-                aria-label="Table view"
-                aria-pressed={view === "table"}
-                onClick={() => setView("table")}
-                className={`rounded-md p-2 ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
-              >
-                <List className="size-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Card view"
-                aria-pressed={view === "cards"}
-                onClick={() => setView("cards")}
-                className={`rounded-md p-2 ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
-              >
-                <LayoutGrid className="size-4" />
-              </button>
-            </div>
-   </div>
       <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
 
         {listError && (

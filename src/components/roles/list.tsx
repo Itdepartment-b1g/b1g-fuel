@@ -9,11 +9,11 @@ import {
 import type { TableSort } from "@/types/table-views";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, LoaderCircle, Plus, Shield } from "lucide-react";
+import { LoaderCircle, Plus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
-import { DeleteDialog } from "@/components/common/delete-dialog";
+import { DeleteRoleDialog } from "./dialog/delete-role-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   listRole,
@@ -165,8 +165,7 @@ export default function RolesList() {
             </Button>
           )}
         </header>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <SearchFilterBar
+        <SearchFilterBar
             search={search}
             onSearch={(value) => {
               setSearch(value);
@@ -187,32 +186,10 @@ export default function RolesList() {
             placeholder="Search by name or email"
             maxLength={254}
             quickFilterActive={activeFilters > 0}
+            view={view}
+            onViewChange={setView}
+            viewLabel="Role display"
           />
-          <div
-            className="flex rounded-lg border p-1"
-            role="group"
-            aria-label="User display"
-          >
-            <button
-              type="button"
-              aria-label="Table view"
-              aria-pressed={view === "table"}
-              onClick={() => setView("table")}
-              className={`rounded-md p-2 ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
-            >
-              <List className="size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="Card view"
-              aria-pressed={view === "cards"}
-              onClick={() => setView("cards")}
-              className={`rounded-md p-2 ${view === "cards" ? "bg-gray-50": "text-muted-foreground"}`}
-            >
-              <LayoutGrid className="size-4" />
-            </button>
-          </div>
-        </div>
         <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
           {listError && (
             <div
@@ -318,19 +295,15 @@ export default function RolesList() {
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        title="Delete role?"
-        description={`Delete ${removing?.name ?? "this role"}? Its page and permission mappings will also be removed. This cannot be undone.`}
-        onConfirm={() => {
-          void removeRole();
-        }}
-        pending={pending}
-        error={mutationError?.message}
-      />
+      {removing && (
+        <DeleteRoleDialog
+          role={removing}
+          pending={pending}
+          error={mutationError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => { void removeRole(); }}
+        />
+      )}
     </>
   );
 }

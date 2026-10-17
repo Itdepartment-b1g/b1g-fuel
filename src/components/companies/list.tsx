@@ -9,11 +9,11 @@ import {
 import type { TableSort } from "@/types/table-views";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, LayoutGrid, List, LoaderCircle, Plus } from "lucide-react";
+import { Building2, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
-import { DeleteDialog } from "@/components/common/delete-dialog";
+import { DeleteCompanyDialog } from "./dialog/delete-company-dialog";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   listCompany,
@@ -165,9 +165,7 @@ export default function CompaniesList() {
             </Button>
           )}
         </header>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchFilterBar
-            className="min-w-0 w-full flex-1"
+        <SearchFilterBar
             search={search}
             onSearch={(value) => {
               setSearch(value);
@@ -188,32 +186,10 @@ export default function CompaniesList() {
             placeholder="Search by name or email"
             maxLength={254}
             quickFilterActive={activeFilters > 0}
+            view={view}
+            onViewChange={setView}
+            viewLabel="Company display"
           />
-          <div
-            className="flex w-fit shrink-0 self-end rounded-lg border p-1 sm:self-auto"
-            role="group"
-            aria-label="User display"
-          >
-            <button
-              type="button"
-              aria-label="Table view"
-              aria-pressed={view === "table"}
-              onClick={() => setView("table")}
-              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
-            >
-              <List className="size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="Card view"
-              aria-pressed={view === "cards"}
-              onClick={() => setView("cards")}
-              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
-            >
-              <LayoutGrid className="size-4" />
-            </button>
-          </div>
-        </div>
         <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
           {listError && (
             <div
@@ -322,19 +298,15 @@ export default function CompaniesList() {
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        title="Delete company?"
-        description={`Delete ${removing?.name ?? "this company"}? Only companies without members can be deleted. This cannot be undone.`}
-        onConfirm={() => {
-          void removeCompany();
-        }}
-        pending={pending}
-        error={mutationError?.message}
-      />
+      {removing && (
+        <DeleteCompanyDialog
+          company={removing}
+          pending={pending}
+          error={mutationError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => { void removeCompany(); }}
+        />
+      )}
     </>
   );
 }

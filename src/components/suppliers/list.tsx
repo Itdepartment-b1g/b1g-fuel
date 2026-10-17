@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, LoaderCircle, Plus, Truck } from "lucide-react";
+import { LoaderCircle, Plus, Truck } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/common/delete-dialog";
+import { DeleteSupplierDialog } from "./dialog/delete-supplier-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -127,9 +127,7 @@ export default function ListSuppliers() {
             </Button>
           )}
         </header>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchFilterBar
-            className="min-w-0 w-full flex-1"
+        <SearchFilterBar
             search={search}
             onSearch={(value) => { setSearch(value); setPage(1); }}
             filters={filters}
@@ -144,16 +142,10 @@ export default function ListSuppliers() {
             placeholder="Search name or contact"
             maxLength={160}
             quickFilterActive={activeFilters > 0}
+            view={view}
+            onViewChange={setView}
+            viewLabel="Supplier display"
           />
-          <div className="flex w-fit shrink-0 self-end rounded-lg border p-1 sm:self-auto" role="group" aria-label="Supplier display">
-            <button type="button" aria-label="Table view" aria-pressed={view === "table"} onClick={() => setView("table")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}>
-              <List className="size-4" />
-            </button>
-            <button type="button" aria-label="Card view" aria-pressed={view === "cards"} onClick={() => setView("cards")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}>
-              <LayoutGrid className="size-4" />
-            </button>
-          </div>
-        </div>
         <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
           {listError && (
             <div role="alert" className="flex items-center justify-between gap-3 border-b bg-red-50 px-6 py-4 text-sm text-destructive">
@@ -216,15 +208,15 @@ export default function ListSuppliers() {
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => { if (!open) setRemoving(null); }}
-        title="Delete supplier?"
-        description={`Delete ${removing?.name ?? "this supplier"}? This cannot be undone.`}
-        onConfirm={() => { void remove(); }}
-        pending={pending}
-        error={mutationError?.message}
-      />
+      {removing && (
+        <DeleteSupplierDialog
+          supplier={removing}
+          pending={pending}
+          error={mutationError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => { void remove(); }}
+        />
+      )}
     </>
   );
 }

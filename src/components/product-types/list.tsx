@@ -6,7 +6,7 @@ import { Plus, Shapes } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/common/delete-dialog";
+import { DeleteProductTypeDialog } from "./dialog/delete-product-type-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -207,31 +207,27 @@ export default function ListProductTypes() {
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        title="Delete product type?"
-        description={`Delete ${removing?.name ?? "this product type"}? Types used by products cannot be deleted.`}
-        pending={pending}
-        error={mutationError?.message}
-        onConfirm={() => {
-          if (!removing || pending) return;
-          void (async () => {
-            try {
-              await dispatch(deleteProductType(removing.id)).unwrap();
-              toast.success(`${removing.name} was deleted.`);
-              setRemoving(null);
-              setRevision((value) => value + 1);
-            } catch (error) {
-              toast.error(
-                toastErrorMessage(error, "Could not delete the product type."),
-              );
-            }
-          })();
-        }}
-      />
+      {removing && (
+        <DeleteProductTypeDialog
+          productType={removing}
+          pending={pending}
+          error={mutationError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => {
+            if (pending) return;
+            void (async () => {
+              try {
+                await dispatch(deleteProductType(removing.id)).unwrap();
+                toast.success(`${removing.name} was deleted.`);
+                setRemoving(null);
+                setRevision((value) => value + 1);
+              } catch (error) {
+                toast.error(toastErrorMessage(error, "Could not delete the product type."));
+              }
+            })();
+          }}
+        />
+      )}
     </div>
   );
 }

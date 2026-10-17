@@ -14,7 +14,7 @@ export type MeasurementActionProps = {
   disabled: boolean;
 };
 
-function MeasurementUnits({ measurement }: { measurement: MeasurementSummary }) {
+export function MeasurementUnits({ measurement }: { measurement: MeasurementSummary }) {
   return (
     <div className="overflow-x-auto rounded-lg border bg-white">
       <table className="w-full text-left text-sm">

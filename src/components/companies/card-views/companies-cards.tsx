@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, ChevronDown } from "lucide-react";
-import { CompanyMembers } from "../table-view/company-members";
+import { Building2, Eye, Pencil, Trash2 } from "lucide-react";
+import { CardActionsMenu } from "@/components/common/card-actions-menu";
+import { useRecordAccess } from "@/components/providers/access-provider";
+import { canPerform } from "@/lib/auth/access-scope";
 import type { CompanySummary } from "@/types/companies";
-import {
-  CompanyActions,
-  type CompanyActionProps,
-} from "../table-view/companies-table-view";
+import { type CompanyActionProps } from "../table-view/companies-table-view";
 import { formatDate } from "@/utils/date";
+import { ViewCompanyDialog } from "../dialog/view-company-dialog";
 
 export function CompaniesCards({
   companies,
@@ -16,12 +16,37 @@ export function CompaniesCards({
   onDelete,
   disabled,
 }: CompanyActionProps & { companies: CompanySummary[] }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const access = useRecordAccess();
+  const [viewing, setViewing] = useState<CompanySummary | null>(null);
   return (
     <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
       {companies.map((company) => (
         <article key={company.id} className="rounded-xl border p-5">
-          <Building2 className="mb-4 size-7 text-primary" aria-hidden="true" />
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <Building2 className="size-7 text-primary" aria-hidden="true" />
+            <CardActionsMenu
+              label={`Actions for ${company.name}`}
+              items={[
+                { id: "view", label: "View", icon: <Eye />, onSelect: () => setViewing(company) },
+                {
+                  id: "edit",
+                  label: "Edit",
+                  icon: <Pencil />,
+                  disabled: disabled || !canPerform(access, "companies", "edit", company),
+                  onSelect: () => onEdit(company),
+                },
+                {
+                  id: "delete",
+                  label: "Delete",
+                  icon: <Trash2 />,
+                  destructive: true,
+                  description: company.member_count ? "Companies with members cannot be deleted" : undefined,
+                  disabled: disabled || company.member_count > 0 || !canPerform(access, "companies", "delete", company),
+                  onSelect: () => onDelete(company),
+                },
+              ]}
+            />
+          </div>
           <h2 className="break-words font-semibold">{company.name}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {company.member_count === 0
@@ -41,29 +66,9 @@ export function CompaniesCards({
           <p className="mt-2 text-xs text-muted-foreground">
             Created {formatDate(company.created_at)}
           </p>
-          <button
-            type="button"
-            className="mt-4 flex w-full items-center justify-between text-sm font-medium"
-            aria-expanded={expandedId === company.id}
-            aria-controls={`company-members-${company.id}`}
-            onClick={() => setExpandedId((current) => current === company.id ? null : company.id)}
-          >
-            View members
-            <ChevronDown className={`size-4 transition-transform ${expandedId === company.id ? "rotate-180" : ""}`} aria-hidden="true" />
-          </button>
-          <div id={`company-members-${company.id}`} hidden={expandedId !== company.id} className="mt-3">
-            {expandedId === company.id && <CompanyMembers key={company.id} companyId={company.id} />}
-          </div>
-          <div className="mt-4 border-t pt-2">
-            <CompanyActions
-              company={company}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              disabled={disabled}
-            />
-          </div>
         </article>
       ))}
+      {viewing && <ViewCompanyDialog company={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }

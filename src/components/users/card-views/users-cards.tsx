@@ -1,5 +1,5 @@
-import { Building2, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Building2, Mail, UserRoundPen } from "lucide-react";
+import { CardActionsMenu } from "@/components/common/card-actions-menu";
 import type { UserSummary } from "@/types/users";
 import { UserAssignments, UserAvatar } from "../table-view/users-table-view";
 
@@ -16,9 +16,20 @@ export function UsersCards({
         <article key={user.id} className="rounded-xl border bg-white p-5">
           <div className="mb-5 flex items-center gap-3">
             <UserAvatar name={user.name} />
-            <h2 className="min-w-0 truncate font-semibold" title={user.name}>
+            <h2 className="min-w-0 flex-1 truncate font-semibold" title={user.name}>
               {user.name}
             </h2>
+            {onAssign && (
+              <CardActionsMenu
+                label={`Actions for ${user.name}`}
+                items={[{
+                  id: "assign",
+                  label: "Assign company and roles",
+                  icon: <UserRoundPen />,
+                  onSelect: () => onAssign(user),
+                }]}
+              />
+            )}
           </div>
           <p className="mb-3 flex items-start gap-2 text-sm text-muted-foreground">
             <Mail className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -32,18 +43,6 @@ export function UsersCards({
             </span>
           </p>
           <UserAssignments user={user} />
-          {onAssign && (
-            <div className="mt-4 border-t pt-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onAssign(user)}
-              >
-                Assign company and roles
-              </Button>
-            </div>
-          )}
         </article>
       ))}
     </div>

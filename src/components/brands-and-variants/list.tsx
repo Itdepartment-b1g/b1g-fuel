@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, LoaderCircle, Plus, Tag } from "lucide-react";
+import { LoaderCircle, Plus, Tag } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/common/delete-dialog";
+import { DeleteBrandDialog } from "./dialog/delete-brand-dialog";
+import { DeleteVariantDialog } from "./dialog/delete-variant-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -194,9 +195,7 @@ export default function BrandAndVariantList() {
             )}
           </div>
         </header>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <SearchFilterBar
-            className="min-w-0 w-full flex-1"
+        <SearchFilterBar
             search={search}
             onSearch={(value) => {
               setSearch(value);
@@ -217,32 +216,10 @@ export default function BrandAndVariantList() {
             placeholder="Search brand name"
             maxLength={160}
             quickFilterActive={activeFilters > 0}
+            view={view}
+            onViewChange={setView}
+            viewLabel="Brand display"
           />
-          <div
-            className="flex w-fit shrink-0 self-end rounded-lg border p-1 sm:self-auto"
-            role="group"
-            aria-label="Brand display"
-          >
-            <button
-              type="button"
-              aria-label="Table view"
-              aria-pressed={view === "table"}
-              onClick={() => setView("table")}
-              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
-            >
-              <List className="size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="Card view"
-              aria-pressed={view === "cards"}
-              onClick={() => setView("cards")}
-              className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
-            >
-              <LayoutGrid className="size-4" />
-            </button>
-          </div>
-        </div>
         <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
           {listError && (
             <div
@@ -341,23 +318,24 @@ export default function BrandAndVariantList() {
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        title={removing?.kind === "variant" ? "Delete variant?" : "Delete brand?"}
-        description={
-          removing?.kind === "variant"
-            ? `Delete ${removing.record.name}? This cannot be undone.`
-            : `Delete ${removing?.record.name ?? "this brand"}? A brand that still has variants cannot be deleted.`
-        }
-        onConfirm={() => {
-          void remove();
-        }}
-        pending={pending}
-        error={deleteError?.message}
-      />
+      {removing?.kind === "brand" && (
+        <DeleteBrandDialog
+          brand={removing.record}
+          pending={pending}
+          error={deleteError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => { void remove(); }}
+        />
+      )}
+      {removing?.kind === "variant" && (
+        <DeleteVariantDialog
+          variant={removing.record}
+          pending={pending}
+          error={deleteError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => { void remove(); }}
+        />
+      )}
     </>
   );
 }

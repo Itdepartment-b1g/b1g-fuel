@@ -21,7 +21,7 @@ The `(app)` layout already wraps the page in the dashboard shell. Login, docs, a
 `src/components/{resource}/list.tsx` is a client component and the default export. It:
 
 - Loads the page from Redux, including search, filters, sorting, and pagination.
-- Renders the heading, add button, `SearchFilterBar`, and `Pagination`.
+- Renders the heading, add button, `SearchFilterBar`, and `Pagination`. Pass `view` and `onViewChange` when the page has a card view. `SearchFilterBar` renders the shared table/cards toggle. Product types omit those props.
 - Opens create and edit dialogs. See [dialog structure](DIALOG_STRUCTURE.md).
 - Passes the current rows and callbacks into the table view and, when the screen has one, the card view.
 
@@ -58,4 +58,4 @@ The card view receives the same rows and callbacks as the table view. Add one on
 
 ## Shared UI
 
-Search, pagination, delete confirmation, and the table shell stay in `src/components/common`. A resource folder does not copy those components.
+Search, pagination, and the table shell stay in `src/components/common`. Delete confirmation lives in the resource dialog folder.

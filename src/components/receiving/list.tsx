@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, PackageCheck, Plus } from "lucide-react";
+import { PackageCheck, Plus } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
-import { DeleteDialog } from "@/components/common/delete-dialog";
+import { DeleteReceivingDialog } from "./dialog/delete-receiving-dialog";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -132,15 +132,10 @@ export default function ListReceiving() {
         searchLabel="Search receipts"
         maxLength={160}
         quickFilterActive={Boolean(activeFilters)}
+        view={view}
+        onViewChange={setView}
+        viewLabel="Receipt display"
       />
-      <div className="flex w-fit rounded-lg border p-1" role="group" aria-label="Receipt display">
-        <button type="button" aria-label="Table view" aria-pressed={view === "table"} onClick={() => setView("table")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}>
-          <List className="size-4" />
-        </button>
-        <button type="button" aria-label="Card view" aria-pressed={view === "cards"} onClick={() => setView("cards")} className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}>
-          <LayoutGrid className="size-4" />
-        </button>
-      </div>
       {filterOptionsError && <p role="alert" className="text-sm text-destructive">Filter choices could not be loaded.</p>}
       <div className="overflow-hidden rounded-[6px] border bg-white shadow-sm">
         {view === "table" ? (
@@ -203,29 +198,27 @@ export default function ListReceiving() {
           }}
         />
       )}
-      <DeleteDialog
-        open={Boolean(removing)}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        title="Delete receipt?"
-        description="Delete this draft receipt? This cannot be undone."
-        pending={pending}
-        error={mutationError?.message}
-        onConfirm={() => {
-          if (!removing || pending) return;
-          void (async () => {
-            try {
-              await dispatch(deleteReceiving(removing.id)).unwrap();
-              toast.success("Receipt was deleted.");
-              setRemoving(null);
-              setRevision((value) => value + 1);
-            } catch (error) {
-              toast.error(toastErrorMessage(error, "Could not delete the receipt."));
-            }
-          })();
-        }}
-      />
+      {removing && (
+        <DeleteReceivingDialog
+          receipt={removing}
+          pending={pending}
+          error={mutationError?.message}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => {
+            if (pending) return;
+            void (async () => {
+              try {
+                await dispatch(deleteReceiving(removing.id)).unwrap();
+                toast.success("Receipt was deleted.");
+                setRemoving(null);
+                setRevision((value) => value + 1);
+              } catch (error) {
+                toast.error(toastErrorMessage(error, "Could not delete the receipt."));
+              }
+            })();
+          }}
+        />
+      )}
     </div>
   );
 }

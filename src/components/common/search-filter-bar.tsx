@@ -1,11 +1,46 @@
 "use client";
 
 import { useState } from "react";
+import { LayoutGrid, List } from "lucide-react";
 import { fromDateMenuValue, toDateMenuValue } from "@/utils/quick-filter";
 import type { AdditionalFilter, FilterField, FilterOption, QuickFilterState } from "@/types/quick-filter";
-import { cn } from "@/lib/utils";
 import { DateRangeMenu } from "./date-range-menu";
 import { SearchQuickFilter } from "./search-quick-filter";
+
+export type ListView = "table" | "cards";
+
+export function ViewToggle({
+  view,
+  onViewChange,
+  label = "Display",
+}: {
+  view: ListView;
+  onViewChange: (view: ListView) => void;
+  label?: string;
+}) {
+  return (
+    <div className="flex w-fit shrink-0 rounded-lg border p-1" role="group" aria-label={label}>
+      <button
+        type="button"
+        aria-label="Table view"
+        aria-pressed={view === "table"}
+        onClick={() => onViewChange("table")}
+        className={`inline-flex size-10 items-center justify-center rounded-md ${view === "table" ? "bg-gray-50" : "text-muted-foreground"}`}
+      >
+        <List className="size-4" />
+      </button>
+      <button
+        type="button"
+        aria-label="Card view"
+        aria-pressed={view === "cards"}
+        onClick={() => onViewChange("cards")}
+        className={`inline-flex size-10 items-center justify-center rounded-md ${view === "cards" ? "bg-gray-50" : "text-muted-foreground"}`}
+      >
+        <LayoutGrid className="size-4" />
+      </button>
+    </div>
+  );
+}
 
 type FilterLabels = {
   button?: string;
@@ -33,6 +68,9 @@ export type SearchFilterBarProps = {
   searchLabel?: string;
   maxLength?: number;
   quickFilterActive?: boolean;
+  view?: ListView;
+  onViewChange?: (view: ListView) => void;
+  viewLabel?: string;
   className?: string;
 };
 
@@ -53,15 +91,14 @@ export function SearchFilterBar({
   searchLabel,
   maxLength,
   quickFilterActive,
+  view,
+  onViewChange,
+  viewLabel,
   className,
 }: SearchFilterBarProps) {
   const [draft, setDraft] = useState(search);
   return (
-    <div
-      className={cn(
-        className,
-      )}
-    >
+    <div className={className}>
       <SearchQuickFilter
         searchValue={draft}
         onSearchValueChange={setDraft}
@@ -75,14 +112,19 @@ export function SearchFilterBar({
         onClearSearch={() => onSearch("")}
         quickFilterActive={quickFilterActive}
         trailingContent={
-          <DateRangeMenu
-            value={toDateMenuValue(filters.date)}
-            onChange={(next) =>
-              onFiltersChange({ ...filters, date: fromDateMenuValue(next) })
-            }
-            align="end"
-            disabled={disabled}
-          />
+          <>
+            <DateRangeMenu
+              value={toDateMenuValue(filters.date)}
+              onChange={(next) =>
+                onFiltersChange({ ...filters, date: fromDateMenuValue(next) })
+              }
+              align="end"
+              disabled={disabled}
+            />
+            {view && onViewChange && (
+              <ViewToggle view={view} onViewChange={onViewChange} label={viewLabel} />
+            )}
+          </>
         }
         filter={{
           value: filters,

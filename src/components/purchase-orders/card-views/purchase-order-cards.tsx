@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, CircleX, ClipboardList, History, PackageCheck, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CircleX, ClipboardList, Eye, History, PackageCheck, Pencil } from "lucide-react";
+import { CardActionsMenu } from "@/components/common/card-actions-menu";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import { PURCHASE_ORDER_STATUS_LABEL, type PurchaseOrderSummary } from "@/types/purchase-orders";
 import { formatDate } from "@/utils/date";
-import { PurchaseOrderDetails } from "../table-view/purchase-orders-table-view";
+import { ViewPurchaseOrderDialog } from "../dialog/view-purchase-order-dialog";
 
 export function PurchaseOrderCards({
   purchaseOrders,
@@ -27,7 +27,7 @@ export function PurchaseOrderCards({
   onTimeline: (row: PurchaseOrderSummary) => void;
 }) {
   const access = useRecordAccess();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<PurchaseOrderSummary | null>(null);
   if (loading && !purchaseOrders.length) {
     return <p role="status" className="p-6 text-sm text-muted-foreground">Loading purchase orders…</p>;
   }
@@ -40,7 +40,46 @@ export function PurchaseOrderCards({
         const openForReceipt = order.status === "awaiting_receipt" || order.status === "partially_received";
         return (
           <article key={order.id} className="rounded-xl border p-5">
-            <ClipboardList className="mb-4 size-7 text-primary" aria-hidden="true" />
+            <div className="mb-4 flex items-start justify-between gap-2">
+              <ClipboardList className="size-7 text-primary" aria-hidden="true" />
+              <CardActionsMenu
+                label={`Actions for ${order.purchase_order_no}`}
+                items={[
+                  { id: "view", label: "View", icon: <Eye />, onSelect: () => setViewing(order) },
+                  ...(order.status === "draft"
+                    ? [{
+                        id: "edit",
+                        label: "Edit",
+                        icon: <Pencil />,
+                        disabled: disabled || !canPerform(access, "purchaseOrders", "edit", order),
+                        onSelect: () => onEdit(order),
+                      }]
+                    : []),
+                  ...(openForReceipt
+                    ? [{
+                        id: "close",
+                        label: "Close",
+                        icon: <CircleX />,
+                        disabled: disabled || !canPerform(access, "purchaseOrders", "edit", order),
+                        onSelect: () => onCloseOrder(order),
+                      }, {
+                        id: "receive",
+                        label: "Receive",
+                        icon: <PackageCheck />,
+                        disabled: disabled || !canPerform(access, "receiving", "add", order),
+                        onSelect: () => onReceive(order),
+                      }]
+                    : []),
+                  {
+                    id: "timeline",
+                    label: "Timeline",
+                    icon: <History />,
+                    disabled: disabled || !canPerform(access, "purchaseOrders", "view", order),
+                    onSelect: () => onTimeline(order),
+                  },
+                ]}
+              />
+            </div>
             <h2 className="break-words font-semibold">{order.purchase_order_no}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {order.supplier.name} · {order.location.name}
@@ -67,43 +106,10 @@ export function PurchaseOrderCards({
                 <dd>{formatDate(order.created_at)}</dd>
               </div>
             </dl>
-            <button
-              type="button"
-              className="mt-4 flex w-full items-center justify-between text-sm font-medium"
-              aria-expanded={expandedId === order.id}
-              onClick={() => setExpandedId((current) => (current === order.id ? null : order.id))}
-            >
-              View lines
-              <ChevronDown className={`size-4 transition-transform ${expandedId === order.id ? "rotate-180" : ""}`} aria-hidden="true" />
-            </button>
-            {expandedId === order.id && (
-              <div className="mt-3">
-                <PurchaseOrderDetails order={order} />
-              </div>
-            )}
-            <div className="mt-4 flex flex-wrap justify-end gap-2 border-t pt-3">
-              {order.status === "draft" && (
-                <Button variant="ghost" size="sm" disabled={disabled || !canPerform(access, "purchaseOrders", "edit", order)} onClick={() => onEdit(order)}>
-                  <Pencil className="size-4" /> Edit
-                </Button>
-              )}
-              {openForReceipt && (
-                <Button variant="ghost" size="sm" disabled={disabled || !canPerform(access, "purchaseOrders", "edit", order)} onClick={() => onCloseOrder(order)}>
-                  <CircleX className="size-4" /> Close
-                </Button>
-              )}
-              {openForReceipt && (
-                <Button variant="ghost" size="sm" disabled={disabled || !canPerform(access, "receiving", "add", order)} onClick={() => onReceive(order)}>
-                  <PackageCheck className="size-4" /> Receive
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" disabled={disabled || !canPerform(access, "purchaseOrders", "view", order)} onClick={() => onTimeline(order)}>
-                <History className="size-4" /> Timeline
-              </Button>
-            </div>
           </article>
         );
       })}
+      {viewing && <ViewPurchaseOrderDialog order={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }
