@@ -110,8 +110,10 @@ model user_company {
   roles            user_company_role[]
   pages            user_company_page[]
   permissions      user_company_permission[]
+  locations        user_location[]
 
   @@unique([user_id, company_id])
+  @@unique([id, company_id])
   @@index([company_id])
 }
 
@@ -253,11 +255,30 @@ model location {
   company         company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
   purchase_orders purchase_order[]
   receivings      receiving[]
+  users           user_location[]
 
   @@unique([company_id, name])
+  @@unique([id, company_id])
   @@index([created_by])
   @@index([company_id])
   @@index([type])
+}
+
+// Company is repeated to enforce same-company assignments with composite foreign keys.
+model user_location {
+  id              String       @id @default(uuid()) @db.Uuid
+  company_id      String       @db.Uuid
+  user_company_id String       @db.Uuid
+  location_id     String       @db.Uuid
+  assigned_by     String       @db.Uuid
+  assigned_at     DateTime     @default(now()) @db.Timestamptz(6)
+  membership      user_company @relation(fields: [user_company_id, company_id], references: [id, company_id], onDelete: Cascade, onUpdate: Restrict)
+  location        location     @relation(fields: [location_id, company_id], references: [id, company_id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([user_company_id, location_id])
+  @@index([location_id, company_id])
+  @@index([user_company_id, company_id])
+  @@index([assigned_by])
 }
 
 model product_type {

@@ -18,6 +18,7 @@ src/components/{resource}/card-views/{resource}-cards.tsx
 | Users | `UsersCards` |
 | Receiving | `ReceivingCards` |
 | Purchase orders | `PurchaseOrderCards` |
+| Hubs | `HubsCards` |
 
 Product types have a table view only. Add a card file when the list grows a table/cards toggle.
 

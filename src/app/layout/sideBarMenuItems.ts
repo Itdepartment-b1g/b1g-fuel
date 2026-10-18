@@ -23,6 +23,7 @@ export type SideBarAccess = {
 
 const icons_by_page: Record<PageKey, MenuIcon> = {
   [PAGE_KEYS.home]: LayoutDashboard,
+  [PAGE_KEYS.hubs]: Building2,
   [PAGE_KEYS.users]: UsersRound,
   [PAGE_KEYS.roles]: ShieldCheck,
   [PAGE_KEYS.companies]: Building2,

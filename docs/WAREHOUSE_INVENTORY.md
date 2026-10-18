@@ -52,6 +52,8 @@ flowchart TD
 
 ## Locations
 
+The dedicated [Hubs module](HUBS.md) now manages company-owned `location` rows with `type = hub`, including the page, Redux API requests, and staff assignments. Warehouse location CRUD and inventory requests/transfers remain separate work.
+
 ### Purpose
 
 Locations answer *where* stock sits and *where* a PO will receive goods. Create them in a Locations module (catalog-style CRUD), company-scoped.

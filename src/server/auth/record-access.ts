@@ -19,7 +19,8 @@ export type Resource =
   | "productTypes"
   | "products"
   | "purchaseOrders"
-  | "receiving";
+  | "receiving"
+  | "hubs";
 
 type ResourceWhere = {
   users: Prisma.userWhereInput;
@@ -32,6 +33,7 @@ type ResourceWhere = {
   products: Prisma.productWhereInput;
   purchaseOrders: Prisma.purchase_orderWhereInput;
   receiving: Prisma.receivingWhereInput;
+  hubs: Prisma.locationWhereInput;
 }
 
 const OWNED_RESOURCES = [
@@ -167,6 +169,8 @@ export function record_where(
   const grants = access.grants.filter(
     (grant) => grant.permission === `${resource}.${action}`,
   );
+  // Keep a concrete deny predicate when combined with hub ID/type conditions.
+  if (resource === "hubs" && grants.length === 0) return { id: { in: [] } };
   const owned = is_owned(resource);
   if (grants.some((grant) => grant.scope === "all" && !grant.companyId)) {
     if (is_shared(resource) && (action === "edit" || action === "delete"))
@@ -174,10 +178,15 @@ export function record_where(
     return {};
   }
   const rules = grants.map((grant) => {
+    // A hub's creator is audit only. Own access follows current staff assignments.
+    if (resource === "hubs" && grant.scope === "own") return {
+      company_id: { in: grant.companyId ? [grant.companyId] : access.companyIds },
+      users: { some: { membership: { user_id: access.userId } } },
+    };
     if (grant.scope === "own") return { created_by: access.userId };
     const ids = grant.companyId ? [grant.companyId] : access.companyIds;
     if (resource === "companies") return { id: { in: ids } };
-    if (resource === "roles" || owned) return { company_id: { in: ids } };
+    if (resource === "roles" || resource === "hubs" || owned) return { company_id: { in: ids } };
     return { user_companies: { some: { company_id: { in: ids } } } };
   });
   if (is_shared(resource) && action === "view")

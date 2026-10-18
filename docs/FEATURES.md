@@ -63,10 +63,10 @@ Capabilities below are the product target. They are granted through roles/permis
 
 | Capability | Status |
 | --- | --- |
-| Create and manage hubs | Later (locations `type = hub`) |
+| Create and manage hubs | Done. Company-owned locations `type = hub`; [Hubs](HUBS.md) |
 | Create and manage agents | Later (CRM / user assignment) |
-| Assign agents to hubs | Later |
-| Manage multiple assigned hubs | Later |
+| Assign agents to hubs | Done. Company membership assignments with supervisor audit fields |
+| Manage multiple assigned hubs | Done. Company-level supervisors and assignment-scoped staff access |
 | Manage hub inventory | Later |
 | Create and manage client accounts | Later (CRM) |
 | Create orders when applicable | Later |

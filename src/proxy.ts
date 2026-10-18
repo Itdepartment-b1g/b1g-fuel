@@ -36,4 +36,4 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/users/:path*", "/roles/:path*", "/companies/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/users/:path*", "/roles/:path*", "/companies/:path*", "/hubs/:path*"] };

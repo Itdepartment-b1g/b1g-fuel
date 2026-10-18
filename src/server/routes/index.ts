@@ -12,6 +12,7 @@ import { productTypesRouter } from "./product_type";
 import { productsRouter } from "./product";
 import { purchaseOrdersRouter } from "./purchase_order";
 import { receivingRouter } from "./receiving";
+import { hubsRouter } from "./hubs";
 
 export const routesRouter = Router();
 
@@ -31,6 +32,7 @@ routesRouter.use("/api/product-types", productTypesRouter);
 routesRouter.use("/api/products", productsRouter);
 routesRouter.use("/api/purchase-orders", purchaseOrdersRouter);
 routesRouter.use("/api/receiving", receivingRouter);
+routesRouter.use("/api/hubs", hubsRouter);
 routesRouter.use((_req, res) =>
   res.status(404).json({ error: "Endpoint not found." }),
 );

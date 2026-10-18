@@ -37,13 +37,15 @@ export function canPerform(
     | "productTypes"
     | "products"
     | "purchaseOrders"
-    | "receiving",
+    | "receiving"
+    | "hubs",
   action: string,
   record?: {
     id: string;
     created_by: string | null;
     company_id?: string | null;
     companies?: { id: string }[];
+    assigned_user_ids?: string[];
   },
 ) {
   if (!access) return false;
@@ -62,6 +64,10 @@ export function canPerform(
     if (grant.permission !== `${resource}.${action}`) return false;
     if (!record || action === "add") return true;
     if (grant.scope === "all" && !grant.companyId) return true;
+    if (resource === "hubs" && grant.scope === "own") {
+      const ids = grant.companyId ? [grant.companyId] : access.companyIds;
+      return Boolean(record.company_id && ids.includes(record.company_id) && record.assigned_user_ids?.includes(access.userId));
+    }
     if (grant.scope === "own") return record.created_by === access.userId;
     const companyIds = grant.companyId ? [grant.companyId] : access.companyIds;
     return resource === "companies"
@@ -73,7 +79,8 @@ export function canPerform(
           resource === "productTypes" ||
           resource === "products" ||
           resource === "purchaseOrders" ||
-          resource === "receiving"
+          resource === "receiving" ||
+          resource === "hubs"
         ? Boolean(record.company_id && companyIds.includes(record.company_id))
         : Boolean(
             record.companies?.some((company) =>
