@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ import type { HubMember, HubSummary } from "@/types/hubs";
 import { paginationFromApi } from "@/utils/pagination";
 import { formatDate } from "@/utils/date";
 
+const PAGE_SIZE = 10;
+
 export function AssignHubDialog({
   hub,
   onClose,
@@ -44,6 +47,10 @@ export function AssignHubDialog({
   const state = useAppSelector(selectHub);
   const [page, setPage] = useState(1);
   const [optionPage, setOptionPage] = useState(1);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [assignedSearchDraft, setAssignedSearchDraft] = useState("");
+  const [assignedSearch, setAssignedSearch] = useState("");
   const [selected, setSelected] = useState<HubMember[]>([]);
   const [removing, setRemoving] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
@@ -61,34 +68,37 @@ export function AssignHubDialog({
       : null;
 
   useEffect(() => {
+    let current = true;
     const request = dispatch(
-      listHubAssignment({ location_id: hub.id, page, page_size: 10 }),
+      listHubAssignment({ location_id: hub.id, page, page_size: PAGE_SIZE, search: assignedSearch }),
     );
     request.then((action) => {
-      if (listHubAssignment.fulfilled.match(action)) {
+      if (current && listHubAssignment.fulfilled.match(action)) {
         const valid = paginationFromApi(action.payload).page;
         if (valid !== page) setPage(valid);
       }
     });
-    return () => request.abort();
-  }, [dispatch, hub.id, page, revision]);
+    return () => { current = false; request.abort(); };
+  }, [dispatch, hub.id, page, assignedSearch, revision]);
   useEffect(() => {
     if (!hub.is_active) return;
+    let current = true;
     const request = dispatch(
       getHubAssignmentOption({
         location_id: hub.id,
         page: optionPage,
-        page_size: 10,
+        page_size: PAGE_SIZE,
+        search,
       }),
     );
     request.then((action) => {
-      if (getHubAssignmentOption.fulfilled.match(action)) {
+      if (current && getHubAssignmentOption.fulfilled.match(action)) {
         const valid = paginationFromApi(action.payload).page;
         if (valid !== optionPage) setOptionPage(valid);
       }
     });
-    return () => request.abort();
-  }, [dispatch, hub.id, hub.is_active, optionPage, revision]);
+    return () => { current = false; request.abort(); };
+  }, [dispatch, hub.id, hub.is_active, optionPage, search, revision]);
   useEffect(() => {
     if (
       [
@@ -200,6 +210,18 @@ export function AssignHubDialog({
         </DialogHeader>
         {hub.is_active ? (
           <section className="space-y-3" aria-label="Assign staff or agents">
+            <form
+              role="search"
+              aria-label="Search available staff and agents"
+              onSubmit={(event) => { event.preventDefault(); setSearch(searchDraft.trim()); setOptionPage(1); }}
+              className="flex flex-wrap gap-2"
+            >
+              <Input type="search" aria-label="Search available staff by name or email" placeholder="Search name or email"
+                value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} maxLength={160} disabled={pending} className="min-w-0 flex-1" />
+              <Button type="submit" variant="outline" disabled={pending}>Search</Button>
+              {search && <Button type="button" variant="ghost" disabled={pending} onClick={() => { setSearchDraft(""); setSearch(""); setOptionPage(1); }}>Clear</Button>}
+            </form>
+            <p className="text-xs text-muted-foreground">Newest users first · {PAGE_SIZE} users per page</p>
             {state.assignmentOptionsError ? (
               <div>
                 <p role="alert" className="text-sm text-destructive">
@@ -225,7 +247,7 @@ export function AssignHubDialog({
                   disabled={pending}
                   onChange={setSelected}
                 />
-                {options.total > options.page_size && (
+                {options.total > 0 && (
                   <Pagination
                     metadata={paginationFromApi(options)}
                     onPrev={() => setOptionPage(optionPage - 1)}
@@ -234,32 +256,20 @@ export function AssignHubDialog({
                     disabled={pending}
                   />
                 )}
-                <form
-                  onSubmit={add}
-                  className="flex flex-wrap items-center justify-between gap-3"
-                >
-                  <p role="status" className="text-sm text-muted-foreground">
-                    {selected.length
-                      ? `${selected.length} selected`
-                      : "Select staff or agents to assign."}
-                  </p>
-                  <Button type="submit" disabled={pending || !selected.length}>
-                    {pending ? (
-                      <LoaderCircle
-                        className="size-4 animate-spin"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <UserPlus className="size-4" aria-hidden="true" />
-                    )}
-                    {pending ? "Assigning..." : "Assign"}
-                  </Button>
-                </form>
               </div>
             ) : (
               <p role="status" className="text-sm text-muted-foreground">
-                All available company members are already assigned.
+                {search ? "No staff or agents match your search." : "All available company members are already assigned."}
               </p>
+            )}
+            {options && (options.members.length > 0 || selected.length > 0) && (
+              <form onSubmit={add} className="flex flex-wrap items-center justify-between gap-3">
+                <p role="status" className="text-sm text-muted-foreground">{selected.length ? `${selected.length} selected` : "Select staff or agents to assign."}</p>
+                <Button type="submit" disabled={pending || !selected.length}>
+                  {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <UserPlus className="size-4" aria-hidden="true" />}
+                  {pending ? "Assigning..." : "Assign"}
+                </Button>
+              </form>
             )}
           </section>
         ) : (
@@ -280,8 +290,19 @@ export function AssignHubDialog({
           className="space-y-3 border-t pt-5"
         >
           <h2 className="text-sm font-semibold">
-            Currently assigned{assignments ? ` (${assignments.total})` : ""}
+            Currently assigned{assignments ? ` (${assignments.total}${assignedSearch ? " matching" : ""})` : ""}
           </h2>
+          <form
+            role="search"
+            aria-label="Search currently assigned staff"
+            onSubmit={(event) => { event.preventDefault(); setAssignedSearch(assignedSearchDraft.trim()); setPage(1); setRemoving(null); }}
+            className="flex flex-wrap gap-2"
+          >
+            <Input type="search" aria-label="Search assigned staff by name or email" placeholder="Search assigned name or email"
+              value={assignedSearchDraft} onChange={(event) => setAssignedSearchDraft(event.target.value)} maxLength={160} disabled={pending} className="min-w-0 flex-1" />
+            <Button type="submit" variant="outline" disabled={pending}>Search</Button>
+            {assignedSearch && <Button type="button" variant="ghost" disabled={pending} onClick={() => { setAssignedSearchDraft(""); setAssignedSearch(""); setPage(1); setRemoving(null); }}>Clear</Button>}
+          </form>
           {state.assignmentsError ? (
             <div>
               <p role="alert" className="text-sm text-destructive">
@@ -356,10 +377,10 @@ export function AssignHubDialog({
             </ul>
           ) : (
             <p className="py-4 text-sm text-muted-foreground">
-              No staff assigned yet.
+              {assignedSearch ? "No assigned staff match your search." : "No staff assigned yet."}
             </p>
           )}
-          {assignments && assignments.total > assignments.page_size && (
+          {assignments && assignments.total > 0 && (
             <Pagination
               metadata={paginationFromApi(assignments)}
               onPrev={() => setPage(page - 1)}

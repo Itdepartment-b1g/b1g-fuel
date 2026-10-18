@@ -49,11 +49,11 @@ Redux guards responses by request ID and location, suppresses simultaneous mutat
 
 Eligible members and current assignments include the person's current roles from that company membership. Both lists show Name (Role) - Email, with roles in extra-small text. Multiple roles are separated by commas; a membership without roles shows No role.
 
-Both staff lists support separate server-side name/email searches and page sizes of 10, 20, 50, or 100. A search or page-size change resets that list to page 1. Users are ordered by their account's `created_at` descending before pagination, with a unique record ID as a stable tie-breaker. Selections persist across searches and pages.
+Inside Assign staff, the available-member choices and Currently assigned list each have a separate server-side name/email search and pagination, limited to 10 users per page. Searching resets that list to page 1. Users are ordered by their account's `created_at` descending before pagination, with a unique record ID as a stable tie-breaker. Selections persist across searches and pages.
 
 ## Accordion assignment history
 
-Expanding a hub row shows an assigned-users table with Name, Email, Assigned by, Assigned at, and Unassigned at. The card View dialog uses the same table. It has its own per-hub Redux data, search, and pagination, and refreshes after assignment changes. Access matches the staff-management endpoints: company-level hub edit permission.
+Expanding a hub row shows an assigned-users table with Name, Email, Assigned by, Assigned at, and Unassigned at. The card View dialog uses the same table. It has its own per-hub Redux data and pagination, and refreshes after assignment changes. Staff search inputs live in Assign staff. Access matches the staff-management endpoints: company-level hub edit permission.
 
 `user_location` remains the active assignment link used for authorization and staff counts. Database triggers write a `user_location_history` snapshot for each inserted link and set its unassigned_at when that link is deleted, including company-membership cascade deletion. Reassignment creates another period; repeating an active assignment does not duplicate history. Names, emails, assigning-user names, and user creation dates are captured when the assignment is recorded, so history survives membership removal and user changes.
 
