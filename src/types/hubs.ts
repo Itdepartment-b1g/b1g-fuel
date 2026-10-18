@@ -39,3 +39,16 @@ export interface HubAssignmentOptions extends ApiPaginationMetadata { members: H
 export interface AssignHubInput { location_id: string; user_company_id: string }
 export interface HubAssignmentResponse { assignment: HubAssignment }
 export interface UnassignHubResponse extends AssignHubInput { message: string }
+export interface HubAssignmentHistory {
+  id: string;
+  location_id: string;
+  user_company_id: string;
+  user_id: string;
+  name: string;
+  email: string | null;
+  assigned_by: string;
+  assigned_by_name: string | null;
+  assigned_at: string;
+  unassigned_at: string | null;
+}
+export interface HubAssignmentHistoryPage extends ApiPaginationMetadata { assignments: HubAssignmentHistory[] }

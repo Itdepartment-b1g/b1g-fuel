@@ -17,6 +17,7 @@ All endpoints require a verified session and return private, non-cacheable respo
 | DELETE | `/api/hubs?id=UUID` | `hubs.delete`; deactivates, preserves records and assignments |
 | GET | `/api/hubs/assignment-options?location_id=UUID` | Company-level `hubs.edit`; paginated eligible company members; optional search |
 | GET | `/api/hubs/assignments?location_id=UUID` | Company-level `hubs.edit`; paginated assigned staff; optional name/email search |
+| GET | `/api/hubs/assignment-history?location_id=UUID` | Company-level `hubs.edit`; current and previous assignment periods; name/email search and pagination |
 | POST | `/api/hubs/assignments` | Company-level `hubs.edit`; location_id and user_company_id |
 | DELETE | `/api/hubs/assignments?location_id=UUID&user_company_id=UUID` | Company-level `hubs.edit`; removes assignment |
 
@@ -36,7 +37,7 @@ Hub edits, deactivation, and assignment changes lock the same location row. Inac
 
 ## Delivery
 
-Apply `20261018120000_hub_assignments` before running the API. The Hubs page and its four permissions are registered in the access catalog for role configuration. The sidebar shows Hubs when the user has the page and hubs.view permission. Existing roles are not automatically granted hub permissions.
+Apply `20261018120000_hub_assignments` and `20261018140000_hub_assignment_history` before running the API. The Hubs page and its four permissions are registered in the access catalog for role configuration. The sidebar shows Hubs when the user has the page and hubs.view permission. Existing roles are not automatically granted hub permissions.
 
 ## Page and client state
 
@@ -50,6 +51,14 @@ Eligible members and current assignments include the person's current roles from
 
 Both staff lists support separate server-side name/email searches and page sizes of 10, 20, 50, or 100. A search or page-size change resets that list to page 1. Users are ordered by their account's `created_at` descending before pagination, with a unique record ID as a stable tie-breaker. Selections persist across searches and pages.
 
+## Accordion assignment history
+
+Expanding a hub row shows an assigned-users table with Name, Email, Assigned by, Assigned at, and Unassigned at. The card View dialog uses the same table. It has its own per-hub Redux data, search, and pagination, and refreshes after assignment changes. Access matches the staff-management endpoints: company-level hub edit permission.
+
+`user_location` remains the active assignment link used for authorization and staff counts. Database triggers write a `user_location_history` snapshot for each inserted link and set its unassigned_at when that link is deleted, including company-membership cascade deletion. Reassignment creates another period; repeating an active assignment does not duplicate history. Names, emails, assigning-user names, and user creation dates are captured when the assignment is recorded, so history survives membership removal and user changes.
+
+The migration backfills existing active assignments. Previously deleted assignments and their unassignment dates cannot be recovered. Active periods show a dash in Unassigned at. Both timestamps are displayed in Asia/Manila. Locations with history cannot be physically deleted.
+
 Run `npm run test:hubs`, `npm run db:validate`, `npm run typecheck`, `npm run lint`, and `npm run build`. The hub suite includes Redux, rendered-component, controller, and database coverage. Database tests run only against a configured localhost database, use a rollback transaction, and preserve existing records.
 
-Inventory balances, material requests, transfers, and a historical assignment-event log are future modules. Removing an assignment deletes that assignment link; future stock documents must retain their original actor/location references.
+Inventory balances, material requests, and transfers are future modules. Removing an assignment deletes its active link and preserves its history; future stock documents must retain their original actor/location references.

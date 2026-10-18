@@ -10,6 +10,7 @@ hubsRouter.get("/options", requirePermission("hubs", "add"), controller.get_hub_
 hubsRouter.get("/filter-options", requirePermission("hubs", "view"), controller.get_hub_filter_option);
 hubsRouter.get("/assignment-options", requirePermission("hubs", "edit"), controller.get_hub_assignment_option);
 hubsRouter.get("/assignments", requirePermission("hubs", "edit"), controller.list_hub_assignment);
+hubsRouter.get("/assignment-history", requirePermission("hubs", "edit"), controller.list_hub_assignment_history);
 hubsRouter.post("/assignments", requirePermission("hubs", "edit"), controller.assign_hub);
 hubsRouter.delete("/assignments", requirePermission("hubs", "edit"), controller.unassign_hub);
 hubsRouter.get("/", requirePermission("hubs", "view"), (req, res) => {

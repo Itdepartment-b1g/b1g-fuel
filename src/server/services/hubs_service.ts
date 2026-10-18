@@ -92,6 +92,14 @@ export function list_hub_assignment(id: string, pagination: Pagination, access: 
   }, { isolationLevel: "RepeatableRead" });
 }
 
+export function list_hub_assignment_history(id: string, pagination: Pagination, access: RecordAccess, search = "") {
+  const manager = hub_assignment_access(access);
+  return getDatabase().$transaction(async (tx) => {
+    if (!await repository.list_by_id_hub(id, manager, "edit", tx)) throw new HubError("not_found", "Hub not found.");
+    return repository.list_hub_assignment_history(id, pagination, search, tx);
+  }, { isolationLevel: "RepeatableRead" });
+}
+
 export function assign_hub(input: AssignHubInput, access: RecordAccess) {
   const manager = hub_assignment_access(access);
   return getDatabase().$transaction(async (tx) => {

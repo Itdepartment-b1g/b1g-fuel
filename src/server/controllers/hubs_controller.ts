@@ -316,6 +316,30 @@ export async function list_hub_assignment(req: Request, res: Response) {
   }
 }
 
+export async function list_hub_assignment_history(req: Request, res: Response) {
+  try {
+    if (typeof req.query.location_id !== "string" || !HUB_UUID.test(req.query.location_id))
+      throw new HubError("invalid_input", "Provide a valid hub location_id.");
+    if (req.query.search !== undefined && (typeof req.query.search !== "string" || req.query.search.length > 160))
+      throw new HubError("invalid_input", "Search must be a string of at most 160 characters.");
+    res.status(200).json(await service.list_hub_assignment_history(
+      req.query.location_id.toLowerCase(), parsePagination(req.query), res.locals.access,
+      typeof req.query.search === "string" ? req.query.search : "",
+    ));
+  } catch (error) {
+    if (error instanceof HubError) {
+      res.status({ invalid_input: 400, not_found: 404, forbidden: 403, conflict: 409 }[error.code]).json({ error: error.message });
+      return;
+    }
+    if (error instanceof PaginationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    console.error("Hub assignment history request failed:", error);
+    res.status(500).json({ error: "Hub assignment history could not be loaded." });
+  }
+}
+
 export async function assign_hub(req: Request, res: Response) {
   try {
     const input = req.body as AssignHubInput;

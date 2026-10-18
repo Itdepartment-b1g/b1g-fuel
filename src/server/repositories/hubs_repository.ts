@@ -4,7 +4,7 @@ import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
-import type { CreateHubInput, UpdateHubInput, HubSummary, HubAssignment } from "@/server/schema/hubs_schema";
+import type { CreateHubInput, UpdateHubInput, HubSummary, HubAssignment, HubAssignmentHistory } from "@/server/schema/hubs_schema";
 import type { QuickFilterState } from "@/types/quick-filter";
 
 const hubInclude = {
@@ -181,4 +181,21 @@ export async function assign_hub(locationId: string, companyId: string, membersh
 
 export function unassign_hub(locationId: string, membershipId: string, client: DatabaseExecutor) {
   return client.user_location.deleteMany({ where: { location_id: locationId, user_company_id: membershipId } });
+}
+
+export async function list_hub_assignment_history(locationId: string, pagination: Pagination, search: string, client: DatabaseExecutor) {
+  const where = build_filter<Prisma.user_location_historyWhereInput>(undefined, {
+    where: { location_id: locationId }, fields: {},
+    search: { value: search, fields: [(filter) => ({ name: filter }), (filter) => ({ email: filter })] },
+  });
+  const rows = await client.user_location_history.findMany({
+    where, orderBy: [{ user_created_at: "desc" }, { assigned_at: "desc" }, { id: "asc" }],
+    skip: pagination.skip, take: pagination.take,
+  });
+  const assignments: HubAssignmentHistory[] = rows.map((row) => ({
+    id: row.id, location_id: row.location_id, user_company_id: row.user_company_id, user_id: row.user_id,
+    name: row.name, email: row.email, assigned_by: row.assigned_by, assigned_by_name: row.assigned_by_name,
+    assigned_at: row.assigned_at.toISOString(), unassigned_at: row.unassigned_at?.toISOString() ?? null,
+  }));
+  return { assignments, ...paginationMetadata(await client.user_location_history.count({ where }), pagination) };
 }

@@ -96,6 +96,9 @@ test("invalid hub queries, sorting, and pagination return 400", async () => {
     [controller.list_hub, { filters: "invalid-json" }],
     [controller.list_by_id_hub, { id: ["invalid"] }], [controller.delete_hub, {}],
     [controller.list_hub_assignment, { location_id: "invalid" }], [controller.unassign_hub, { location_id: hubId }],
+    [controller.list_hub_assignment_history, { location_id: "invalid" }],
+    [controller.list_hub_assignment_history, { location_id: hubId, search: [] }],
+    [controller.list_hub_assignment_history, { location_id: hubId, page: "0" }],
     [controller.list_hub_assignment, { location_id: hubId, search: ["invalid"] }],
     [controller.list_hub_assignment, { location_id: hubId, search: "a".repeat(161) }],
     [controller.get_hub_assignment_option, { location_id: hubId, search: [] }],
@@ -114,6 +117,7 @@ test("hub permissions, navigation, and API contracts are registered", () => {
   assert.ok(openapi.paths["/api/hubs"]);
   assert.ok(openapi.paths["/api/hubs/assignments"]);
   assert.ok(openapi.paths["/api/hubs/assignment-options"]);
+  assert.ok(openapi.paths["/api/hubs/assignment-history"]);
   assert.ok(openapi.paths["/api/hubs/filter-options"]);
   assert.ok(openapi.components.schemas.HubQuickFilters);
   assert.ok(openapi.components.schemas.Hub);

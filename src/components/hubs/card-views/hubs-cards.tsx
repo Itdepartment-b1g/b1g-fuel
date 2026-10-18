@@ -11,7 +11,7 @@ import type { HubActionProps } from "../table-view/hubs-table-view";
 import { ViewHubDialog } from "../dialog/view-hub-dialog";
 import { HubStatus } from "../hub-details";
 
-export function HubsCards({ hubs, disabled, onEdit, onDeactivate, onAssign }: HubActionProps & { hubs: HubSummary[] }) {
+export function HubsCards({ hubs, disabled, onEdit, onDeactivate, onAssign, revision }: HubActionProps & { hubs: HubSummary[] }) {
   const access = useRecordAccess();
   const [viewingId, setViewingId] = useState<string | null>(null);
   const viewing = hubs.find((hub) => hub.id === viewingId);
@@ -34,6 +34,6 @@ export function HubsCards({ hubs, disabled, onEdit, onDeactivate, onAssign }: Hu
       <p className="mt-3 break-words text-xs text-muted-foreground">Created by {hub.created_by_name ?? "Unavailable"}</p>
       <div className="mt-auto pt-5"><Button variant="outline" size="sm" className="w-full" disabled={disabled || !canPerform(access, "hubs", "view", hub)} onClick={() => setViewingId(hub.id)}>View hub</Button></div>
     </article>)}
-    {viewing && <ViewHubDialog hub={viewing} onClose={() => setViewingId(null)} />}
+    {viewing && <ViewHubDialog hub={viewing} revision={revision} onClose={() => setViewingId(null)} />}
   </div>;
 }

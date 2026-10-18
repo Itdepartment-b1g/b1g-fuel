@@ -54,6 +54,17 @@ export const hubSchemas = {
       assigned_by_name: { type: "string", nullable: true }, assigned_at: { type: "string", format: "date-time" },
     },
   },
+  HubAssignmentHistory: {
+    type: "object",
+    required: ["id", "location_id", "user_company_id", "user_id", "name", "email", "assigned_by", "assigned_by_name", "assigned_at", "unassigned_at"],
+    properties: {
+      id: uuid, location_id: uuid, user_company_id: uuid, user_id: uuid,
+      name: { type: "string" }, email: { type: "string", nullable: true },
+      assigned_by: uuid, assigned_by_name: { type: "string", nullable: true },
+      assigned_at: { type: "string", format: "date-time" },
+      unassigned_at: { type: "string", format: "date-time", nullable: true, description: "Null while the assignment is active." },
+    },
+  },
   CreateHub: {
     type: "object", additionalProperties: false, required: ["name"],
     properties: {
@@ -147,6 +158,16 @@ export const hubPaths = {
       description: "Requires company-level hubs.edit. Also allowed for an inactive hub. Historical transactions are unaffected.",
       parameters: [locationId, query("user_company_id", uuid, true)],
       responses: { "200": { description: "Staff unassigned", ...json(ref("UnassignHubResult")) }, ...errors },
+    },
+  },
+  "/api/hubs/assignment-history": {
+    get: {
+      tags: ["Hubs"], summary: "List current and previous hub user assignments", security: [{ session: [] }],
+      description: "Requires company-level hubs.edit. Includes assignment periods preserved after unassigning or company membership removal. Names and emails are snapshots from assignment time. Existing active assignments are backfilled; previously deleted assignments cannot be recovered. Newest-created users first.",
+      parameters: [locationId, query("search", { type: "string", maxLength: 160 }), ...pagination],
+      responses: { "200": { description: "Assignment history", ...json({ type: "object", required: ["assignments", "total", "page", "page_size"], properties: {
+        assignments: { type: "array", items: ref("HubAssignmentHistory") }, ...metadata,
+      } }) }, ...errors },
     },
   },
 };

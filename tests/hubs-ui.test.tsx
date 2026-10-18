@@ -11,6 +11,9 @@ import { HubsTableView } from "@/components/hubs/table-view/hubs-table-view";
 import { HubsCards } from "@/components/hubs/card-views/hubs-cards";
 import { HubDetails } from "@/components/hubs/hub-details";
 import { HubStaffChoices } from "@/components/hubs/dialog/assign-hub-dialog";
+import { listHubAssignmentHistory } from "@/lib/store/hubs-slice";
+import { TableView } from "@/components/common/table/table-view";
+import { HUB_ASSIGNMENT_COLUMNS } from "@/components/hubs/table-view/hub-assignment-columns";
 import { listSidebarMenu } from "@/app/layout/sideBarMenuItems";
 import { canManageHubStaff } from "@/utils/hub-access";
 import { HUB_FILTER_DEFAULTS, HUB_FILTER_OPTIONS } from "@/utils/hubs-filters";
@@ -100,6 +103,39 @@ const assignment: HubAssignment = {
   assigned_by: "creator", assigned_by_name: "Ada", assigned_at: hub.created_at,
 };
 const roster = { assignments: [assignment], total: 1, page: 1, page_size: 10 };
+
+test("hub history reads are isolated by hub and stale responses are invalidated after assignments change", () => {
+  const store = makeStore();
+  const history = { assignments: [], total: 0, page: 1, page_size: 10 };
+  store.dispatch(listHubAssignmentHistory.pending("old", query));
+  store.dispatch(listHubAssignmentHistory.pending("new", query));
+  store.dispatch(listHubAssignmentHistory.pending("other", { location_id: "other-hub" }));
+  store.dispatch(listHubAssignmentHistory.fulfilled(history, "old", query));
+  assert.equal(store.getState().hubs.assignmentHistory[hub.id].data, null);
+  store.dispatch(listHubAssignmentHistory.fulfilled(history, "new", query));
+  assert.equal(store.getState().hubs.assignmentHistory[hub.id].status, "succeeded");
+  assert.equal(store.getState().hubs.assignmentHistory["other-hub"].status, "loading");
+  store.dispatch(unassignHub.pending("remove", input));
+  store.dispatch(unassignHub.fulfilled({ ...input, message: "Removed" }, "remove", input));
+  store.dispatch(listHubAssignmentHistory.fulfilled(history, "other", { location_id: "other-hub" }));
+  assert.equal(store.getState().hubs.assignmentHistory["other-hub"].data, null);
+  assert.equal(store.getState().hubs.assignmentHistory[hub.id].status, "idle");
+});
+
+test("the assigned-users table contains all requested audit columns and renders active and ended assignments", () => {
+  const current = {
+    id: "active", location_id: hub.id, user_company_id: "membership", user_id: "agent",
+    name: "Aaron", email: "aaron@example.test", assigned_by: "creator", assigned_by_name: "Ada",
+    assigned_at: "2026-10-18T00:00:00Z", unassigned_at: null,
+  };
+  const ended = { ...current, id: "ended", unassigned_at: "2026-10-18T01:00:00Z" };
+  const html = renderToStaticMarkup(<TableView data={[current, ended]} columns={HUB_ASSIGNMENT_COLUMNS} rowKey={(row) => row.id} caption="Assigned users" sortingMode="server" />);
+  for (const header of ["Name", "Email", "Assigned by", "Assigned at", "Unassigned at"]) assert.ok(html.includes(header));
+  assert.match(html, /aaron@example.test/);
+  assert.match(html, /Ada/);
+  assert.ok(html.includes(ended.unassigned_at));
+  assert.ok(html.includes("—"));
+});
 
 test("Redux ignores old hub details, list responses, and staff results from another hub", () => {
   const store = makeStore();

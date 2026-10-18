@@ -7,7 +7,7 @@ import { closeDatabase, getDatabase, type Database } from "@/server/lib/database
 import { get_record_access } from "@/server/auth/record-access";
 import type { RecordAccess } from "@/lib/auth/access-scope";
 import * as controller from "@/server/controllers/hubs_controller";
-import type { HubAssignment, HubSummary } from "@/server/schema/hubs_schema";
+import type { HubAssignment, HubAssignmentHistory, HubSummary } from "@/server/schema/hubs_schema";
 import { createQuickFilterState } from "@/utils/quick-filter";
 import { HUB_FILTER_DEFAULTS } from "@/utils/hubs-filters";
 
@@ -109,6 +109,12 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       const repeated = await request_hub(controller.assign_hub, supervisor, assignmentInput);
       assert.deepEqual(repeated.body, assigned.body);
       assert.equal(await tx.user_location.count({ where: { location_id: hub.id } }), 1);
+      assert.equal(await tx.user_location_history.count({ where: { id: assignment.id } }), 1);
+      const activeHistory = await request_hub(controller.list_hub_assignment_history, supervisor, undefined, { location_id: hub.id });
+      assert.equal(activeHistory.status, 200);
+      assert.equal((activeHistory.body as { assignments: HubAssignmentHistory[] }).assignments[0].unassigned_at, null);
+      assert.equal((await request_hub(controller.list_hub_assignment_history, outside, undefined, { location_id: hub.id })).status, 404);
+      assert.equal((await request_hub(controller.list_hub_assignment_history, ownEditor, undefined, { location_id: hub.id })).status, 403);
 
       assert.equal((await request_hub(controller.list_by_id_hub, staff, undefined, { id: hub.id })).status, 200);
       const staffList = await request_hub(controller.list_hub, staff, undefined, { page_size: "10" });
@@ -190,6 +196,17 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.equal((await request_hub(controller.update_hub, supervisor, { id: hub.id, is_active: true })).status, 200);
 
       assert.equal((await request_hub(controller.unassign_hub, supervisor, undefined, assignmentInput)).status, 200);
+      const closedHistory = await request_hub(controller.list_hub_assignment_history, supervisor, undefined, { location_id: hub.id, search: `hub-${agent}@example.test` });
+      const closedPeriod = (closedHistory.body as { assignments: HubAssignmentHistory[] }).assignments[0];
+      assert.equal(closedPeriod.name, "Hub agent");
+      assert.equal(closedPeriod.assigned_by_name, "Hub supervisor");
+      assert.ok(closedPeriod.unassigned_at);
+      assert.ok(new Date(closedPeriod.unassigned_at) >= new Date(closedPeriod.assigned_at));
+      assert.equal((await request_hub(controller.assign_hub, supervisor, assignmentInput)).status, 201);
+      const periods = await tx.user_location_history.findMany({ where: { location_id: hub.id, user_id: agent } });
+      assert.equal(periods.length, 2);
+      assert.equal(periods.filter((period) => period.unassigned_at === null).length, 1);
+      assert.equal((await request_hub(controller.unassign_hub, supervisor, undefined, assignmentInput)).status, 200);
       assert.equal((await request_hub(controller.list_by_id_hub, staff, undefined, { id: hub.id })).status, 404);
       assert.equal((await request_hub(controller.unassign_hub, supervisor, undefined, assignmentInput)).status, 404);
       assert.equal((await request_hub(controller.assign_hub, supervisor, { ...assignmentInput, user_company_id: nextMembershipId })).status, 201);
@@ -214,6 +231,10 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT hub_constraint");
       await tx.user_company.delete({ where: { id: nextMembershipId } });
       assert.equal(await tx.user_location.count({ where: { location_id: hub.id } }), 0);
+      const removedMembershipHistory = await tx.user_location_history.findFirstOrThrow({ where: { location_id: hub.id, user_id: nextAgent } });
+      assert.ok(removedMembershipHistory.unassigned_at);
+      assert.equal(removedMembershipHistory.name, "Replacement agent");
+      assert.equal(removedMembershipHistory.user_company_id, nextMembershipId);
       throw rollback;
     }, { timeout: 30000 }), (error: unknown) => error === rollback);
   } finally {

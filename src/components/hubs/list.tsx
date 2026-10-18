@@ -88,7 +88,7 @@ export default function HubsList() {
     } catch (error) { toast.error(toastErrorMessage(error, "Could not deactivate the hub.")); }
   }
   const actions = {
-    hubs, loading, disabled: pending || loading, sorting,
+    hubs, loading, disabled: pending || loading, sorting, revision,
     onSortingChange: (next: TableSort | null) => { setSorting(next); setPage(1); },
     onEdit: (hub: HubSummary) => openHub(hub),
     onDeactivate: (hub: HubSummary) => { dispatch(clearHubMutation()); setDeactivating(hub); },

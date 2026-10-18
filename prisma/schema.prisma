@@ -256,6 +256,7 @@ model location {
   purchase_orders purchase_order[]
   receivings      receiving[]
   users           user_location[]
+  assignment_history user_location_history[]
 
   @@unique([company_id, name])
   @@unique([id, company_id])
@@ -279,6 +280,26 @@ model user_location {
   @@index([location_id, company_id])
   @@index([user_company_id, company_id])
   @@index([assigned_by])
+}
+
+// Snapshot each assignment period independently of current company membership.
+model user_location_history {
+  id               String   @id @db.Uuid
+  company_id       String   @db.Uuid
+  location_id      String   @db.Uuid
+  user_company_id  String   @db.Uuid
+  user_id          String   @db.Uuid
+  name             String   @db.VarChar(250)
+  email            String?
+  user_created_at  DateTime @db.Timestamptz(6)
+  assigned_by      String   @db.Uuid
+  assigned_by_name String?  @db.VarChar(250)
+  assigned_at      DateTime @db.Timestamptz(6)
+  unassigned_at    DateTime? @db.Timestamptz(6)
+  location         location @relation(fields: [location_id, company_id], references: [id, company_id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([location_id, company_id])
+  @@index([location_id, user_created_at, assigned_at], map: "user_location_history_location_id_user_created_at_assigned_at_i")
 }
 
 model product_type {

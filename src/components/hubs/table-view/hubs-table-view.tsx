@@ -7,6 +7,7 @@ import { canManageHubStaff } from "@/utils/hub-access";
 import type { HubSummary } from "@/types/hubs";
 import type { TableSort } from "@/types/table-views";
 import { HubDetails } from "../hub-details";
+import { HubAssignedUsers } from "../hub-assigned-users";
 import { HUB_TABLE_COLUMNS } from "./hub-table-columns";
 
 export type HubActionProps = {
@@ -14,12 +15,13 @@ export type HubActionProps = {
   onDeactivate: (hub: HubSummary) => void;
   onAssign: (hub: HubSummary) => void;
   disabled: boolean;
+  revision?: number;
 };
 export function HubsTableView(props: HubActionProps & { hubs: HubSummary[]; loading: boolean; sorting: TableSort | null; onSortingChange: (sort: TableSort | null) => void }) {
   const access = useRecordAccess();
   return <TableView data={props.hubs} rowKey={(hub) => hub.id} caption="Company hubs" columns={HUB_TABLE_COLUMNS}
     loading={props.loading} sortingMode="server" sorting={props.sorting} onSortingChange={props.onSortingChange}
-    multipleFrozenColumns actionsDisabled={props.disabled} expandedRow={(hub) => <HubDetails hub={hub} />}
+    multipleFrozenColumns actionsDisabled={props.disabled} expandedRow={(hub) => <div><HubDetails hub={hub} /><HubAssignedUsers key={hub.id} hub={hub} revision={props.revision} /></div>}
     emptyTitle="No hubs found" emptyDescription="Create a hub or adjust your search and filters."
     actions={(hub) => [
       { id: "edit", label: "Edit", icon: <Pencil />, disabled: !canPerform(access, "hubs", "edit", hub), onSelect: props.onEdit },
