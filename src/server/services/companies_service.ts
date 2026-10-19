@@ -39,6 +39,7 @@ export async function create_company(
   return repository.create_company(
     {
       name: input.name,
+      ...(input.code !== undefined ? { code: input.code } : {}),
       ...(location_name
         ? {
             location_name,
@@ -93,6 +94,12 @@ export async function update_company(
   access?: RecordAccess,
 ) {
   return getDatabase().$transaction(async (transaction) => {
+    if (input.code !== undefined) {
+      const numbered = await companiesRepository.company_numbering_started(input.id, transaction);
+      const current = await repository.list_by_id_company(input.id, transaction, access, "edit");
+      if (numbered && current?.code !== input.code)
+        throw new CompanyError("invalid_input", "Company code cannot change after a material request number has been issued.");
+    }
     if (
       !(await repository.list_by_id_company(
         input.id,

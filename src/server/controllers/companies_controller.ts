@@ -31,17 +31,20 @@ const company_error_status: Partial<Record<CompanyError["code"], number>> = {
   invalid_input: 400, company_not_found: 404, company_has_members: 409,
 };
 const company_database_errors: Record<string, { status: number; message: string }> = {
-  "23503": { status: 409, message: "This company has assigned roles or memberships. Remove or reassign them before deleting it." },
+  "23505": { status: 409, message: "This company code is already in use." },
+  "23503": { status: 409, message: "This company is referenced by roles, memberships, supply links, or documents and cannot be deleted." },
 };
 const prisma_error_codes: Record<string, string> = { P2002: "23505", P2003: "23503", P2004: "23514" };
 
 export async function create_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
     const value: unknown = req.body;
-    const allowed = new Set(["name", "location_name", "location_address"]);
+    const allowed = new Set(["name", "code", "location_name", "location_address"]);
     if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.has(key)))
       throw new CompanyError("invalid_input", "Provide company details using name and optional location fields.");
     const body = value as Record<string, unknown>;
+    if (body.code !== undefined && (typeof body.code !== "string" || !/^[A-Z][A-Z0-9]{1,15}$/.test(body.code.trim().toUpperCase())))
+      throw new CompanyError("invalid_input", "Company code must contain 2–16 letters or digits and start with a letter.");
     const name = body.name;
     if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
       throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
@@ -53,6 +56,7 @@ export async function create_company(req: Request, res: Response, _next?: NextFu
       throw new CompanyError("invalid_input", "Provide a warehouse address of at most 160 characters.");
     const input: CreateCompanyInput = {
       name: name.trim(),
+      ...(typeof body.code === "string" ? { code: body.code.trim().toUpperCase() } : {}),
       ...(typeof location_name === "string" ? { location_name } : {}),
       ...(typeof location_address === "string" ? { location_address } : {}),
     };
@@ -97,7 +101,7 @@ export async function create_company(req: Request, res: Response, _next?: NextFu
 export async function update_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
     const value: unknown = req.body;
-    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !["id", "name"].includes(key)))
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !["id", "name", "code"].includes(key)))
       throw new CompanyError("invalid_input", "Provide company ID and name.");
     const { id, name } = value as Record<string, unknown>;
     if (typeof id !== "string" || !company_id_pattern.test(id))
@@ -105,6 +109,12 @@ export async function update_company(req: Request, res: Response, _next?: NextFu
     if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
       throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
     const input: UpdateCompanyInput = { id: id.toLowerCase(), name: name.trim() };
+    const code = (value as Record<string, unknown>).code;
+    if (code !== undefined) {
+      if (typeof code !== "string" || !/^[A-Z][A-Z0-9]{1,15}$/.test(code.trim().toUpperCase()))
+        throw new CompanyError("invalid_input", "Company code must contain 2–16 letters or digits and start with a letter.");
+      input.code = code.trim().toUpperCase();
+    }
     res.status(200).json({ company: await service.update_company(input, undefined, res.locals.access) });
   } catch (error) {
 

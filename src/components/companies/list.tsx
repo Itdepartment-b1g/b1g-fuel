@@ -1,6 +1,8 @@
 "use client";
 
 import { useRecordAccess } from "@/components/providers/access-provider";
+import { CompanySupplyLinksDialog } from "./dialog/company-supply-links-dialog";
+import { clearCompanySupplyMutation } from "@/lib/store/company-supply-slice";
 import { canPerform } from "@/lib/auth/access-scope";
 import {
   useToast,
@@ -59,6 +61,7 @@ export default function CompaniesList() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<CompanySummary | null>(null);
+  const [linking, setLinking] = useState<CompanySummary | null>(null);
   const loading = listStatus === "loading" || listStatus === "idle";
   const pending = mutationStatus === "loading";
   const pagination = paginationFromApi({ page, page_size: pageSize, total });
@@ -137,6 +140,11 @@ export default function CompaniesList() {
       setPage(1);
     },
     disabled: pending || loading,
+    onSupplyLinks: (company: CompanySummary) => {
+      if (!access?.superAdmin) return;
+      dispatch(clearCompanySupplyMutation());
+      setLinking(company);
+    },
     onEdit: openCompany,
     onDelete: (company: CompanySummary) => {
       dispatch(clearCompanyMutation());
@@ -307,6 +315,7 @@ export default function CompaniesList() {
           onConfirm={() => { void removeCompany(); }}
         />
       )}
+      {linking && <CompanySupplyLinksDialog key={linking.id} company={linking} onClose={() => setLinking(null)} />}
     </>
   );
 }

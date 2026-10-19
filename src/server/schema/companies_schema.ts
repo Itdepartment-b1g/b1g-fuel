@@ -6,6 +6,7 @@ export const COMPANY_SORT_FIELDS = [
 ] as const;
 
 export interface CompanySummary {
+  code?: string | null;
   id: string;
   name: string;
   created_by: string | null;
@@ -31,6 +32,7 @@ export interface CompanyLocationSummary {
 }
 
 export interface CreateCompanyInput {
+  code?: string;
   name: string;
   /** Optional default warehouse name. When set, a location row is created. */
   location_name?: string;
@@ -39,6 +41,7 @@ export interface CreateCompanyInput {
 }
 
 export interface UpdateCompanyInput {
+  code?: string;
   id: string;
   name: string;
 }

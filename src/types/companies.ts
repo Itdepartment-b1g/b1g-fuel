@@ -6,6 +6,7 @@ export interface CompanyOption {
 }
 
 export interface Company extends CompanyOption {
+  code?: string | null;
   // UUID of the user who created the company, when recorded.
   created_by: string | null;
   // ISO date string when the company was created.
@@ -78,6 +79,7 @@ export interface CompanyMembersPage {
 }
 
 export interface CreateCompanyInput {
+  code?: string;
   // Display name of the new company.
   name: string;
   // Optional default warehouse name.
@@ -87,6 +89,7 @@ export interface CreateCompanyInput {
 }
 
 export interface UpdateCompanyInput {
+  code?: string;
   // UUID of the company to update.
   id: string;
   // Display name of the company.

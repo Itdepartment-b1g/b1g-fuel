@@ -1,7 +1,7 @@
 "use client";
 
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
-import { useRecordAccess } from "@/components/providers/access-provider";
+import { useRecordAccess, useRefreshRecordAccess } from "@/components/providers/access-provider";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
@@ -51,6 +51,7 @@ export function AssignUserDialog({
   onSaved: (user: UserSummary) => void;
 }) {
   const access = useRecordAccess();
+  const refreshAccess = useRefreshRecordAccess();
   const supervisor = Boolean(access && !access.superAdmin);
   const dispatch = useAppDispatch();
   const toast = useToast();
@@ -65,11 +66,14 @@ export function AssignUserDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pages = staffPages(options.roles, roleIds, access?.pages ?? []);
+  const unavailablePages = PAGE_CATALOG.filter((page) => page.key !== "users" &&
+    options.roles.some((role) => roleIds.includes(role.id) && role.pages.includes(page.key)) && !access?.pages.includes(page.key));
   const prefilled = useRef(initialCompany?.page_grant_mode === "assigned_pages");
   useEffect(() => {
+    void refreshAccess();
     const request = dispatch(getUserOption());
     return () => request.abort();
-  }, [dispatch]);
+  }, [dispatch, refreshAccess]);
   useEffect(() => {
     if (optionsError?.status === 401) router.replace("/login");
   }, [optionsError, router]);
@@ -197,6 +201,10 @@ export function AssignUserDialog({
             <fieldset className="space-y-3">
               <legend className="mb-2 text-sm font-medium">Pages and permissions</legend>
               <p className="text-xs text-muted-foreground">Select a page, then choose what this role can do on that page.</p>
+              {unavailablePages.length > 0 && <div className="space-y-2 rounded-md border p-3 text-sm">
+                <p>Your account does not currently have access to assign: {unavailablePages.map((page) => page.label).join(", ")}. Your own role and membership must allow these pages.</p>
+                <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { void refreshAccess(); void dispatch(getUserOption()); }}>Refresh access</Button>
+              </div>}
               {pages.length ? pages.map((page) => {
                 const choices = PERMISSION_CATALOG.filter((item) => item.page_key === page.key);
                 const selected = pageKeys.includes(page.key);

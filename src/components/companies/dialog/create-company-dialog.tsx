@@ -24,7 +24,6 @@ export function CreateCompanyDialog({
   onClose: () => void;
   onSaved: (company: CompanySummary, detail?: { locationName?: string }) => void;
 }) {
-  const dispatch = useAppDispatch();
   const router = useRouter();
   const { mutationStatus, mutationError } = useAppSelector(selectCompany);
   const pending = mutationStatus === "loading";
@@ -88,6 +87,7 @@ function CreateCompanyFields({
       const result = await dispatch(
         createCompany({
           name,
+          ...(form.get("code") ? { code: String(form.get("code")).trim().toUpperCase() } : {}),
           ...(withWarehouse && location_name ? { location_name, location_address } : {}),
         }),
       ).unwrap();
@@ -101,6 +101,10 @@ function CreateCompanyFields({
 
   return (
     <form onSubmit={saveCompany} className="space-y-5" aria-busy={pending}>
+      <label className="block space-y-2 text-sm font-medium">Company code
+        <Input name="code" placeholder="BFW" maxLength={16} pattern="[A-Za-z][A-Za-z0-9]{1,15}" disabled={pending} />
+        <span className="block text-xs text-muted-foreground">Unique code used in material request numbers. Required before submitting requests.</span>
+      </label>
       <label className="block space-y-2 text-sm font-medium">
         Company name <span className="text-destructive">*</span>
         <Input name="name" maxLength={160} required placeholder="B1G Fuel Manila" disabled={pending} />

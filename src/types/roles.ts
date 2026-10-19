@@ -38,6 +38,8 @@ export interface Role {
   company_id: string | null;
   // UUID of the user who created the role, when recorded.
   created_by: string | null;
+  // Creator display name; null when the creator is unavailable.
+  created_by_name?: string | null;
   // Owning company's display information, when applicable.
   company: CompanyOption | null;
   // Whether the application protects this role from editing and deletion.

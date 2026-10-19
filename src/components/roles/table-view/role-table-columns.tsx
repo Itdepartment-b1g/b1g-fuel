@@ -56,4 +56,11 @@ export const ROLE_TABLE_COLUMNS: TableColumn<RoleSummary>[] = [
     freezable: true,
     value: (role) => role.assignment_count,
   },
+  {
+    id: "created_by",
+    header: "Created by",
+    freezable: true,
+    value: (role) => role.created_by_name,
+    cell: (role) => role.created_by_name ?? "—",
+  },
 ];

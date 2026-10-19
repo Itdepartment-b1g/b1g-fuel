@@ -94,6 +94,7 @@ function EditCompanyFields({
     event.preventDefault();
     if (busy.current) return;
     const name = String(new FormData(event.currentTarget).get("name") ?? "").trim();
+    const code = String(new FormData(event.currentTarget).get("code") ?? "").trim().toUpperCase();
     if (!name) {
       setError("Enter a company name.");
       return;
@@ -101,7 +102,7 @@ function EditCompanyFields({
     busy.current = true;
     setError(null);
     try {
-      const result = await dispatch(updateCompany({ id: company.id, name })).unwrap();
+      const result = await dispatch(updateCompany({ id: company.id, name, ...(code ? { code } : {}) })).unwrap();
       onSaved(result.company);
     } catch (failure) {
       toast.error(toastErrorMessage(failure, "Could not update the company."));
@@ -112,6 +113,10 @@ function EditCompanyFields({
 
   return (
     <form onSubmit={saveCompany} className="space-y-5" aria-busy={pending}>
+      <label className="block space-y-2 text-sm font-medium">Company code
+        <Input name="code" defaultValue={company.code ?? ""} placeholder="BFW" maxLength={16} pattern="[A-Za-z][A-Za-z0-9]{1,15}" disabled={pending} />
+        <span className="block text-xs text-muted-foreground">Used for material request numbers. Locked after the first request is submitted.</span>
+      </label>
       <label className="block space-y-2 text-sm font-medium">
         Company name <span className="text-destructive">*</span>
         <Input name="name" defaultValue={company.name} maxLength={160} required placeholder="B1G Fuel Manila" disabled={pending} />

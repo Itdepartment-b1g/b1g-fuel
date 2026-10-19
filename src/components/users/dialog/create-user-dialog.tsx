@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
-import { useRecordAccess } from "@/components/providers/access-provider";
+import { useRecordAccess, useRefreshRecordAccess } from "@/components/providers/access-provider";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { ACCESS_SCOPE_LABELS, STAFF_ACCESS_SCOPES, type AccessScope } from "@/lib/auth/access-scope";
 import { PAGE_CATALOG } from "@/lib/auth/catalog";
@@ -36,6 +36,7 @@ function toggleKey(keys: string[], key: string, checked: boolean) {
 
 export function CreateUserDialog({ onCreated }: { onCreated: (user: UserSummary) => void }) {
   const access = useRecordAccess();
+  const refreshAccess = useRefreshRecordAccess();
   const supervisor = Boolean(access && !access.superAdmin);
   const dispatch = useAppDispatch();
   const { createStatus } = useAppSelector(selectUser);
@@ -44,7 +45,7 @@ export function CreateUserDialog({ onCreated }: { onCreated: (user: UserSummary)
 
   function changeOpen(value: boolean) {
     if (pending) return;
-    if (value) dispatch(clearCreateStatus());
+    if (value) { void refreshAccess(); dispatch(clearCreateStatus()); }
     setOpen(value);
   }
 

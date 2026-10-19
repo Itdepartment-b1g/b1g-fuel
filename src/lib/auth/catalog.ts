@@ -10,6 +10,7 @@ export const PAGE_KEYS = {
   purchaseOrders: "purchaseOrders",
   receiving: "receiving",
   hubs: "hubs",
+  materialRequests: "materialRequests",
 } as const;
 
 export type PageKey = (typeof PAGE_KEYS)[keyof typeof PAGE_KEYS];
@@ -30,6 +31,7 @@ export type PageCatalogGroup = {
 
 // Register pages and groups here when their features are added.
 export const PAGE_CATALOG: readonly PageCatalogItem[] = [
+  { key: PAGE_KEYS.materialRequests, label: "Material requests", href: "/material-requests", view_permission: "materialRequests.view" },
   {
     key: PAGE_KEYS.home,
     label: "Dashboard",

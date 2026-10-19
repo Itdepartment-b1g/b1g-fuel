@@ -20,6 +20,7 @@ const name = {
   example: "B1G Fuel Manila",
 };
 const id = { type: "string", format: "uuid" };
+const code = { type: "string", pattern: "^[A-Z][A-Z0-9]{1,15}$", example: "BFW", description: "Unique company code. Required for material request submission; immutable after the first number is issued." };
 export const companySchemas = {
   Company: {
     type: "object",
@@ -37,6 +38,7 @@ export const companySchemas = {
     properties: {
       id,
       name,
+      code: { ...code, nullable: true },
       created_by: {
         type: "string",
         format: "uuid",
@@ -89,6 +91,7 @@ export const companySchemas = {
     required: ["name"],
     properties: {
       name,
+      code,
       location_name: {
         type: "string",
         maxLength: 160,
@@ -105,7 +108,7 @@ export const companySchemas = {
     type: "object",
     additionalProperties: false,
     required: ["id", "name"],
-    properties: { id, name },
+    properties: { id, name, code },
   },
   DeleteCompanyResponse: {
     type: "object",

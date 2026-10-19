@@ -19,6 +19,7 @@ export interface RoleSummary {
   scope: RoleScope;
   company_id: string | null;
   created_by: string | null;
+  created_by_name?: string | null;
   company: { id: string; name: string } | null;
   is_system: boolean;
   is_default_role: boolean;

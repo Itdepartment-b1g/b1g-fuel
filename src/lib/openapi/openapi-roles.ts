@@ -126,6 +126,7 @@ export const roleSchemas = {
         nullable: true,
         readOnly: true,
       },
+      created_by_name: { type: "string", nullable: true, readOnly: true },
       assignment_count: { type: "integer", minimum: 0, readOnly: true },
     },
   },

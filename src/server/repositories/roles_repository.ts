@@ -34,10 +34,11 @@ type RoleRecord = Prisma.rolesGetPayload<{
 type ExpectedRole = Pick<RoleSummary, "is_system" | "slug" | "scope">;
 
 /** Convert role timestamps to ISO strings and flatten page and permission mappings into their keys. Sum global and company role assignments into assignment_count. */
-function serialize_role(role: RoleRecord): RoleSummary {
+function serialize_role(role: RoleRecord, createdByName: string | null): RoleSummary {
   const { pages, permissions, _count, ...record } = role;
   return {
     ...record,
+    created_by_name: createdByName,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
     pages: pages.map((page) => page.page_key),
@@ -45,6 +46,13 @@ function serialize_role(role: RoleRecord): RoleSummary {
     permission_scopes: Object.fromEntries(permissions.filter((permission) => !permission.permission_key.endsWith(".add")).map((permission) => [permission.permission_key, permission.access_scope as AccessScope])),
     assignment_count: _count.user_roles + _count.company_roles,
   };
+}
+
+async function serialize_roles(roles: RoleRecord[], client: DatabaseExecutor) {
+  const ids = [...new Set(roles.flatMap((role) => role.created_by ? [role.created_by] : []))];
+  const creators = ids.length ? await client.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : [];
+  const names = new Map(creators.map((creator) => [creator.id, creator.name]));
+  return roles.map((role) => serialize_role(role, role.created_by ? names.get(role.created_by) ?? null : null));
 }
 
 /** Return a sorted page of roles matching a literal, case-insensitive name or slug search and an optional scope. Include access mappings and assignment counts, reading rows and the matching total from one snapshot. */
@@ -102,7 +110,7 @@ export async function list_role(
       });
       const total = await tx.roles.count({ where });
       return {
-        roles: roles.map(serialize_role),
+        roles: await serialize_roles(roles, tx),
         ...paginationMetadata(total, pagination),
       };
     },
@@ -120,7 +128,7 @@ export async function list_by_id_role(
     where: { AND: [{ id }, record_where(access, "roles")] },
     include: role_include,
   });
-  return role ? serialize_role(role) : null;
+  return role ? (await serialize_roles([role], client))[0] : null;
 }
 
 /** Read assigned users within the caller's role, user, and company access scopes. */
@@ -180,7 +188,7 @@ export async function create_role(input: Required<CreateRoleInput>, createdBy?: 
       },
       include: role_include,
     });
-    return serialize_role(role);
+    return (await serialize_roles([role], tx))[0];
   });
 }
 

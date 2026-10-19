@@ -117,7 +117,7 @@ export async function create_company(
   const location_address = input.location_address?.trim() ?? "";
   return getDatabase().$transaction(async (tx) => {
     const company = await tx.company.create({
-      data: { name: input.name, created_by: createdBy },
+      data: { name: input.name, code: input.code, created_by: createdBy },
       include: company_include,
     });
     if (!location_name) {
@@ -153,10 +153,14 @@ export async function update_company(
   return serialize_company(
     await client.company.update({
       where: { id: input.id, AND: [record_where(access, "companies", "edit")] },
-      data: { name: input.name },
+      data: { name: input.name, ...(input.code !== undefined ? { code: input.code || null } : {}) },
       include: company_include,
     }),
   );
+}
+export async function company_numbering_started(id: string, client: DatabaseExecutor) {
+  await client.$queryRaw`SELECT id FROM company WHERE id = ${id}::uuid FOR UPDATE`;
+  return client.material_request.findFirst({ where: { requesting_company_id: id, request_no: { not: null } }, select: { id: true } });
 }
 
 /** Delete a company by ID through the supplied database client. The service checks membership and controls the transaction before calling this query. */

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
-import { ChevronDown, Columns3, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, Columns3, Link2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableView } from "@/components/common/table/table-view";
 import { TableMenu } from "@/components/common/table/table-menu";
@@ -17,6 +17,7 @@ import {
 } from "./company-table-columns";
 
 export type CompanyActionProps = {
+  onSupplyLinks?: (company: CompanySummary) => void;
   onEdit: (company: CompanySummary) => void;
   onDelete: (company: CompanySummary) => void;
   disabled: boolean;
@@ -124,6 +125,11 @@ export function CompaniesTableView(props: Props) {
         actionsDisabled={props.disabled}
         columns={columns}
         actions={[
+          {
+            id: "supply-links", label: "Supply links", icon: <Link2 />,
+            hidden: () => !access?.superAdmin || !props.onSupplyLinks,
+            onSelect: (company) => props.onSupplyLinks?.(company),
+          },
           {
             id: "edit",
             label: "Edit",

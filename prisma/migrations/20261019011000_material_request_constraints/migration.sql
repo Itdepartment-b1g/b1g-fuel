@@ -1,0 +1,10 @@
+ALTER TABLE company ADD CONSTRAINT company_code_format CHECK (code IS NULL OR code ~ '^[A-Z][A-Z0-9]{1,15}$');
+ALTER TABLE material_request ADD CONSTRAINT material_request_distinct_companies CHECK (requesting_company_id <> supplying_company_id);
+ALTER TABLE material_request ADD CONSTRAINT material_request_number_status CHECK ((status = 'draft' AND request_no IS NULL AND submitted_at IS NULL) OR status = 'cancelled' OR (status <> 'draft' AND request_no IS NOT NULL AND submitted_at IS NOT NULL));
+ALTER TABLE material_request ADD CONSTRAINT material_request_approved_warehouse CHECK (status <> 'approved' OR supplying_warehouse_id IS NOT NULL);
+ALTER TABLE material_request_item ADD CONSTRAINT material_request_positive_qty CHECK (requested_qty > 0 AND (approved_qty IS NULL OR (approved_qty >= 0 AND approved_qty <= requested_qty)));
+ALTER TABLE material_request_counter ADD CONSTRAINT material_request_counter_range CHECK (last_value BETWEEN 1 AND 9999999 AND period ~ '^[0-9]{6}$');
+ALTER TABLE material_request ENABLE ROW LEVEL SECURITY;
+ALTER TABLE material_request_item ENABLE ROW LEVEL SECURITY;
+ALTER TABLE material_request_event ENABLE ROW LEVEL SECURITY;
+ALTER TABLE material_request_counter ENABLE ROW LEVEL SECURITY;

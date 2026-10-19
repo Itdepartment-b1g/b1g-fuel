@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Eye, Pencil, Trash2 } from "lucide-react";
+import { Building2, Eye, Link2, Pencil, Trash2 } from "lucide-react";
 import { CardActionsMenu } from "@/components/common/card-actions-menu";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
@@ -15,6 +15,7 @@ export function CompaniesCards({
   onEdit,
   onDelete,
   disabled,
+  onSupplyLinks,
 }: CompanyActionProps & { companies: CompanySummary[] }) {
   const access = useRecordAccess();
   const [viewing, setViewing] = useState<CompanySummary | null>(null);
@@ -27,6 +28,10 @@ export function CompaniesCards({
             <CardActionsMenu
               label={`Actions for ${company.name}`}
               items={[
+                ...(access?.superAdmin && onSupplyLinks ? [{
+                  id: "supply-links", label: "Supply links", icon: <Link2 />, disabled,
+                  onSelect: () => onSupplyLinks(company),
+                }] : []),
                 { id: "view", label: "View", icon: <Eye />, onSelect: () => setViewing(company) },
                 {
                   id: "edit",

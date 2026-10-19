@@ -10,6 +10,7 @@
     "typecheck": "prisma generate && tsc --noEmit",
     "test:access": "node --import tsx --test tests/role-access.test.tsx tests/role-company-db.test.ts tests/record-access.test.ts tests/record-access-db.test.ts tests/created-by.test.ts",
     "test:hubs": "node --import tsx --test tests/hubs.test.ts tests/hubs-db.test.ts tests/hubs-ui.test.tsx",
+    "test:company-supply": "node --import tsx --test tests/company-supply-db.test.ts tests/company-supply-api.test.ts tests/company-supply-ui.test.tsx",
     "test:measurements": "node --import tsx --test tests/measurements.test.ts tests/measurements-ui.test.tsx tests/measurements-db.test.ts tests/record-access.test.ts tests/created-by.test.ts",
     "db:generate": "prisma migrate dev --create-only",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
@@ -23,7 +24,8 @@
     "db:validate": "prisma validate",
     "db:status": "prisma migrate status",
     "db:client": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:material-requests": "node --import tsx --test tests/material-requests-db.test.ts tests/material-requests-ui.test.tsx"
   },
   "engines": {
     "node": ">=22.12.0"
