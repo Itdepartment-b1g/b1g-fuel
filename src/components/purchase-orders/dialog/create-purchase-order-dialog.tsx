@@ -50,6 +50,16 @@ function blankLine(): DraftLine {
   };
 }
 
+function resetLine(line: DraftLine, variantId = ""): DraftLine {
+  return {
+    ...line,
+    variant_id: variantId,
+    product_type_id: "",
+    base_unit_id: "",
+    ordered_qty: "",
+  };
+}
+
 function forCompany<T extends { company_id: string | null }>(rows: T[], companyId: string) {
   return rows.filter((row) => !row.company_id || row.company_id === companyId);
 }
@@ -220,7 +230,7 @@ function CreatePurchaseOrderFields({
               onChange={(event) => {
                 setCompanyId(event.target.value);
                 setSupplierId("");
-                setLines((current) => current.map((line) => ({ ...line, variant_id: "" })));
+                setLines((current) => current.map((line) => resetLine(line)));
               }}
               required
               className="h-10 w-full rounded-md border bg-white px-3 text-sm"
@@ -241,7 +251,7 @@ function CreatePurchaseOrderFields({
               value={supplierId}
               onChange={(event) => {
                 setSupplierId(event.target.value);
-                setLines((current) => current.map((line) => ({ ...line, variant_id: "" })));
+                setLines((current) => current.map((line) => resetLine(line)));
               }}
               required
               className="h-10 w-full rounded-md border bg-white px-3 text-sm"
@@ -341,7 +351,7 @@ function CreatePurchaseOrderFields({
                   onChange={(event) =>
                     setLines((current) =>
                       current.map((item) =>
-                        item.key === line.key ? { ...item, variant_id: event.target.value } : item,
+                        item.key === line.key ? resetLine(item, event.target.value) : item,
                       ),
                     )
                   }
