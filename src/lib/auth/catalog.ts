@@ -43,8 +43,6 @@ export function uniquePageCatalog(items: readonly PageCatalogItem[] = PAGE_CATAL
 }
 
 export const PAGE_CATALOG: readonly PageCatalogItem[] = [
-  { key: PAGE_KEYS.materialRequests, label: "Material requests", href: "/material-requests", view_permission: "materialRequests.view" },
-  { key: PAGE_KEYS.materialRequestReceiving, label: "Material request receiving", href: "/material-request-receiving", view_permission: "materialRequestReceiving.view" },
   {
     key: PAGE_KEYS.home,
     label: "Dashboard",
@@ -70,10 +68,17 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
     view_permission: "companies.view",
   },
   {
-    key: PAGE_KEYS.measurements,
-    label: "Measurements",
-    href: "/measurements",
-    view_permission: "measurements.view",
+    key: PAGE_KEYS.hubs,
+    label: "Hubs",
+    href: "/hubs",
+    view_permission: "hubs.view",
+  },
+  {
+    key: PAGE_KEYS.suppliers,
+    label: "Suppliers",
+    href: "/suppliers",
+    view_permission: "suppliers.view",
+    group: "procurement",
   },
   {
     key: PAGE_KEYS.brandsAndVariants,
@@ -81,36 +86,51 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
     href: "/brands-and-variants",
     view_permission: "brandsAndVariants.view",
     navigation: true,
-  },
-  {
-    key: PAGE_KEYS.suppliers,
-    label: "Suppliers",
-    href: "/suppliers",
-    view_permission: "suppliers.view",
+    group: "procurement",
   },
   {
     key: PAGE_KEYS.productTypes,
     label: "Product types",
     href: "/product-types",
     view_permission: "productTypes.view",
+    group: "procurement",
+  },
+  {
+    key: PAGE_KEYS.measurements,
+    label: "Measurements",
+    href: "/measurements",
+    view_permission: "measurements.view",
+    group: "procurement",
   },
   {
     key: PAGE_KEYS.purchaseOrders,
     label: "Purchase orders",
     href: "/purchase-orders",
     view_permission: "purchaseOrders.view",
+    group: "procurement",
   },
   {
     key: PAGE_KEYS.receiving,
     label: "Purchase order receiving",
     href: "/purchase-order-receiving",
     view_permission: "receiving.view",
+    group: "procurement",
   },
   {
-    key: PAGE_KEYS.hubs,
-    label: "Hubs",
-    href: "/hubs",
-    view_permission: "hubs.view",
+    key: PAGE_KEYS.materialRequests,
+    label: "Material requests",
+    href: "/material-requests",
+    view_permission: "materialRequests.view",
+    group: "procurement",
+  },
+  {
+    key: PAGE_KEYS.materialRequestReceiving,
+    label: "Material request receiving",
+    href: "/material-request-receiving",
+    view_permission: "materialRequestReceiving.view",
+    group: "procurement",
   },
 ];
-export const PAGE_GROUPS: readonly PageCatalogGroup[] = [];
+export const PAGE_GROUPS: readonly PageCatalogGroup[] = [
+  { key: "procurement", label: "Procurement" },
+];

@@ -130,7 +130,7 @@ test("measurement forms collect a name and units, and ask for a company only whe
   assert.doesNotMatch(table, /Archive/);
 });
 test("measurement navigation points to the implemented route and respects view permissions", () => {
-  assert.ok(listSidebarMenu([], { role: "super_admin" }).some((item) => item.href === "/measurements"));
+  assert.ok(listSidebarMenu([], { role: "super_admin" }).some((item) => item.children?.some((child) => child.href === "/measurements")));
   assert.equal(listSidebarMenu(["measurements"], { pages: ["measurements"], permissions: [] }).length, 0);
   assert.equal(listSidebarMenu(["measurements"], { pages: ["measurements"], permissions: ["measurements.view"] })[0].href, "/measurements");
 });

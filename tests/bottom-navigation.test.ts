@@ -8,7 +8,7 @@ test("bottom navigation keeps dashboard first and stops at five pages", () => {
   assert.equal(items[0]?.href, "/dashboard");
   assert.deepEqual(
     items.map((item) => item.href),
-    ["/dashboard", "/users", "/roles", "/companies", "/measurements"],
+    ["/dashboard", "/users", "/roles", "/companies", "/hubs"],
   );
 });
 
@@ -22,6 +22,6 @@ test("bottom navigation only includes pages the user can open", () => {
   );
   assert.deepEqual(
     items.map((item) => item.href),
-    ["/dashboard", "/purchase-orders", "/purchase-order-receiving"],
+    ["/dashboard"],
   );
 });
