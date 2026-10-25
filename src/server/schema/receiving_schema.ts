@@ -1,4 +1,5 @@
 export const RECEIVING_SORT_FIELDS = ["id", "created_at", "updated_at", "status", "posted_at", "receiving_no"] as const;
+export const RECEIVING_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const RECEIVABLE_STATUSES = ["awaiting_receipt", "partially_received"] as const;
 

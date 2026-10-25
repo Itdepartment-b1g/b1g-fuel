@@ -9,6 +9,7 @@ export const PAGE_KEYS = {
   productTypes: "productTypes",
   purchaseOrders: "purchaseOrders",
   receiving: "receiving",
+  inventory: "inventory",
   hubs: "hubs",
   materialRequests: "materialRequests",
   materialRequestReceiving: "materialRequestReceiving",
@@ -74,6 +75,13 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
     label: "Hubs",
     href: "/hubs",
     view_permission: "hubs.view",
+  },
+  {
+    key: PAGE_KEYS.inventory,
+    label: "Inventory",
+    href: "/inventory",
+    view_permission: "inventory.view",
+    navigation: true,
   },
   {
     key: PAGE_KEYS.suppliers,

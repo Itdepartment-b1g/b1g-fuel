@@ -478,6 +478,7 @@ export function confirm_purchase_order(id: string, access: RecordAccess) {
 
 export function close_purchase_order(id: string, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM purchase_order WHERE id = ${id}::uuid FOR UPDATE`;
     const current = await tx.purchase_order.findFirst({
       where: {
         AND: [{ id }, record_where(access, "purchaseOrders", "edit")],

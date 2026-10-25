@@ -38,6 +38,7 @@ export function canPerform(
     | "products"
     | "purchaseOrders"
     | "receiving"
+    | "inventory"
     | "materialRequests"
     | "materialRequestReceiving"
   | "hubs",

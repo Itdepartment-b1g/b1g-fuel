@@ -26,7 +26,7 @@
     "db:client": "prisma generate",
     "postinstall": "prisma generate",
     "test:material-requests": "node --import tsx --test tests/material-requests-db.test.ts tests/material-requests-ui.test.tsx",
-    "test:inventory": "node --import tsx --test tests/inventory-db.test.ts",
+    "test:inventory": "node --import tsx --test tests/inventory.test.ts tests/inventory-ui.test.tsx tests/inventory-db.test.ts tests/inventory-backend-db.test.ts",
     "test:facility": "node --import tsx --test tests/facility-db.test.ts"
   },
   "engines": {

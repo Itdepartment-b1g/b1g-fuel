@@ -4,6 +4,7 @@ import type { RecordAccess } from "@/lib/auth/access-scope";
 import type { Pagination } from "@/server/lib/pagination";
 import { MR_UUID, type RequestInput, type CreateRequestInput, type ActionInput, type ReceiveInput, type DispatchInput } from "@/server/schema/material_requests_schema";
 import * as repository from "@/server/repositories/material_requests_repository";
+import * as inventory from "@/server/repositories/inventory_repository";
 import type { Sorting } from "@/server/lib/sorting";
 import type { QuickFilterState } from "@/types/quick-filter";
 import { build_filter_options } from "@/server/lib/quick-filters";
@@ -236,7 +237,8 @@ export async function dispatch_material_request(input: DispatchInput, access: Re
       items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
     }, tx);
     for (const line of [...dispatch.items].sort((left, right) => left.product_id.localeCompare(right.product_id))) {
-      await repository.take_stock(row.supplying_warehouse_id, line.product_id, line.qty, line.id, access.userId, tx);
+      if (!await inventory.take_stock(row.supplying_warehouse_id, line.product_id, line.base_qty, line.id, access.userId, tx))
+        throw new MaterialRequestError(409, "Insufficient warehouse stock. Check the available balance before dispatching.");
     }
     const nextItems = row.items.map((item) => ({ requested_qty: item.requested_qty, dispatched_qty: adds.find((line) => line.item.id === item.id)?.next ?? item.dispatched_qty, received_qty: item.received_qty }));
     const status = fulfillment_status(nextItems);
@@ -272,7 +274,8 @@ export async function receive_material_request(input: ReceiveInput, access: Reco
       created_by: access.userId, posted_by: access.userId, posted_at: postedAt,
       items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
     }, tx);
-    for (const line of receipt.items) await repository.give_stock(row.requesting_hub_id, line.product_id, line.qty, line.id, access.userId, tx);
+    for (const line of [...receipt.items].sort((left, right) => left.product_id.localeCompare(right.product_id)))
+      await inventory.give_stock(row.requesting_hub_id, line.product_id, line.base_qty, { type: "receive_in", material_request_receiving_item_id: line.id }, access.userId, tx);
     const nextItems = row.items.map((item) => ({ requested_qty: item.requested_qty, dispatched_qty: item.dispatched_qty, received_qty: adds.find((line) => line.item.id === item.id)?.next ?? item.received_qty }));
     const status = fulfillment_status(nextItems);
     const updated = await repository.update_material_request(row.id, {
@@ -291,7 +294,7 @@ export async function list_by_id_material_request(id: string, access: RecordAcce
     const resolved = permissions.review ? await approval_warehouse(row.supplying_company_id, access, assignments, tx) : null;
     const request = await repository.serialize_request(row, tx);
     if (permissions.dispatch && row.supplying_warehouse_id) {
-      const stock = await repository.list_facility_stock(row.supplying_warehouse_id, row.items.map((item) => item.product_id), tx);
+      const stock = await inventory.list_facility_stock(row.supplying_warehouse_id, row.items.map((item) => item.product_id), tx);
       const available = new Map(stock.map((balance) => [balance.product_id, balance.qty.toString()]));
       request.items = request.items.map((item) => ({ ...item, available_qty: available.get(item.product_id) ?? "0" }));
     }

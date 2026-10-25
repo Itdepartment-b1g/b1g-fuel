@@ -116,7 +116,7 @@ export async function allocate_receipt_number(companyId: string, companyName: st
   return { receipt_seq, receiving_no: `RRMR-${code}-${period}-${String(receipt_seq).padStart(7, "0")}` };
 }
 export function create_posted_request_receipt(data: Prisma.material_request_receivingUncheckedCreateInput, tx: DatabaseExecutor) {
-  return tx.material_request_receiving.create({ data, select: { id: true, receiving_no: true, items: { select: { id: true, product_id: true, qty: true } } } });
+  return tx.material_request_receiving.create({ data, select: { id: true, receiving_no: true, items: { select: { id: true, product_id: true, base_qty: true } } } });
 }
 export async function allocate_dispatch_number(companyId: string, companyName: string, postedAt: Date, tx: DatabaseExecutor) {
   const code = (companyName.match(/[\p{L}\p{N}]+/gu) ?? []).map((word) => [...word][0]).join("").toUpperCase().slice(0, 46) || "MR";
@@ -129,22 +129,7 @@ export async function allocate_dispatch_number(companyId: string, companyName: s
   return { dispatch_seq, dispatch_no: `MRD-${code}-${period}-${String(dispatch_seq).padStart(7, "0")}` };
 }
 export function create_posted_request_dispatch(data: Prisma.material_request_dispatchUncheckedCreateInput, tx: DatabaseExecutor) {
-  return tx.material_request_dispatch.create({ data, select: { id: true, dispatch_no: true, items: { select: { id: true, product_id: true, qty: true } } } });
-}
-export function list_facility_stock(facilityId: string, productIds: string[], tx: DatabaseExecutor) {
-  return tx.inventory.findMany({ where: { facility_id: facilityId, product_id: { in: productIds } }, select: { product_id: true, qty: true } });
-}
-export async function take_stock(facilityId: string, productId: string, qty: Prisma.Decimal, dispatchItemId: string, userId: string, tx: DatabaseExecutor) {
-  await tx.$queryRaw`SELECT id FROM inventory WHERE facility_id = ${facilityId}::uuid AND product_id = ${productId}::uuid FOR UPDATE`;
-  const updated = await tx.inventory.updateMany({ where: { facility_id: facilityId, product_id: productId, qty: { gte: qty } }, data: { qty: { decrement: qty } } });
-  if (updated.count !== 1) return false;
-  await tx.stock_movement.create({ data: { facility_id: facilityId, product_id: productId, qty, direction: "out", type: "dispatch_out", material_request_dispatch_item_id: dispatchItemId, created_by: userId } });
-  return true;
-}
-export async function give_stock(facilityId: string, productId: string, qty: Prisma.Decimal, receivingItemId: string, userId: string, tx: DatabaseExecutor) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${facilityId}:${productId}`})::bigint)`;
-  await tx.inventory.upsert({ where: { facility_id_product_id: { facility_id: facilityId, product_id: productId } }, create: { facility_id: facilityId, product_id: productId, qty }, update: { qty: { increment: qty } } });
-  await tx.stock_movement.create({ data: { facility_id: facilityId, product_id: productId, qty, direction: "in", type: "receive_in", material_request_receiving_item_id: receivingItemId, created_by: userId } });
+  return tx.material_request_dispatch.create({ data, select: { id: true, dispatch_no: true, items: { select: { id: true, product_id: true, base_qty: true } } } });
 }
 export async function list_request_receipts(visibility: Prisma.material_requestWhereInput, search: string, pagination: Pagination, sorting: Sorting | undefined, tx: DatabaseExecutor) {
   const where: Prisma.material_request_receivingWhereInput = {

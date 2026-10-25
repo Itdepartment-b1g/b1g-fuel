@@ -131,13 +131,14 @@ test("material requests enforce companies and hub assignments, allocate numbers 
       assert.equal((await service.list_by_id_material_request(draft.id, requester)).permissions.receive, false);
       await assert.rejects(service.dispatch_material_request({ id: draft.id, lines: [{ material_request_item_id: approved.items[0].id, qty: "1" }] }, requester), { status: 403 });
       await assert.rejects(service.receive_material_request({ id: draft.id, lines: [{ material_request_item_id: approved.items[0].id, qty: "1" }] }, requester), { status: 409 });
+      await tx.inventory.create({ data: { facility_id: warehouse.id, product_id: product.id, qty: "12.5" } });
       const dispatched = await service.dispatch_material_request({ id: draft.id, lines: [{ material_request_item_id: approved.items[0].id, qty: "2.500" }] }, supplier);
       assert.equal(dispatched.status, "partially_dispatched");
       assert.equal(Number(dispatched.items[0].dispatched_qty), 2.5);
       assert.match(dispatched.dispatch_no!, /^MRD-WC-\d{6}-\d{7}$/);
       assert.equal(dispatched.events.at(-1)?.kind, "dispatched");
       assert.equal(dispatched.dispatches.some((row) => row.number === dispatched.dispatch_no), true);
-      assert.equal(await tx.inventory.findUnique({ where: { facility_id_product_id: { facility_id: warehouse.id, product_id: product.id } } }), null);
+      assert.equal((await tx.inventory.findUnique({ where: { facility_id_product_id: { facility_id: warehouse.id, product_id: product.id } } }))?.qty.toString(), "10");
       assert.equal((await service.list_by_id_material_request(draft.id, requester)).permissions.receive, true);
       await assert.rejects(service.receive_material_request({ id: draft.id, lines: [{ material_request_item_id: approved.items[0].id, qty: "2.5" }] }, supplier), { status: 403 });
       await assert.rejects(service.receive_material_request({ id: draft.id, lines: [{ material_request_item_id: approved.items[0].id, qty: "3" }] }, requester), { status: 409 });
@@ -148,7 +149,6 @@ test("material requests enforce companies and hub assignments, allocate numbers 
       assert.equal(partial.events.at(-1)?.kind, "receipt_posted");
       assert.equal(partial.events.at(-1)?.material_request_receiving_id !== null, true);
       assert.equal((await tx.inventory.findUnique({ where: { facility_id_product_id: { facility_id: hub.id, product_id: product.id } } }))?.qty.toString(), "2.5");
-      await tx.inventory.create({ data: { facility_id: warehouse.id, product_id: product.id, qty: "10" } });
       const rest = await service.dispatch_material_request({ id: draft.id, lines: [{ material_request_item_id: approved.items[0].id, qty: "10" }] }, supplier);
       assert.equal(rest.status, "partially_received");
       assert.equal(Number(rest.items[0].dispatched_qty), 12.5);

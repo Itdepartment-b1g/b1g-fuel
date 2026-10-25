@@ -20,6 +20,7 @@ export type Resource =
   | "products"
   | "purchaseOrders"
   | "receiving"
+  | "inventory"
   | "hubs";
 
 type ResourceWhere = {
@@ -33,6 +34,7 @@ type ResourceWhere = {
   products: Prisma.productWhereInput;
   purchaseOrders: Prisma.purchase_orderWhereInput;
   receiving: Prisma.receivingWhereInput;
+  inventory: Prisma.inventoryWhereInput;
   hubs: Prisma.facilityWhereInput;
 }
 
@@ -178,6 +180,10 @@ export function record_where(
     return {};
   }
   const rules = grants.map((grant) => {
+    if (resource === "inventory") return { facility: {
+      company_id: { in: grant.companyId ? [grant.companyId] : access.companyIds },
+      ...(grant.scope === "own" ? { users: { some: { membership: { user_id: access.userId } } } } : {}),
+    } };
     // A hub's creator is audit only. Own access follows current staff assignments.
     if (resource === "hubs" && grant.scope === "own") return {
       company_id: { in: grant.companyId ? [grant.companyId] : access.companyIds },
@@ -189,6 +195,7 @@ export function record_where(
     if (resource === "roles" || resource === "hubs" || owned) return { company_id: { in: ids } };
     return { user_companies: { some: { company_id: { in: ids } } } };
   });
+  if (resource === "inventory" && rules.length === 0) return { id: { in: [] } };
   if (is_shared(resource) && action === "view")
     return { OR: [...rules, { company_id: null }] };
   return { OR: rules };

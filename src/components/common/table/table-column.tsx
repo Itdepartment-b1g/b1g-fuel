@@ -26,6 +26,7 @@ export const columnHeaderClass = cn(
 export interface TableColumn<T> {
   id: string;
   header: string;
+  align?: "left" | "right";
   width?: number;
   value?: (row: T) => SortValue;
   cell?: (row: T) => ReactNode;
@@ -43,7 +44,7 @@ export function TableColumnHeader<T>({
   style,
   headerRef,
   menu = [],
-  align = "left",
+  align = column.align ?? "left",
   wrap = false,
 }: {
   column: TableColumn<T>;

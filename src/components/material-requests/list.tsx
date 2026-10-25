@@ -44,14 +44,14 @@ import { ReceiveMaterialRequestDialog } from "./dialog/receive-material-request-
 import { DispatchMaterialRequestDialog } from "./dialog/dispatch-material-request-dialog";
 import { TimelineMaterialRequestDialog } from "./dialog/timeline-material-request-dialog";
 
-export default function MaterialRequestsList() {
+export default function MaterialRequestsList({ initialSearch = "" }: { initialSearch?: string } = {}) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const access = useRecordAccess();
   const state = useAppSelector((state) => state.materialRequests);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [filters, setFilters] = useState(() =>
     createQuickFilterState(MATERIAL_REQUEST_FILTER_DEFAULTS),
   );

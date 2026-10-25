@@ -119,7 +119,7 @@ export default function AppSideBar({
       setLoading(false);
     }
   }
-  const sessionRole = role ?? user?.role;
+  const sessionRole = role ?? (access?.superAdmin ? "super_admin" : user?.role);
   const items =
     pages === undefined && !sessionRole
       ? sideBarMenuItems

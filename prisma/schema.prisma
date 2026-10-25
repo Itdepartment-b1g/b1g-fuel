@@ -616,9 +616,12 @@ model inventory {
 
 model stock_movement {
   id String @id @default(uuid()) @db.Uuid
+  sequence BigInt @unique @default(autoincrement())
   facility_id String @db.Uuid
   product_id String @db.Uuid
   qty Decimal @db.Decimal(14, 3)
+  balance_before Decimal? @db.Decimal(14, 3)
+  balance_after Decimal? @db.Decimal(14, 3)
   direction stock_movement_direction
   type stock_movement_type
   po_receiving_item_id String? @unique @db.Uuid

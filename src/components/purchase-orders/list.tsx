@@ -30,7 +30,7 @@ import { ViewPurchaseOrderDialog } from "./dialog/view-purchase-order-dialog";
 import { PurchaseOrderCards } from "./card-views/purchase-order-cards";
 import { PurchaseOrdersTableView } from "./table-view/purchase-orders-table-view";
 
-export default function ListPurchaseOrders() {
+export default function ListPurchaseOrders({ initialSearch = "" }: { initialSearch?: string } = {}) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const access = useRecordAccess();
@@ -51,7 +51,7 @@ export default function ListPurchaseOrders() {
   const activeFilters = countActiveFilters(filters, PURCHASE_ORDER_FILTER_DEFAULTS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [sorting, setSorting] = useState<TableSort | null>(null);
   const [view, setView] = useListView();
   const [revision, setRevision] = useState(0);

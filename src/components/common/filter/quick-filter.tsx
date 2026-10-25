@@ -137,7 +137,7 @@ export function QuickFilter({
                 contentClassName="z-[60]"
               />
             </section>
-            <section className="space-y-3">
+            {fields.length > 0 && <section className="space-y-3">
               <h3 className="text-sm font-semibold">
                 {labels.conditions ?? "Column conditions"}
               </h3>
@@ -228,7 +228,7 @@ export function QuickFilter({
                 <Plus className="size-4" />
                 Add condition
               </Button>
-            </section>
+            </section>}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">
                 {labels.status ?? "Status"}

@@ -52,7 +52,7 @@ export const receivingPaths = {
     post: {
       tags: ["Receiving"],
       summary: "Post a draft receipt",
-      description: "Requires receiving.edit. Posting increases the purchase order received quantities and writes a timeline event. Stock is unchanged until stock balances exist.",
+      description: "Requires receiving.edit. Posting atomically increases purchase order received quantities, adds receipt base quantities to warehouse inventory, writes po_receive_in stock movements and a timeline event, and marks the receipt posted. Concurrent or repeated posting cannot add stock twice.",
       security: [{ session: [] }],
       responses: { "200": { description: "Receipt posted" }, ...errors },
     },

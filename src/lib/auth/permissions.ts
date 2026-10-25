@@ -12,7 +12,7 @@ export type PermissionCatalogItem = {
 // These keys describe saved role settings. Administrative routes still require super-admin access.
 export const PERMISSION_CATALOG: readonly PermissionCatalogItem[] =
   uniquePageCatalog().flatMap((page) =>
-    PERMISSION_ACTIONS.map((action) => ({
+    PERMISSION_ACTIONS.filter((action) => page.key !== "inventory" || action === "view").map((action) => ({
       key:
         action === "view"
           ? (page.view_permission ?? `${page.key}.view`)

@@ -6,6 +6,7 @@ import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 import { build_sort, type Sorting } from "@/server/lib/sorting";
 import { receiving_number } from "@/server/utils/receiving-number";
+import { give_stock } from "@/server/repositories/inventory_repository";
 import { RECEIVABLE_STATUSES, type CreateReceivingInput, type ListReceivingResponse } from "@/server/schema/receiving_schema";
 
 const productSelect = {
@@ -124,6 +125,7 @@ export function receipt_status(lines: { ordered_qty: Prisma.Decimal; received_qt
 }
 
 async function order_for_receipt(tx: DatabaseExecutor, id: string, access: RecordAccess, action: "add" | "edit") {
+  await tx.$queryRaw`SELECT id FROM purchase_order WHERE id = ${id}::uuid FOR UPDATE`;
   return tx.purchase_order.findFirst({
     where: {
       AND: [{ id }, order_scope(access, action), { status: { in: RECEIVABLE } }],
@@ -304,6 +306,7 @@ export function create_receiving(input: CreateReceivingInput, access: RecordAcce
 
 export function update_receiving(input: CreateReceivingInput & { id: string }, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM receiving WHERE id = ${input.id}::uuid FOR UPDATE`;
     const current = await tx.receiving.findFirst({
       where: { AND: [{ id: input.id }, record_where(access, "receiving", "edit")] },
       select: { id: true, status: true, purchase_order_id: true },
@@ -323,6 +326,7 @@ export function update_receiving(input: CreateReceivingInput & { id: string }, a
 
 export function post_receiving(id: string, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM receiving WHERE id = ${id}::uuid FOR UPDATE`;
     const current = await tx.receiving.findFirst({
       where: { AND: [{ id }, record_where(access, "receiving", "edit")] },
       include: { items: true, company: { select: { name: true } } },
@@ -331,12 +335,16 @@ export function post_receiving(id: string, access: RecordAccess) {
     if (current.status !== "draft") return "not_draft" as const;
     const order = await order_for_receipt(tx, current.purchase_order_id, access, "edit");
     if (!order) return "not_receivable" as const;
+    if (!current.items.length) return "invalid_line" as const;
     for (const line of current.items) {
       const item = order.items.find((row) => row.id === line.purchase_order_item_id);
       if (!item) return "invalid_line" as const;
       const outstanding = item.ordered_qty.minus(item.received_qty);
       if (line.qty.greaterThan(outstanding)) return "over_receipt" as const;
       item.received_qty = item.received_qty.plus(line.qty);
+    }
+    for (const line of current.items) {
+      const item = order.items.find((row) => row.id === line.purchase_order_item_id)!;
       await tx.purchase_order_item.update({
         where: { id: item.id },
         data: { received_qty: item.received_qty },
@@ -351,6 +359,9 @@ export function post_receiving(id: string, access: RecordAccess) {
     });
     const receipt_seq = (latest._max.receipt_seq ?? 0) + 1;
     const number = receiving_number(current.company.name, posted_at, receipt_seq);
+    for (const line of [...current.items].sort((left, right) => left.product_id.localeCompare(right.product_id))) {
+      await give_stock(current.facility_id, line.product_id, line.base_qty, { type: "po_receive_in", po_receiving_item_id: line.id }, access.userId, tx);
+    }
     await tx.purchase_order.update({
       where: { id: order.id },
       data: {
@@ -376,6 +387,7 @@ export function post_receiving(id: string, access: RecordAccess) {
 
 export function delete_receiving(id: string, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM receiving WHERE id = ${id}::uuid FOR UPDATE`;
     const current = await tx.receiving.findFirst({
       where: { AND: [{ id }, record_where(access, "receiving", "delete")] },
       select: { id: true, status: true },
