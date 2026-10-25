@@ -57,12 +57,12 @@ export function AssignHubDialog({
   const busy = useRef(false);
   const pending = state.mutationStatus === "loading";
   const assignments =
-    state.assignmentsLocationId === hub.id &&
+    state.assignmentsFacilityId === hub.id &&
     state.assignmentsStatus === "succeeded"
       ? state.assignments
       : null;
   const options =
-    state.assignmentOptionsLocationId === hub.id &&
+    state.assignmentOptionsFacilityId === hub.id &&
     state.assignmentOptionsStatus === "succeeded"
       ? state.assignmentOptions
       : null;
@@ -70,7 +70,7 @@ export function AssignHubDialog({
   useEffect(() => {
     let current = true;
     const request = dispatch(
-      listHubAssignment({ location_id: hub.id, page, page_size: PAGE_SIZE, search: assignedSearch }),
+      listHubAssignment({ facility_id: hub.id, page, page_size: PAGE_SIZE, search: assignedSearch }),
     );
     request.then((action) => {
       if (current && listHubAssignment.fulfilled.match(action)) {
@@ -85,7 +85,7 @@ export function AssignHubDialog({
     let current = true;
     const request = dispatch(
       getHubAssignmentOption({
-        location_id: hub.id,
+        facility_id: hub.id,
         page: optionPage,
         page_size: PAGE_SIZE,
         search,
@@ -123,7 +123,7 @@ export function AssignHubDialog({
     try {
       const result = await dispatch(
         assignHubStaff({
-          location_id: hub.id,
+          facility_id: hub.id,
           user_company_ids: selected.map((member) => member.user_company_id),
         }),
       ).unwrap();
@@ -169,7 +169,7 @@ export function AssignHubDialog({
     busy.current = true;
     try {
       await dispatch(
-        unassignHub({ location_id: hub.id, user_company_id: membershipId }),
+        unassignHub({ facility_id: hub.id, user_company_id: membershipId }),
       ).unwrap();
       toast.success(`${name} was unassigned from ${hub.name}.`);
       setRemoving(null);

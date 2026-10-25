@@ -169,14 +169,14 @@ function EditPurchaseOrderFields({
   );
   const [error, setError] = useState<string | null>(null);
   const suppliers = forCompany(options.suppliers, order.company_id);
-  const locations = options.locations.filter((location) => location.company_id === order.company_id);
-  const warehouse = locations.length === 1 ? locations[0] : locations.length === 0 ? order.location : undefined;
+  const facilities = options.facilities.filter((facility) => facility.company_id === order.company_id);
+  const warehouse = facilities.length === 1 ? facilities[0] : facilities.length === 0 ? order.facility : undefined;
   const variants = supplierVariants(options.variants, order.company_id, supplierId);
   const productTypes = forCompany(options.product_types, order.company_id);
 
   function validate(confirming: boolean) {
-    if (locations.length !== 1)
-      return locations.length
+    if (facilities.length !== 1)
+      return facilities.length
         ? "This company has more than one warehouse."
         : "This company has no warehouse.";
     if (!supplierId) return "Select a supplier.";
@@ -271,7 +271,7 @@ function EditPurchaseOrderFields({
               </>
             ) : (
               <span className="block font-normal text-muted-foreground">
-                {locations.length > 1
+                {facilities.length > 1
                   ? "This company has more than one warehouse."
                   : "This company has no warehouse."}
               </span>

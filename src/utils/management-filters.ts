@@ -75,7 +75,7 @@ export const PURCHASE_ORDER_FILTER_OPTIONS: ManagementFilterOptions = {
   fields: [
     { key: "company", label: "Company", options: [] },
     { key: "supplier", label: "Supplier", options: [] },
-    { key: "location", label: "Warehouse", options: [] },
+    { key: "facility", label: "Warehouse", options: [] },
   ],
   statusOptions: [
     { value: "all", label: "All orders" },
@@ -92,7 +92,7 @@ export const RECEIVING_FILTER_OPTIONS: ManagementFilterOptions = {
   fields: [
     { key: "company", label: "Company", options: [] },
     { key: "supplier", label: "Supplier", options: [] },
-    { key: "location", label: "Warehouse", options: [] },
+    { key: "facility", label: "Warehouse", options: [] },
   ],
   statusOptions: [
     { value: "all", label: "All receipts" },

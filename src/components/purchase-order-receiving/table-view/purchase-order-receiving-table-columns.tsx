@@ -30,10 +30,10 @@ export const RECEIVING_TABLE_COLUMNS: TableColumn<ReceivingSummary>[] = [
     className: "font-semibold",
   },
   {
-    id: "location",
+    id: "facility",
     header: "Warehouse",
     freezable: true,
-    value: (row) => row.location.name,
+    value: (row) => row.facility.name,
   },
   {
     id: "company",

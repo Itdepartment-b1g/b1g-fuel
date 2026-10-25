@@ -18,7 +18,7 @@ The table and cards keep **View draft** or **View**, plus **Timeline**, in a ver
 
 The requesting side can edit drafts, submit drafts, or cancel drafts only. Supplier reviewers can approve or reject submitted requests. Approval and rejection accept an optional note. Approval accepts all requested quantities and assigns a warehouse owned by the supplying company. Approved and later requests cannot be edited or cancelled.
 
-The supplying warehouse dispatches in one or more posted documents. Each dispatch receives `MRD-{INITIALS}-{YYYYMM}-{0000001}`, counted per supplying company. A line cannot exceed the quantity still to dispatch. When the warehouse balance covers the line, dispatch deducts `stock_balance` through an append-only `stock_movement`. A short or missing balance still posts the dispatch so the request can move forward before inventory is loaded. Dispatch is available from approved, partially dispatched, fully dispatched, and partially received requests while requested quantity remains. A later dispatch keeps Partially Received when any quantity has already been received.
+The supplying warehouse dispatches in one or more posted documents. Each dispatch receives `MRD-{INITIALS}-{YYYYMM}-{0000001}`, counted per supplying company. A line cannot exceed the quantity still to dispatch. When the warehouse balance covers the line, dispatch deducts `inventory` through an append-only `stock_movement`. A short or missing balance still posts the dispatch so the request can move forward before inventory is loaded. Dispatch is available from approved, partially dispatched, fully dispatched, and partially received requests while requested quantity remains. A later dispatch keeps Partially Received when any quantity has already been received.
 
 The requesting hub confirms what arrived. Each receipt receives `RRMR-{INITIALS}-{YYYYMM}-{0000001}`, counted per requesting company, and adds stock at the requesting hub. A receipt cannot exceed dispatched quantity that has not yet been received. Partial receipt sets Partially Received. The request becomes received, shown as Completed, when every requested quantity has been received. Closing a short receipt and hub-to-hub transfers remain future work. Purchase-order receiving does not post this stock.
 
@@ -30,7 +30,7 @@ Supplier users cannot see drafts, including drafts cancelled without submission.
 
 Configure the **Material requests** page and permissions in roles/memberships. Existing roles are not automatically granted access. Super Admin already has access. `materialRequests.view`, `.add`, and `.edit` govern reads, draft creation, and workflow changes. No deletion endpoint is provided.
 
-Company scope applies only to that company's side of a request. Own scope follows current location assignments, including hub access for requester staff. A supplier reviewer needs company scope to review submitted requests before a warehouse is assigned. Warehouse-own visibility applies after warehouse assignment. Supply linking itself remains Super Admin-only.
+Company scope applies only to that company's side of a request. Own scope follows current facility assignments, including hub access for requester staff. A supplier reviewer needs company scope to review submitted requests before a warehouse is assigned. Warehouse-own visibility applies after warehouse assignment. Supply linking itself remains Super Admin-only.
 
 ## Numbering
 
@@ -46,7 +46,7 @@ Drafts display **Draft** and do not consume a number. Submission allocates `MR-{
 - `material_request_dispatch` and `material_request_dispatch_item`: posted warehouse dispatches. Each line stores quantity, unit, and base quantity.
 - `material_request_receiving`: a draft or posted receipt for one request, stored for the requesting company and received at that request's hub. A request has at most one draft receipt. The receipt number is assigned when the receipt posts.
 - `material_request_receiving_item`: one received quantity for a request line, with the unit conversion snapshotted as `content_per_unit` and `base_qty`.
-- `stock_balance`: on-hand quantity for one location and supplier product. Dispatch decreases the warehouse balance. Receipt increases the hub balance.
+- `inventory`: on-hand quantity for one facility and supplier product. Dispatch decreases the warehouse balance. Receipt increases the hub balance.
 - `stock_movement`: append-only record of each dispatch out and receipt in, tied to the dispatch or receipt line and the user who posted it.
 - `material_request_counter`: one atomic counter per company/month.
 

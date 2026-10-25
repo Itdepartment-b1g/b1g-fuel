@@ -113,7 +113,7 @@ export function CompaniesTableView(props: Props) {
       <TableView
         data={props.companies}
         rowKey={(company) => company.id}
-        caption="Companies, members, and locations"
+        caption="Companies, members, and facilities"
         expandedRow={(company) => (
           <CompanyMembers key={company.id} companyId={company.id} />
         )}

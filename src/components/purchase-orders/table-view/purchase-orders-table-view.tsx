@@ -121,7 +121,7 @@ export function PurchaseOrderDetails({ order, fit = false }: { order: PurchaseOr
     <div className="min-w-0 space-y-4">
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div className="min-w-0"><dt className="text-muted-foreground">PO no.</dt><dd className="break-words">{order.purchase_order_no}</dd></div>
-        <div className="min-w-0"><dt className="text-muted-foreground">Supplier / warehouse</dt><dd className="break-words">{order.supplier.name} / {order.location.name}</dd></div>
+        <div className="min-w-0"><dt className="text-muted-foreground">Supplier / warehouse</dt><dd className="break-words">{order.supplier.name} / {order.facility.name}</dd></div>
         <div className="min-w-0"><dt className="text-muted-foreground">Company</dt><dd className="break-words">{order.company.name}</dd></div>
         <div><dt className="text-muted-foreground">Status</dt><dd>{PURCHASE_ORDER_STATUS_LABEL[order.status]}</dd></div>
         <div className="min-w-0"><dt className="text-muted-foreground">Payment terms</dt><dd className="break-words">{order.payment_terms || "—"}</dd></div>
@@ -131,7 +131,7 @@ export function PurchaseOrderDetails({ order, fit = false }: { order: PurchaseOr
         <div><dt className="text-muted-foreground">Created at</dt><dd>{when(order.created_at)}</dd></div>
         <div><dt className="text-muted-foreground">Fully received by</dt><dd>{received?.created_by_name || "—"}</dd></div>
         <div><dt className="text-muted-foreground">Fully received at</dt><dd>{when(received?.created_at ?? null)}</dd></div>
-        <div className="min-w-0 sm:col-span-2"><dt className="text-muted-foreground">Warehouse address</dt><dd className="break-words">{order.location.address || "—"}</dd></div>
+        <div className="min-w-0 sm:col-span-2"><dt className="text-muted-foreground">Warehouse address</dt><dd className="break-words">{order.facility.address || "—"}</dd></div>
       </dl>
       {order.notes ? <div className="text-sm"><h2 className="font-medium">Notes</h2><p className="whitespace-pre-wrap break-words">{order.notes}</p></div> : null}
       <PurchaseOrderLines items={order.items} fit={fit} />

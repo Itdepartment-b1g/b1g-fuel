@@ -1,6 +1,6 @@
 # Hubs
 
-A hub is a company-owned `location` with `type = hub`. Its required `company_id` is ownership; `created_by` is immutable creation history. The authenticated actor supplies the creator value. Warehouse rows are excluded from all hub operations.
+A hub is a company-owned `facility` with `type = hub`. Its required `company_id` is ownership; `created_by` is immutable creation history. The authenticated actor supplies the creator value. Warehouse rows are excluded from all hub operations.
 
 ## API
 
@@ -15,25 +15,25 @@ All endpoints require a verified session and return private, non-cacheable respo
 | POST | `/api/hubs` | `hubs.add`; name, optional address and company_id |
 | PATCH | `/api/hubs` | `hubs.edit`; id plus name, address, and/or is_active |
 | DELETE | `/api/hubs?id=UUID` | `hubs.delete`; deactivates, preserves records and assignments |
-| GET | `/api/hubs/assignment-options?location_id=UUID` | Company-level `hubs.edit`; paginated eligible company members; optional search |
-| GET | `/api/hubs/assignments?location_id=UUID` | Company-level `hubs.edit`; paginated assigned staff; optional name/email search |
-| GET | `/api/hubs/assignment-history?location_id=UUID` | Company-level `hubs.edit`; current and previous assignment periods; name/email search and pagination |
-| POST | `/api/hubs/assignments` | Company-level `hubs.edit`; location_id and user_company_id |
-| DELETE | `/api/hubs/assignments?location_id=UUID&user_company_id=UUID` | Company-level `hubs.edit`; removes assignment |
+| GET | `/api/hubs/assignment-options?facility_id=UUID` | Company-level `hubs.edit`; paginated eligible company members; optional search |
+| GET | `/api/hubs/assignments?facility_id=UUID` | Company-level `hubs.edit`; paginated assigned staff; optional name/email search |
+| GET | `/api/hubs/assignment-history?facility_id=UUID` | Company-level `hubs.edit`; current and previous assignment periods; name/email search and pagination |
+| POST | `/api/hubs/assignments` | Company-level `hubs.edit`; facility_id and user_company_id |
+| DELETE | `/api/hubs/assignments?facility_id=UUID&user_company_id=UUID` | Company-level `hubs.edit`; removes assignment |
 
 Company-level assignment management also accepts unrestricted global grants or super-admin access. Own-scope edit permission never permits changing assignments. Missing or inaccessible hubs return 404, including warehouse IDs.
 
 ## Company and staff access
 
-For a creator with exactly one permitted company, omitted company_id selects that company. Multiple permitted companies, super-admins, and unrestricted global creators must select one. Explicitly requesting an unauthorized company returns 403. Company and creator cannot be changed on update. Name is unique among all locations in that company, including warehouses.
+For a creator with exactly one permitted company, omitted company_id selects that company. Multiple permitted companies, super-admins, and unrestricted global creators must select one. Explicitly requesting an unauthorized company returns 403. Company and creator cannot be changed on update. Name is unique among all facilities in that company, including warehouses.
 
 Company-scope hub grants cover that company's hubs. For hubs only, `own` means a current staff assignment within the grant's company, rather than matching created_by. This permits staff turnover without changing company ownership or historical creators. Creating a hub does not automatically assign the creator.
 
-The new `user_location` model links a company membership to a location. Composite foreign keys enforce that both belong to the same company, and a unique key prevents duplicate assignments. `assigned_by` and `assigned_at` capture assignment creation. Repeated POST requests preserve those original audit fields.
+The new `user_facility` model links a company membership to a facility. Composite foreign keys enforce that both belong to the same company, and a unique key prevents duplicate assignments. `assigned_by` and `assigned_at` capture assignment creation. Repeated POST requests preserve those original audit fields.
 
-Staff can have several hubs, and a hub can have several staff members. Any existing company member can be selected; no role-name checks are hardcoded. Assigning a location does not create roles, permissions, pages, or company memberships. A staff member still needs the relevant page and action grants to access hubs.
+Staff can have several hubs, and a hub can have several staff members. Any existing company member can be selected; no role-name checks are hardcoded. Assigning a facility does not create roles, permissions, pages, or company memberships. A staff member still needs the relevant page and action grants to access hubs.
 
-Hub edits, deactivation, and assignment changes lock the same location row. Inactive hubs cannot receive new assignments; existing assignments remain available for review/removal and are retained on reactivation. Removing a company membership removes its location assignments. Deleting a location with assignments is restricted by the database.
+Hub edits, deactivation, and assignment changes lock the same facility row. Inactive hubs cannot receive new assignments; existing assignments remain available for review/removal and are retained on reactivation. Removing a company membership removes its facility assignments. Deleting a facility with assignments is restricted by the database.
 
 ## Delivery
 
@@ -45,7 +45,7 @@ Apply `20261018120000_hub_assignments` and `20261018140000_hub_assignment_histor
 
 Create and edit use separate dialogs. Company and creator are read-only after creation. Deactivate asks for confirmation; Edit hub can reactivate. Assignment management shows checkbox chips with staff names and emails, one Assign button for the selection, and a Currently assigned list below a divider. Choices and assigned staff are paginated; selections persist across choice pages. The client assigns selected members through sequential requests while holding one mutation lock. If a request fails, completed assignments are refreshed and the remaining selection stays available for retry. Unassigning requires confirmation. Inactive hubs retain their staff list but cannot receive new assignments. Success and request failures use toasts; failed forms stay open for retry.
 
-Redux guards responses by request ID and location, suppresses simultaneous mutations, and invalidates pending reads after writes. Frontend API contracts live in `types/hubs.ts`, separate from server schema types. Assignment buttons require company-level hub edit permission, matching the API.
+Redux guards responses by request ID and facility, suppresses simultaneous mutations, and invalidates pending reads after writes. Frontend API contracts live in `types/hubs.ts`, separate from server schema types. Assignment buttons require company-level hub edit permission, matching the API.
 
 Eligible members and current assignments include the person's current roles from that company membership. Both lists show Name (Role) - Email, with roles in extra-small text. Multiple roles are separated by commas; a membership without roles shows No role.
 
@@ -55,10 +55,10 @@ Inside Assign staff, the available-member choices and Currently assigned list ea
 
 Expanding a hub row shows an assigned-users table with Name, Email, Assigned by, Assigned at, and Unassigned at. The card View dialog uses the same table. It has its own per-hub Redux data and pagination, and refreshes after assignment changes. Staff search inputs live in Assign staff. Access matches the staff-management endpoints: company-level hub edit permission.
 
-`user_location` remains the active assignment link used for authorization and staff counts. Database triggers write a `user_location_history` snapshot for each inserted link and set its unassigned_at when that link is deleted, including company-membership cascade deletion. Reassignment creates another period; repeating an active assignment does not duplicate history. Names, emails, assigning-user names, and user creation dates are captured when the assignment is recorded, so history survives membership removal and user changes.
+`user_facility` remains the active assignment link used for authorization and staff counts. Database triggers write a `user_facility_history` snapshot for each inserted link and set its unassigned_at when that link is deleted, including company-membership cascade deletion. Reassignment creates another period; repeating an active assignment does not duplicate history. Names, emails, assigning-user names, and user creation dates are captured when the assignment is recorded, so history survives membership removal and user changes.
 
-The migration backfills existing active assignments. Previously deleted assignments and their unassignment dates cannot be recovered. Active periods show a dash in Unassigned at. Both timestamps are displayed in Asia/Manila. Locations with history cannot be physically deleted.
+The migration backfills existing active assignments. Previously deleted assignments and their unassignment dates cannot be recovered. Active periods show a dash in Unassigned at. Both timestamps are displayed in Asia/Manila. Facilities with history cannot be physically deleted.
 
 Run `npm run test:hubs`, `npm run db:validate`, `npm run typecheck`, `npm run lint`, and `npm run build`. The hub suite includes Redux, rendered-component, controller, and database coverage. Database tests run only against a configured localhost database, use a rollback transaction, and preserve existing records.
 
-Inventory balances, material requests, and transfers are future modules. Removing an assignment deletes its active link and preserves its history; future stock documents must retain their original actor/location references.
+Inventory balances, material requests, and transfers are future modules. Removing an assignment deletes its active link and preserves its history; future stock documents must retain their original actor/facility references.

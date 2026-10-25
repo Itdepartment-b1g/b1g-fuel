@@ -21,8 +21,8 @@ export interface ReceivingSummary {
   purchase_order_id: string;
   purchase_order_status: string;
   supplier: { id: string; name: string };
-  location_id: string;
-  location: { id: string; name: string; address: string };
+  facility_id: string;
+  facility: { id: string; name: string; address: string };
   status: ReceivingStatus;
   receiving_no: string | null;
   notes: string;
@@ -51,7 +51,7 @@ export interface ReceivableOrder {
   id: string;
   status: "awaiting_receipt" | "partially_received";
   supplier: { id: string; name: string };
-  location: { id: string; name: string; address: string };
+  facility: { id: string; name: string; address: string };
   items: ReceivableOrderItem[];
 }
 

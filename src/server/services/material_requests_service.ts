@@ -20,11 +20,11 @@ function clean_note(value: unknown) {
   if (typeof value !== "string" || value.length > 1000) throw new MaterialRequestError(400, "Notes must contain at most 1000 characters.");
   return value.trim();
 }
-function granted(access: RecordAccess, action: string, companyId: string, locationId: string | null, assignments: string[]) {
+function granted(access: RecordAccess, action: string, companyId: string, facilityId: string | null, assignments: string[]) {
   return access.superAdmin || access.grants.some((grant) => grant.permission === `materialRequests.${action}` &&
     ((grant.scope === "all" && !grant.companyId) ||
       ((grant.companyId ? grant.companyId === companyId : access.companyIds.includes(companyId)) &&
-        (grant.scope !== "own" || Boolean(locationId && assignments.includes(locationId))))));
+        (grant.scope !== "own" || Boolean(facilityId && assignments.includes(facilityId))))));
 }
 const DISPATCH_STATUSES = ["approved", "partially_dispatched", "fully_dispatched", "partially_received"];
 const RECEIVE_STATUSES = ["partially_dispatched", "fully_dispatched", "partially_received"];
@@ -65,7 +65,7 @@ function movement_lines(input: ReceiveInput) {
   return { note, ids };
 }
 async function assignments_for(access: RecordAccess, tx: DatabaseExecutor) {
-  return (await repository.get_request_assignments(access.userId, tx)).map((row) => row.location_id);
+  return (await repository.get_request_assignments(access.userId, tx)).map((row) => row.facility_id);
 }
 async function approval_warehouse(companyId: string, access: RecordAccess, assignments: string[], tx: DatabaseExecutor) {
   const warehouses = (await repository.list_request_warehouses(companyId, tx)).filter((warehouse) => granted(access, "edit", companyId, warehouse.id, assignments));
@@ -110,7 +110,7 @@ async function checked_input(input: RequestInput, access: RecordAccess, tx: Data
   if (!input || Object.keys(input).some((key) => !["requesting_hub_id", "supplying_company_id", "items", "notes", "needed_at"].includes(key))) throw new MaterialRequestError(400, "Provide hub, supplier, items, notes and needed date only.");
   valid_id(input.requesting_hub_id); valid_id(input.supplying_company_id);
   const assignments = await assignments_for(access, tx);
-  const hub = await repository.get_request_location(input.requesting_hub_id, tx);
+  const hub = await repository.get_request_facility(input.requesting_hub_id, tx);
   if (!hub || hub.type !== "hub" || !granted(access, action, hub.company_id, hub.id, assignments)) throw new MaterialRequestError(403, "You cannot request materials for this hub.");
   if (action === "add" && !access.superAdmin && !assignments.includes(hub.id)) throw new MaterialRequestError(403, "You can only request materials for a hub you are assigned to.");
   let relationship = await repository.get_request_relationship(hub.company_id, input.supplying_company_id, tx);
@@ -183,11 +183,11 @@ export async function action_material_request(input: ActionInput, access: Record
         selectedId = resolved.warehouse.id;
       }
       valid_id(selectedId);
-      const warehouse = await repository.get_request_location(selectedId, tx);
+      const warehouse = await repository.get_request_facility(selectedId, tx);
       if (!warehouse || warehouse.type !== "warehouse" || warehouse.company_id !== companyId || !warehouse.is_active) throw new MaterialRequestError(400, "An active warehouse belonging to the supplying company is required.");
       warehouseId = warehouse.id;
     }
-    if (!granted(access, "edit", companyId, review ? warehouseId : row.requesting_hub_id, assignments)) throw new MaterialRequestError(403, "You cannot perform this action for this company or location.");
+    if (!granted(access, "edit", companyId, review ? warehouseId : row.requesting_hub_id, assignments)) throw new MaterialRequestError(403, "You cannot perform this action for this company or facility.");
     if (input.action === "approve" && input.supplying_warehouse_id !== undefined) {
       const resolved = await approval_warehouse(companyId, access, assignments, tx);
       if (!resolved.warehouse || resolved.warehouse.id !== warehouseId) throw new MaterialRequestError(409, resolved.error ?? "The supplying warehouse changed. Refresh the request preview before approving.");
@@ -230,7 +230,7 @@ export async function dispatch_material_request(input: DispatchInput, access: Re
     const postedAt = new Date();
     const number = await repository.allocate_dispatch_number(row.supplying_company_id, row.supplying_company.name, postedAt, tx);
     const dispatch = await repository.create_posted_request_dispatch({
-      supplying_company_id: row.supplying_company_id, material_request_id: row.id, location_id: row.supplying_warehouse_id,
+      supplying_company_id: row.supplying_company_id, material_request_id: row.id, facility_id: row.supplying_warehouse_id,
       status: "posted", dispatch_seq: number.dispatch_seq, dispatch_no: number.dispatch_no, notes: note,
       created_by: access.userId, posted_by: access.userId, posted_at: postedAt,
       items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
@@ -267,7 +267,7 @@ export async function receive_material_request(input: ReceiveInput, access: Reco
     const postedAt = new Date();
     const number = await repository.allocate_receipt_number(row.requesting_company_id, row.requesting_company.name, postedAt, tx);
     const receipt = await repository.create_posted_request_receipt({
-      requesting_company_id: row.requesting_company_id, material_request_id: row.id, location_id: row.requesting_hub_id,
+      requesting_company_id: row.requesting_company_id, material_request_id: row.id, facility_id: row.requesting_hub_id,
       status: "posted", receipt_seq: number.receipt_seq, receiving_no: number.receiving_no, notes: note,
       created_by: access.userId, posted_by: access.userId, posted_at: postedAt,
       items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
@@ -291,7 +291,7 @@ export async function list_by_id_material_request(id: string, access: RecordAcce
     const resolved = permissions.review ? await approval_warehouse(row.supplying_company_id, access, assignments, tx) : null;
     const request = await repository.serialize_request(row, tx);
     if (permissions.dispatch && row.supplying_warehouse_id) {
-      const stock = await repository.list_location_stock(row.supplying_warehouse_id, row.items.map((item) => item.product_id), tx);
+      const stock = await repository.list_facility_stock(row.supplying_warehouse_id, row.items.map((item) => item.product_id), tx);
       const available = new Map(stock.map((balance) => [balance.product_id, balance.qty.toString()]));
       request.items = request.items.map((item) => ({ ...item, available_qty: available.get(item.product_id) ?? "0" }));
     }
@@ -351,7 +351,7 @@ export async function get_material_request_catalog(hubId: string, supplierId: st
   valid_id(hubId); valid_id(supplierId);
   if (search.length > 160) throw new MaterialRequestError(400, "Search is too long.");
   return getDatabase().$transaction(async (tx) => {
-    const hub = await repository.get_request_location(hubId, tx);
+    const hub = await repository.get_request_facility(hubId, tx);
     const assigned = await assignments_for(access, tx);
     if (!hub || hub.type !== "hub" || !(granted(access, "add", hub.company_id, hub.id, assigned) || granted(access, "edit", hub.company_id, hub.id, assigned))) throw new MaterialRequestError(403, "You cannot browse this hub's supply catalog.");
     const link = await repository.get_request_relationship(hub.company_id, supplierId, tx);

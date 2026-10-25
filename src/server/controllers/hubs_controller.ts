@@ -33,7 +33,7 @@ export async function list_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -75,7 +75,7 @@ export async function list_by_id_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -117,7 +117,7 @@ export async function create_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -163,7 +163,7 @@ export async function update_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -196,7 +196,7 @@ export async function delete_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -227,7 +227,7 @@ export async function get_hub_option(_req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -246,12 +246,12 @@ export async function get_hub_option(_req: Request, res: Response) {
 
 export async function get_hub_assignment_option(req: Request, res: Response) {
   try {
-    if (typeof req.query.location_id !== "string" || !HUB_UUID.test(req.query.location_id))
-      throw new HubError("invalid_input", "Provide a valid hub location_id.");
+    if (typeof req.query.facility_id !== "string" || !HUB_UUID.test(req.query.facility_id))
+      throw new HubError("invalid_input", "Provide a valid hub facility_id.");
     if (req.query.search !== undefined && (typeof req.query.search !== "string" || req.query.search.length > 160))
       throw new HubError("invalid_input", "Search must be a string of at most 160 characters.");
     res.status(200).json(await service.get_hub_assignment_option(
-      req.query.location_id.toLowerCase(), parsePagination(req.query), typeof req.query.search === "string" ? req.query.search : "", res.locals.access,
+      req.query.facility_id.toLowerCase(), parsePagination(req.query), typeof req.query.search === "string" ? req.query.search : "", res.locals.access,
     ));
   } catch (error) {
     if (error instanceof HubError) {
@@ -264,7 +264,7 @@ export async function get_hub_assignment_option(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -283,11 +283,11 @@ export async function get_hub_assignment_option(req: Request, res: Response) {
 
 export async function list_hub_assignment(req: Request, res: Response) {
   try {
-    if (typeof req.query.location_id !== "string" || !HUB_UUID.test(req.query.location_id))
-      throw new HubError("invalid_input", "Provide a valid hub location_id.");
+    if (typeof req.query.facility_id !== "string" || !HUB_UUID.test(req.query.facility_id))
+      throw new HubError("invalid_input", "Provide a valid hub facility_id.");
     if (req.query.search !== undefined && (typeof req.query.search !== "string" || req.query.search.length > 160))
       throw new HubError("invalid_input", "Search must be a string of at most 160 characters.");
-    res.status(200).json(await service.list_hub_assignment(req.query.location_id.toLowerCase(), parsePagination(req.query), res.locals.access, typeof req.query.search === "string" ? req.query.search : ""));
+    res.status(200).json(await service.list_hub_assignment(req.query.facility_id.toLowerCase(), parsePagination(req.query), res.locals.access, typeof req.query.search === "string" ? req.query.search : ""));
   } catch (error) {
     if (error instanceof HubError) {
       res.status({ invalid_input: 400, not_found: 404, forbidden: 403, conflict: 409 }[error.code]).json({ error: error.message });
@@ -299,7 +299,7 @@ export async function list_hub_assignment(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -318,12 +318,12 @@ export async function list_hub_assignment(req: Request, res: Response) {
 
 export async function list_hub_assignment_history(req: Request, res: Response) {
   try {
-    if (typeof req.query.location_id !== "string" || !HUB_UUID.test(req.query.location_id))
-      throw new HubError("invalid_input", "Provide a valid hub location_id.");
+    if (typeof req.query.facility_id !== "string" || !HUB_UUID.test(req.query.facility_id))
+      throw new HubError("invalid_input", "Provide a valid hub facility_id.");
     if (req.query.search !== undefined && (typeof req.query.search !== "string" || req.query.search.length > 160))
       throw new HubError("invalid_input", "Search must be a string of at most 160 characters.");
     res.status(200).json(await service.list_hub_assignment_history(
-      req.query.location_id.toLowerCase(), parsePagination(req.query), res.locals.access,
+      req.query.facility_id.toLowerCase(), parsePagination(req.query), res.locals.access,
       typeof req.query.search === "string" ? req.query.search : "",
     ));
   } catch (error) {
@@ -343,12 +343,12 @@ export async function list_hub_assignment_history(req: Request, res: Response) {
 export async function assign_hub(req: Request, res: Response) {
   try {
     const input = req.body as AssignHubInput;
-    if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some((key) => !["location_id", "user_company_id"].includes(key)))
-      throw new HubError("invalid_input", "Provide only location_id and user_company_id.");
-    if (typeof input.location_id !== "string" || !HUB_UUID.test(input.location_id) || typeof input.user_company_id !== "string" || !HUB_UUID.test(input.user_company_id))
+    if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some((key) => !["facility_id", "user_company_id"].includes(key)))
+      throw new HubError("invalid_input", "Provide only facility_id and user_company_id.");
+    if (typeof input.facility_id !== "string" || !HUB_UUID.test(input.facility_id) || typeof input.user_company_id !== "string" || !HUB_UUID.test(input.user_company_id))
       throw new HubError("invalid_input", "Provide valid hub and company membership IDs.");
     res.status(201).json({ assignment: await service.assign_hub({
-      location_id: input.location_id.toLowerCase(), user_company_id: input.user_company_id.toLowerCase(),
+      facility_id: input.facility_id.toLowerCase(), user_company_id: input.user_company_id.toLowerCase(),
     }, res.locals.access) });
   } catch (error) {
     if (error instanceof HubError) {
@@ -361,7 +361,7 @@ export async function assign_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {
@@ -380,10 +380,10 @@ export async function assign_hub(req: Request, res: Response) {
 
 export async function unassign_hub(req: Request, res: Response) {
   try {
-    if (typeof req.query.location_id !== "string" || !HUB_UUID.test(req.query.location_id) || typeof req.query.user_company_id !== "string" || !HUB_UUID.test(req.query.user_company_id))
+    if (typeof req.query.facility_id !== "string" || !HUB_UUID.test(req.query.facility_id) || typeof req.query.user_company_id !== "string" || !HUB_UUID.test(req.query.user_company_id))
       throw new HubError("invalid_input", "Provide valid hub and company membership IDs.");
     res.status(200).json(await service.unassign_hub({
-      location_id: req.query.location_id.toLowerCase(), user_company_id: req.query.user_company_id.toLowerCase(),
+      facility_id: req.query.facility_id.toLowerCase(), user_company_id: req.query.user_company_id.toLowerCase(),
     }, res.locals.access));
   } catch (error) {
     if (error instanceof HubError) {
@@ -396,7 +396,7 @@ export async function unassign_hub(req: Request, res: Response) {
     }
     if (error && typeof error === "object" && "code" in error) {
       if (error.code === "P2002") {
-        res.status(409).json({ error: "A location with this name already exists in the company." });
+        res.status(409).json({ error: "A facility with this name already exists in the company." });
         return;
       }
       if (error.code === "P2003") {

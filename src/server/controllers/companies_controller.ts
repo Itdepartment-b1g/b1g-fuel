@@ -39,29 +39,29 @@ const prisma_error_codes: Record<string, string> = { P2002: "23505", P2003: "235
 export async function create_company(req: Request, res: Response, _next?: NextFunction, service = companyService) {
   try {
     const value: unknown = req.body;
-    const allowed = new Set(["name", "code", "location_name", "location_address"]);
+    const allowed = new Set(["name", "code", "facility_name", "facility_address"]);
     if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.has(key)))
-      throw new CompanyError("invalid_input", "Provide company details using name and optional location fields.");
+      throw new CompanyError("invalid_input", "Provide company details using name and optional facility fields.");
     const body = value as Record<string, unknown>;
     if (body.code !== undefined && (typeof body.code !== "string" || !/^[A-Z][A-Z0-9]{1,15}$/.test(body.code.trim().toUpperCase())))
       throw new CompanyError("invalid_input", "Company code must contain 2–16 letters or digits and start with a letter.");
     const name = body.name;
     if (typeof name !== "string" || !name.trim() || name.trim().length > 160)
       throw new CompanyError("invalid_input", "Provide a company name between 1 and 160 characters.");
-    const location_name = body.location_name;
-    const location_address = body.location_address;
-    if (location_name !== undefined && (typeof location_name !== "string" || location_name.length > 160))
+    const facility_name = body.facility_name;
+    const facility_address = body.facility_address;
+    if (facility_name !== undefined && (typeof facility_name !== "string" || facility_name.length > 160))
       throw new CompanyError("invalid_input", "Provide a warehouse name between 1 and 160 characters.");
-    if (location_address !== undefined && (typeof location_address !== "string" || location_address.length > 160))
+    if (facility_address !== undefined && (typeof facility_address !== "string" || facility_address.length > 160))
       throw new CompanyError("invalid_input", "Provide a warehouse address of at most 160 characters.");
     const input: CreateCompanyInput = {
       name: name.trim(),
       ...(typeof body.code === "string" ? { code: body.code.trim().toUpperCase() } : {}),
-      ...(typeof location_name === "string" ? { location_name } : {}),
-      ...(typeof location_address === "string" ? { location_address } : {}),
+      ...(typeof facility_name === "string" ? { facility_name } : {}),
+      ...(typeof facility_address === "string" ? { facility_address } : {}),
     };
     const result = await service.create_company(input, undefined, res.locals.user?.id);
-    res.status(201).json({ company: result.company, location: result.location });
+    res.status(201).json({ company: result.company, facility: result.facility });
   } catch (error) {
 
     if (error instanceof PaginationError) {

@@ -20,7 +20,7 @@ export interface HubSummary {
 export interface HubAssignment {
   id: string;
   user_company_id: string;
-  location_id: string;
+  facility_id: string;
   user: { id: string; name: string; email: string | null };
   roles: { id: string; name: string }[];
   assigned_by: string;
@@ -42,13 +42,13 @@ export interface UpdateHubInput {
 }
 
 export interface AssignHubInput {
-  location_id: string;
+  facility_id: string;
   user_company_id: string;
 }
 
 export interface HubAssignmentHistory {
   id: string;
-  location_id: string;
+  facility_id: string;
   user_company_id: string;
   user_id: string;
   name: string;

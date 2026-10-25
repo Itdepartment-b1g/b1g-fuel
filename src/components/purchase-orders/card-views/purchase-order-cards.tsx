@@ -46,7 +46,7 @@ export function PurchaseOrderCards(props: PurchaseOrderActionProps & {
               </div>
             </div>
             <p className="mt-2 text-sm">{PURCHASE_ORDER_STATUS_LABEL[order.status]}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{order.supplier.name} · {order.location.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{order.supplier.name} · {order.facility.name}</p>
             <dl className="mt-3 space-y-1 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Company</dt>

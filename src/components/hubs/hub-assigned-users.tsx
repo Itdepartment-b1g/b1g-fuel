@@ -30,7 +30,7 @@ export function HubAssignedUsers({ hub, revision = 0 }: { hub: HubSummary; revis
   useEffect(() => {
     if (!allowed) return;
     let active = true;
-    const request = dispatch(listHubAssignmentHistory({ location_id: hub.id, page, page_size: pageSize }));
+    const request = dispatch(listHubAssignmentHistory({ facility_id: hub.id, page, page_size: pageSize }));
     request.then((action) => {
       if (active && listHubAssignmentHistory.fulfilled.match(action)) {
         const valid = paginationFromApi(action.payload).page;

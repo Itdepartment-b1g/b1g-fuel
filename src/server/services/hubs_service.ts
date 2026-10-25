@@ -103,8 +103,8 @@ export function list_hub_assignment_history(id: string, pagination: Pagination, 
 export function assign_hub(input: AssignHubInput, access: RecordAccess) {
   const manager = hub_assignment_access(access);
   return getDatabase().$transaction(async (tx) => {
-    await repository.lock_hub(input.location_id, tx);
-    const hub = await repository.list_by_id_hub(input.location_id, manager, "edit", tx);
+    await repository.lock_hub(input.facility_id, tx);
+    const hub = await repository.list_by_id_hub(input.facility_id, manager, "edit", tx);
     if (!hub) throw new HubError("not_found", "Hub not found.");
     if (!hub.is_active) throw new HubError("conflict", "Activate this hub before assigning staff.");
     if (!await repository.get_hub_membership(input.user_company_id, hub.company_id, tx))
@@ -116,10 +116,10 @@ export function assign_hub(input: AssignHubInput, access: RecordAccess) {
 export function unassign_hub(input: AssignHubInput, access: RecordAccess) {
   const manager = hub_assignment_access(access);
   return getDatabase().$transaction(async (tx) => {
-    await repository.lock_hub(input.location_id, tx);
-    if (!await repository.list_by_id_hub(input.location_id, manager, "edit", tx)) throw new HubError("not_found", "Hub not found.");
-    if (!(await repository.unassign_hub(input.location_id, input.user_company_id, tx)).count)
+    await repository.lock_hub(input.facility_id, tx);
+    if (!await repository.list_by_id_hub(input.facility_id, manager, "edit", tx)) throw new HubError("not_found", "Hub not found.");
+    if (!(await repository.unassign_hub(input.facility_id, input.user_company_id, tx)).count)
       throw new HubError("not_found", "Hub assignment not found.");
-    return { location_id: input.location_id, user_company_id: input.user_company_id, message: "Staff member unassigned." };
+    return { facility_id: input.facility_id, user_company_id: input.user_company_id, message: "Staff member unassigned." };
   });
 }

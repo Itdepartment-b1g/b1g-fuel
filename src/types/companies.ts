@@ -15,24 +15,24 @@ export interface Company extends CompanyOption {
   updated_at: string;
   // Number of users with a membership in this company.
   member_count: number;
-  // Number of locations (warehouses/hubs) under this company.
-  location_count: number;
-  // True when the company has at least one warehouse location.
+  // Number of facilities (warehouses/hubs) under this company.
+  facility_count: number;
+  // True when the company has at least one warehouse facility.
   is_warehouse: boolean;
-  // Name of the first warehouse location, when any.
+  // Name of the first warehouse facility, when any.
   warehouse_name: string | null;
-  // Address of the first warehouse location, when any.
+  // Address of the first warehouse facility, when any.
   warehouse_address: string | null;
 }
 
 export type CompanySummary = Company;
 
-export type LocationType = "warehouse" | "hub";
+export type FacilityType = "warehouse" | "hub";
 
-export interface CompanyLocationSummary {
+export interface CompanyFacilitySummary {
   id: string;
   name: string;
-  type: LocationType;
+  type: FacilityType;
   address: string;
 }
 
@@ -51,7 +51,7 @@ export interface CompanyResponse {
   // Company returned by a detail, create, or update request.
   company: CompanySummary;
   // Default warehouse created with the company, when provided on create.
-  location?: CompanyLocationSummary | null;
+  facility?: CompanyFacilitySummary | null;
 }
 
 export interface CompanyMember {
@@ -83,9 +83,9 @@ export interface CreateCompanyInput {
   // Display name of the new company.
   name: string;
   // Optional default warehouse name.
-  location_name?: string;
-  // Optional warehouse address when location_name is set.
-  location_address?: string;
+  facility_name?: string;
+  // Optional warehouse address when facility_name is set.
+  facility_address?: string;
 }
 
 export interface UpdateCompanyInput {

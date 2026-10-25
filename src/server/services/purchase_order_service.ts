@@ -159,7 +159,7 @@ export async function list_by_id_purchase_order(id: string, access: RecordAccess
 }
 
 function saved(result: Awaited<ReturnType<typeof repository.create_purchase_order>>) {
-  if (result === "invalid_location")
+  if (result === "invalid_facility")
     throw new PurchaseOrderError(
       "invalid_input",
       "This company has no active warehouse.",
@@ -252,7 +252,7 @@ export async function get_purchase_order_filter_options(access: RecordAccess) {
         ? { value: row.company.id, label: row.company.name }
         : field === "supplier"
           ? { value: row.supplier.id, label: row.supplier.name }
-          : { value: row.location.id, label: row.location.name },
+          : { value: row.facility.id, label: row.facility.name },
     (row, status) => status === "all" || row.status === status,
   );
 }
@@ -280,7 +280,7 @@ export async function get_purchase_order_options(access: RecordAccess) {
     ? {}
     : { OR: [{ company_id: null }, { company_id: { in: ids } }] };
   const client = getDatabase();
-  const [companies, suppliers, locations, variants, product_types, units] =
+  const [companies, suppliers, facilities, variants, product_types, units] =
     await Promise.all([
       client.company.findMany({
         where: companyWhere,
@@ -292,7 +292,7 @@ export async function get_purchase_order_options(access: RecordAccess) {
         select: { id: true, name: true, company_id: true },
         orderBy: [{ name: "asc" }, { id: "asc" }],
       }),
-      client.location.findMany({
+      client.facility.findMany({
         where: {
           type: "warehouse",
           is_active: true,
@@ -324,5 +324,5 @@ export async function get_purchase_order_options(access: RecordAccess) {
         orderBy: [{ name: "asc" }, { id: "asc" }],
       }),
     ]);
-  return { companies, suppliers, locations, variants, product_types, units };
+  return { companies, suppliers, facilities, variants, product_types, units };
 }

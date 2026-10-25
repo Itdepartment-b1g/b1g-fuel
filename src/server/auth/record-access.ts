@@ -33,7 +33,7 @@ type ResourceWhere = {
   products: Prisma.productWhereInput;
   purchaseOrders: Prisma.purchase_orderWhereInput;
   receiving: Prisma.receivingWhereInput;
-  hubs: Prisma.locationWhereInput;
+  hubs: Prisma.facilityWhereInput;
 }
 
 const OWNED_RESOURCES = [

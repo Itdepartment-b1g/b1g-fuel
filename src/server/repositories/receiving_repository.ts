@@ -16,7 +16,7 @@ const productSelect = {
 
 const include = {
   company: { select: { id: true, name: true } },
-  location: { select: { id: true, name: true, address: true } },
+  facility: { select: { id: true, name: true, address: true } },
   purchase_order: {
     select: {
       id: true,
@@ -57,8 +57,8 @@ function present(record: Row, names: Map<string, string>): ListReceivingResponse
     purchase_order_id: record.purchase_order_id,
     purchase_order_status: record.purchase_order.status,
     supplier: record.purchase_order.supplier,
-    location_id: record.location_id,
-    location: record.location,
+    facility_id: record.facility_id,
+    facility: record.facility,
     status: record.status,
     receiving_no: record.receiving_no,
     notes: record.notes,
@@ -170,7 +170,7 @@ export async function list_receivings(
     fields: {
       company: (values) => ({ company_id: { in: values } }),
       supplier: (values) => ({ purchase_order: { supplier_id: { in: values } } }),
-      location: (values) => ({ location_id: { in: values } }),
+      facility: (values) => ({ facility_id: { in: values } }),
     },
     date: (range) => ({ created_at: range }),
     status: { draft: { status: "draft" }, posted: { status: "posted" } },
@@ -179,7 +179,7 @@ export async function list_receivings(
       fields: [
         (filter) => ({ notes: filter }),
         (filter) => ({ purchase_order: { supplier: { name: filter } } }),
-        (filter) => ({ location: { name: filter } }),
+        (filter) => ({ facility: { name: filter } }),
         (filter) => ({ company: { name: filter } }),
         (filter) => ({ receiving_no: filter }),
       ],
@@ -216,7 +216,7 @@ export function get_receiving_filter_data(access: RecordAccess) {
     select: {
       status: true,
       company: { select: { id: true, name: true } },
-      location: { select: { id: true, name: true } },
+      facility: { select: { id: true, name: true } },
       purchase_order: { select: { supplier: { select: { id: true, name: true } } } },
     },
   });
@@ -230,7 +230,7 @@ export async function list_receivable_orders(access: RecordAccess) {
     orderBy: [{ created_at: "desc" }, { id: "asc" }],
     include: {
       supplier: { select: { id: true, name: true } },
-      location: { select: { id: true, name: true, address: true } },
+      facility: { select: { id: true, name: true, address: true } },
       items: {
         orderBy: { id: "asc" },
         include: {
@@ -245,7 +245,7 @@ export async function list_receivable_orders(access: RecordAccess) {
       id: order.id,
       status: order.status as "awaiting_receipt" | "partially_received",
       supplier: order.supplier,
-      location: order.location,
+      facility: order.facility,
       items: order.items.flatMap((item) => {
         const outstanding = item.ordered_qty.minus(item.received_qty);
         if (outstanding.lessThanOrEqualTo(0)) return [];
@@ -281,7 +281,7 @@ async function write_receipt(
   const data = {
     company_id: order.company_id,
     purchase_order_id: order.id,
-    location_id: order.location_id,
+    facility_id: order.facility_id,
     notes: input.notes ?? "",
     items: { create: items },
   };

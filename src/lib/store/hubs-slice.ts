@@ -15,7 +15,7 @@ export type HubsQuery = { page?: number; page_size?: number; search?: string; co
 type State = {
   assignmentHistory: Record<string, { data: HubAssignmentHistoryPage | null; status: Status; error: HubFailure | null; requestId: string | null; query: HubAssignmentQuery }>;
   assignments: HubAssignmentsPage | null; assignmentOptions: HubAssignmentOptions | null;
-  assignmentsLocationId: string | null; assignmentOptionsLocationId: string | null;
+  assignmentsFacilityId: string | null; assignmentOptionsFacilityId: string | null;
   assignmentsStatus: Status; assignmentOptionsStatus: Status;
   assignmentsError: HubFailure | null; assignmentOptionsError: HubFailure | null;
   assignmentsRequestId: string | null; assignmentOptionsRequestId: string | null;
@@ -28,7 +28,7 @@ type State = {
 };
 const initialState: State = {
   assignmentHistory: {},
-  assignments: null, assignmentOptions: null, assignmentsLocationId: null, assignmentOptionsLocationId: null,
+  assignments: null, assignmentOptions: null, assignmentsFacilityId: null, assignmentOptionsFacilityId: null,
   assignmentsStatus: "idle", assignmentOptionsStatus: "idle", assignmentsError: null, assignmentOptionsError: null,
   assignmentsRequestId: null, assignmentOptionsRequestId: null,
   hubs: [], total: 0, selectedHub: null, options: { companies: [] },
@@ -82,7 +82,7 @@ export const deactivateHub = createAsyncThunk<DeactivateHubResponse, string, Con
   catch (error) { return rejectWithValue(failure(error)); }
 }, { condition: canMutate });
 
-export type HubAssignmentQuery = { location_id: string; page?: number; page_size?: number; search?: string };
+export type HubAssignmentQuery = { facility_id: string; page?: number; page_size?: number; search?: string };
 export const listHubAssignment = createAsyncThunk<HubAssignmentsPage, HubAssignmentQuery, Config>("hubs/assignments", async (query, { signal, rejectWithValue }) => {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) if (value !== undefined) params.set(key, String(value));
@@ -105,7 +105,7 @@ export const assignHub = createAsyncThunk<HubAssignmentResponse, AssignHubInput,
   try { return await request<HubAssignmentResponse>("/api/hubs/assignments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); }
   catch (error) { return rejectWithValue(failure(error)); }
 }, { condition: canMutate });
-export const assignHubStaff = createAsyncThunk<{ assignments: HubAssignment[] }, { location_id: string; user_company_ids: string[] }, Config>(
+export const assignHubStaff = createAsyncThunk<{ assignments: HubAssignment[] }, { facility_id: string; user_company_ids: string[] }, Config>(
   "hubs/assign-staff",
   async (input, { rejectWithValue }) => {
     const assignments: HubAssignment[] = [];
@@ -113,7 +113,7 @@ export const assignHubStaff = createAsyncThunk<{ assignments: HubAssignment[] },
       for (const user_company_id of new Set(input.user_company_ids)) {
         const result = await request<HubAssignmentResponse>("/api/hubs/assignments", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ location_id: input.location_id, user_company_id }),
+          body: JSON.stringify({ facility_id: input.facility_id, user_company_id }),
         });
         assignments.push(result.assignment);
       }
@@ -125,7 +125,7 @@ export const assignHubStaff = createAsyncThunk<{ assignments: HubAssignment[] },
   { condition: canMutate },
 );
 export const unassignHub = createAsyncThunk<UnassignHubResponse, AssignHubInput, Config>("hubs/unassign", async (input, { rejectWithValue }) => {
-  const params = new URLSearchParams({ location_id: input.location_id, user_company_id: input.user_company_id });
+  const params = new URLSearchParams({ facility_id: input.facility_id, user_company_id: input.user_company_id });
   try { return await request<UnassignHubResponse>(`/api/hubs/assignments?${params}`, { method: "DELETE" }); }
   catch (error) { return rejectWithValue(failure(error)); }
 }, { condition: canMutate });
@@ -153,20 +153,20 @@ const slice = createSlice({
 
       .addCase(listHubAssignment.pending, (state, action) => {
         state.assignmentsStatus = "loading"; state.assignmentsError = null; state.assignmentsRequestId = action.meta.requestId;
-        state.assignmentsLocationId = action.meta.arg.location_id; state.assignments = null;
+        state.assignmentsFacilityId = action.meta.arg.facility_id; state.assignments = null;
       })
       .addCase(listHubAssignmentHistory.pending, (state, action) => {
-        state.assignmentHistory[action.meta.arg.location_id] = {
+        state.assignmentHistory[action.meta.arg.facility_id] = {
           data: null, status: "loading", error: null, requestId: action.meta.requestId, query: action.meta.arg,
         };
       })
       .addCase(listHubAssignmentHistory.fulfilled, (state, action) => {
-        const entry = state.assignmentHistory[action.meta.arg.location_id];
+        const entry = state.assignmentHistory[action.meta.arg.facility_id];
         if (entry?.requestId !== action.meta.requestId) return;
         entry.data = action.payload; entry.status = "succeeded"; entry.requestId = null;
       })
       .addCase(listHubAssignmentHistory.rejected, (state, action) => {
-        const entry = state.assignmentHistory[action.meta.arg.location_id];
+        const entry = state.assignmentHistory[action.meta.arg.facility_id];
         if (entry?.requestId !== action.meta.requestId) return;
         entry.status = action.meta.aborted ? "idle" : "failed";
         entry.error = action.meta.aborted ? null : action.payload ?? failure(action.error);
@@ -182,7 +182,7 @@ const slice = createSlice({
       })
       .addCase(getHubAssignmentOption.pending, (state, action) => {
         state.assignmentOptionsStatus = "loading"; state.assignmentOptionsError = null; state.assignmentOptionsRequestId = action.meta.requestId;
-        state.assignmentOptionsLocationId = action.meta.arg.location_id; state.assignmentOptions = null;
+        state.assignmentOptionsFacilityId = action.meta.arg.facility_id; state.assignmentOptions = null;
       })
       .addCase(getHubAssignmentOption.fulfilled, (state, action) => {
         if (state.assignmentOptionsRequestId !== action.meta.requestId) return;

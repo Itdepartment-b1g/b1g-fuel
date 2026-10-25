@@ -146,7 +146,7 @@ function CreateReceivingFields({
           <select value={purchaseOrderId} onChange={(event) => chooseOrder(event.target.value)} className="h-10 w-full rounded-md border bg-white px-3 text-sm">
             <option value="">Select</option>
             {options.purchase_orders.map((order) => (
-              <option key={order.id} value={order.id}>{order.supplier.name} · {order.location.name}</option>
+              <option key={order.id} value={order.id}>{order.supplier.name} · {order.facility.name}</option>
             ))}
           </select>
         </label>
@@ -155,8 +155,8 @@ function CreateReceivingFields({
             <p><span className="font-medium">Supplier. </span>{selected.supplier.name}</p>
             <p>
               <span className="font-medium">Warehouse. </span>
-              {selected.location.name}
-              {selected.location.address.trim() ? ` · ${selected.location.address.trim()}` : ""}
+              {selected.facility.name}
+              {selected.facility.address.trim() ? ` · ${selected.facility.address.trim()}` : ""}
             </p>
           </div>
         )}

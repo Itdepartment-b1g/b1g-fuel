@@ -1,28 +1,28 @@
 # Warehouse inventory
 
-Design basis for Central Warehouse **supplier** purchasing, receiving, stock, location assignment, turnover, and supplier payments. The full B1G Fuel System feature list (Super Admin, Sales Manager, Agent, Client, inventory balance reports, CRM, client orders, PayMongo checkout, etc.) lives in [FEATURES.md](FEATURES.md). This document is the agreed how-to for the near-term warehouse stock path only.
+Design basis for Central Warehouse **supplier** purchasing, receiving, stock, facility assignment, turnover, and supplier payments. The full B1G Fuel System feature list (Super Admin, Sales Manager, Agent, Client, inventory balance reports, CRM, client orders, PayMongo checkout, etc.) lives in [FEATURES.md](FEATURES.md). This document is the agreed how-to for the near-term warehouse stock path only.
 
 **Naming:** A *supplier purchase order* (this doc) is warehouse buying from a supplier. A *client purchase order* in FEATURES.md is a sales order from a client and is out of scope here.
 
 ## System context
 
-B1G Fuel moves butane-related stock through a **company**, into a **warehouse location**, and later out to **hub** locations.
+B1G Fuel moves butane-related stock through a **company**, into a **warehouse facility**, and later out to **hub** facilities.
 
 | Concept | Role |
 | --- | --- |
-| Company | Tenant that owns locations, POs, stock, and assignments |
-| Location (`warehouse`) | Physical stock site that receives supplier goods |
-| Location (`hub`) | Downstream site (same table, later) |
+| Company | Tenant that owns facilities, POs, stock, and assignments |
+| Facility (`warehouse`) | Physical stock site that receives supplier goods |
+| Facility (`hub`) | Downstream site (same table, later) |
 | Role (RBAC) | What a user may do (pages and permissions) |
-| User ↔ location | Where a user may act (changeable assignment) |
+| User ↔ facility | Where a user may act (changeable assignment) |
 
-A company is never itself a warehouse. A “Warehouse” role is never itself a location. Shared catalog rows (suppliers, brands, measurements with `company_id` null) are visible across companies; they are not hubs of one company.
+A company is never itself a warehouse. A “Warehouse” role is never itself a facility. Shared catalog rows (suppliers, brands, measurements with `company_id` null) are visible across companies; they are not hubs of one company.
 
 ```mermaid
 flowchart TD
   company[Company]
-  warehouse[Location type warehouse]
-  hub[Location type hub later]
+  warehouse[Facility type warehouse]
+  hub[Facility type hub later]
   supplier[Supplier]
   po[Purchase order]
   receive[Goods receipt]
@@ -41,8 +41,8 @@ flowchart TD
 
 ## Core rules
 
-1. Stock quantity is stored only in **base units** (for example PCS) per product per location.
-2. Conversion factors (for example 1 CRATE = 12 PCS) live per **product per location**, not on `measurement_unit`.
+1. Stock quantity is stored only in **base units** (for example PCS) per product per facility.
+2. Conversion factors (for example 1 CRATE = 12 PCS) live per **product per facility**, not on `measurement_unit`.
 3. A **draft** document never changes stock. **Posting** a goods receipt is the first stock increase.
 4. Posted receipts are immutable. Corrections use adjustments later.
 5. Purchase orders plan and track what was ordered; receiving posts what arrived.
@@ -50,22 +50,22 @@ flowchart TD
 
 ---
 
-## Locations
+## Facilities
 
-The dedicated [Hubs module](HUBS.md) now manages company-owned `location` rows with `type = hub`, including the page, Redux API requests, and staff assignments. Warehouse location CRUD and inventory requests/transfers remain separate work.
+The dedicated [Hubs module](HUBS.md) now manages company-owned `facility` rows with `type = hub`, including the page, Redux API requests, and staff assignments. Warehouse facility CRUD and inventory requests/transfers remain separate work.
 
 ### Purpose
 
-Locations answer *where* stock sits and *where* a PO will receive goods. Create them in a Locations module (catalog-style CRUD), company-scoped.
+Facilities answer *where* stock sits and *where* a PO will receive goods. Create them in a Facilities module (catalog-style CRUD), company-scoped.
 
 ### Suggested fields
 
 | Field | Notes |
 | --- | --- |
 | `id` | UUID |
-| `company_id` | Required; location always belongs to one company |
+| `company_id` | Required; facility always belongs to one company |
 | `name` | e.g. Central Warehouse |
-| `type` | Prisma/Postgres enum `location_type`: `warehouse` \| `hub` |
+| `type` | Prisma/Postgres enum `facility_type`: `warehouse` \| `hub` |
 | `code` | Optional short code |
 | `address` | Optional |
 | `is_active` | Soft-disable without deleting history |
@@ -73,37 +73,37 @@ Locations answer *where* stock sits and *where* a PO will receive goods. Create 
 
 Unique per company on `(company_id, name)` and/or `(company_id, code)`.
 
-Locations are **not** shared globally (`company_id` is never null). Start with one warehouse per company when possible so PO create can auto-select it.
+Facilities are **not** shared globally (`company_id` is never null). Start with one warehouse per company when possible so PO create can auto-select it.
 
-**Company create shortcut:** creating a company may optionally include `location_name` / `location_address`. When provided, a `warehouse` location is created in the same transaction. Company-only create remains valid. A dedicated Locations module still manages further warehouses and hubs.
+**Company create shortcut:** creating a company may optionally include `facility_name` / `facility_address`. When provided, a `warehouse` facility is created in the same transaction. Company-only create remains valid. A dedicated Facilities module still manages further warehouses and hubs.
 
-### RBAC vs location
+### RBAC vs facility
 
 | Piece | Responsibility |
 | --- | --- |
-| Warehouse role | Grants pages such as Locations, Purchase orders, Receiving |
-| Location row | The warehouse or hub itself |
-| User ↔ location | Restricts which locations that user may pick |
+| Warehouse role | Grants pages such as Facilities, Purchase orders, Receiving |
+| Facility row | The warehouse or hub itself |
+| User ↔ facility | Restricts which facilities that user may pick |
 
-v1 may allow any location in the user’s company. v2 should filter pickers by assignment.
+v1 may allow any facility in the user’s company. v2 should filter pickers by assignment.
 
 ---
 
-## User ↔ location assignment and turnover
+## User ↔ facility assignment and turnover
 
 ### Assignment
 
-Store a separate link (for example `user_location` or assignment on the membership), not a `user_id` owner column on `location`.
+Store a separate link (for example `user_facility` or assignment on the membership), not a `user_id` owner column on `facility`.
 
 ```text
-location              → belongs to company (stable)
-user_location         → user may work at that location (changeable)
+facility              → belongs to company (stable)
+user_facility         → user may work at that facility (changeable)
 role / permissions    → what actions they may perform
 ```
 
-- One location can have many users over time.
-- One user can have one or more locations.
-- `location.created_by` is audit only. It does not mean “current warehouse owner.”
+- One facility can have many users over time.
+- One user can have one or more facilities.
+- `facility.created_by` is audit only. It does not mean “current warehouse owner.”
 
 ### Turnover (hand over warehouse to another user)
 
@@ -111,16 +111,16 @@ When clerk Ada leaves and Ben takes over Central Warehouse:
 
 | What | Action |
 | --- | --- |
-| Location row | Unchanged (same id, company, name, stock) |
-| Ada | Remove her `user_location` for that warehouse (and/or warehouse role) |
-| Ben | Add `user_location` for the same warehouse + warehouse role |
-| Historical POs / receipts | Unchanged `location_id` and original `created_by` |
+| Facility row | Unchanged (same id, company, name, stock) |
+| Ada | Remove her `user_facility` for that warehouse (and/or warehouse role) |
+| Ben | Add `user_facility` for the same warehouse + warehouse role |
+| Historical POs / receipts | Unchanged `facility_id` and original `created_by` |
 
-**Only the assignment’s user changes.** Stock, company, and document history stay on the location.
+**Only the assignment’s user changes.** Stock, company, and document history stay on the facility.
 
 Do not:
 
-- Move `location.company_id` when staff changes
+- Move `facility.company_id` when staff changes
 - Treat `created_by` as the live owner
 - Rewrite old POs to Ben’s user id
 
@@ -139,13 +139,13 @@ A sellable/stockable item ties a **variant**, a **product type**, and one **base
 
 ### Conversion
 
-At a location, for a product, define how a receive unit converts to the base unit:
+At a facility, for a product, define how a receive unit converts to the base unit:
 
 | Example | Factor |
 | --- | --- |
 | 1 CRATE → PCS | 12 |
 
-Posting a receipt without a conversion for that product at that location is refused. Snapshot the factor on the receipt line so later conversion edits do not rewrite history.
+Posting a receipt without a conversion for that product at that facility is refused. Snapshot the factor on the receipt line so later conversion edits do not rewrite history.
 
 ---
 
@@ -153,14 +153,14 @@ Posting a receipt without a conversion for that product at that location is refu
 
 ### Purpose
 
-A purchase order (PO) is the warehouse’s order from a **supplier** into a **warehouse location**. It does not increase stock. Receiving against the PO does.
+A purchase order (PO) is the warehouse’s order from a **supplier** into a **warehouse facility**. It does not increase stock. Receiving against the PO does.
 
 ### Header
 
 | Field | Required | Notes |
 | --- | --- | --- |
 | `company_id` | Yes | From the creating user’s company (same pattern as supplier create) |
-| `location_id` | Yes | Warehouse that will receive the goods |
+| `facility_id` | Yes | Warehouse that will receive the goods |
 | `supplier_id` | Yes | Existing suppliers catalog |
 | `status` | Yes | e.g. `draft` → `open` / `ordered` → `closed` (and payment status separately or derived) |
 | `payment_terms` | Yes (once confirmed) | COD, Net 15, Net 30, free text or catalog later |
@@ -192,7 +192,7 @@ Payment terms freeze when the PO leaves draft. Preferred payment method may stay
 
 ### Company capture
 
-On create, `company_id` comes from access rules (company user forced into their company; super-admin follows the same pattern used for suppliers). Every PO also stores `location_id` for the warehouse under that company.
+On create, `company_id` comes from access rules (company user forced into their company; super-admin follows the same pattern used for suppliers). Every PO also stores `facility_id` for the warehouse under that company.
 
 ---
 
@@ -221,7 +221,7 @@ sequenceDiagram
 
 ### Receipt header and lines
 
-**Header:** `purchase_order_id`, `location_id` (from PO), `status` (`draft` | `posted`), `created_by`, `posted_by`, `posted_at`.
+**Header:** `purchase_order_id`, `facility_id` (from PO), `status` (`draft` | `posted`), `created_by`, `posted_by`, `posted_at`.
 
 **Lines:** product, unit received, qty received, snapshotted conversion factor, base qty (`qty × factor`).
 
@@ -234,10 +234,10 @@ sequenceDiagram
 
 ### Posting (one transaction)
 
-1. Refuse if there are no lines, or any line lacks conversion for that product at that location.
+1. Refuse if there are no lines, or any line lacks conversion for that product at that facility.
 2. Snapshot factor and base quantity on each line.
-3. Add base quantity to `stock_balance` for `(location_id, product_id)`.
-4. Write one stock movement per line (`type = receive`, qty in, link to receipt).
+3. Add base quantity to `inventory` for `(facility_id, product_id)`.
+4. Write one stock movement per line (`type = po_receive_in`, qty in, link to receipt line).
 5. Update PO line `received_qty` and close the PO when fully received (or leave open if partial).
 6. Mark receipt `posted`.
 
@@ -251,10 +251,12 @@ Receiving does **not** set payment terms, does **not** require payment proof, an
 
 | Store | Purpose |
 | --- | --- |
-| `stock_balance` | Current on-hand in base units per location + product |
+| `inventory` | Current on-hand in base units per facility + product |
 | `stock_movement` | Append-only ledger (receive, adjust, transfer later) |
 
 Every stock change writes a movement. Balances are updated in the same transaction as the movement.
+
+Current model setup and implementation limits: [Inventory models](INVENTORY.md).
 
 ---
 
@@ -301,14 +303,14 @@ When PayMongo (or another gateway) is approved, add it beside or instead of manu
 
 ## Build order
 
-1. **Locations** module (warehouse type) under company  
-2. **User ↔ location** assignment (needed for turnover; can follow first PO if pickers are company-wide)  
-3. **Products** (variant + base unit)  
-4. **Conversions** at location  
-5. **Purchase orders** (header commercial fields + lines)  
-6. **Receiving** against PO (draft → post → balance + movement)  
-7. **Payments + proof** on the PO  
-8. Hubs, stock requests, transfers, selling, pricing, PayMongo  
+1. **Facilities** module (warehouse type) under company
+2. **User ↔ facility** assignment (needed for turnover; can follow first PO if pickers are company-wide)
+3. **Products** (variant + base unit)
+4. **Conversions** at facility
+5. **Purchase orders** (header commercial fields + lines)
+6. **Receiving** against PO (draft → post → balance + movement)
+7. **Payments + proof** on the PO
+8. Hubs, stock requests, transfers, selling, pricing, PayMongo
 
 ---
 
@@ -332,4 +334,4 @@ Covered as Later / TBD in [FEATURES.md](FEATURES.md), including:
 - [FEATURES.md](FEATURES.md) — full system feature map and statuses (from B1G Fuel System attachment)
 - [DATA_MODEL.md](DATA_MODEL.md) — users, roles, companies
 - [BACKEND_STRUCTURE.md](BACKEND_STRUCTURE.md) — simple catalog controllers for new modules
-- Suppliers, brands, and measurements already exist as catalogs the supplier PO and product layers will reuse 
+- Suppliers, brands, and measurements already exist as catalogs the supplier PO and product layers will reuse

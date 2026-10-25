@@ -124,7 +124,7 @@ export async function get_receiving_filter_options(access: RecordAccess) {
         ? { value: row.company.id, label: row.company.name }
         : field === "supplier"
           ? { value: row.purchase_order.supplier.id, label: row.purchase_order.supplier.name }
-          : { value: row.location.id, label: row.location.name },
+          : { value: row.facility.id, label: row.facility.name },
     (row, status) => status === "all" || row.status === status,
   );
 }

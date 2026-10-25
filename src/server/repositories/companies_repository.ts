@@ -8,14 +8,14 @@ import type {
   CreateCompanyResult,
   UpdateCompanyInput,
   CompanySummary,
-  CompanyLocationSummary,
+  CompanyFacilitySummary,
 } from "@/server/schema/companies_schema";
 import { build_filter } from "@/server/lib/filter";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
 
 const company_include = {
-  _count: { select: { user_companies: true, locations: true } },
-  locations: {
+  _count: { select: { user_companies: true, facilities: true } },
+  facilities: {
     where: { type: "warehouse" },
     orderBy: [{ created_at: "asc" }, { id: "asc" }],
     take: 1,
@@ -26,33 +26,33 @@ type CompanyRecord = Prisma.companyGetPayload<{
   include: typeof company_include;
 }>;
 
-/** Convert company timestamps to ISO strings and expose membership, location, and warehouse summary fields. */
+/** Convert company timestamps to ISO strings and expose membership, facility, and warehouse summary fields. */
 function serialize_company(company: CompanyRecord): CompanySummary {
-  const { _count, locations, ...record } = company;
-  const warehouse = locations[0] ?? null;
+  const { _count, facilities, ...record } = company;
+  const warehouse = facilities[0] ?? null;
   return {
     ...record,
     created_at: record.created_at.toISOString(),
     updated_at: record.updated_at.toISOString(),
     member_count: _count.user_companies,
-    location_count: _count.locations,
+    facility_count: _count.facilities,
     is_warehouse: Boolean(warehouse),
     warehouse_name: warehouse?.name ?? null,
     warehouse_address: warehouse?.address ? warehouse.address : null,
   };
 }
 
-function serialize_location(location: {
+function serialize_facility(facility: {
   id: string;
   name: string;
-  type: CompanyLocationSummary["type"];
+  type: CompanyFacilitySummary["type"];
   address: string;
-}): CompanyLocationSummary {
+}): CompanyFacilitySummary {
   return {
-    id: location.id,
-    name: location.name,
-    type: location.type,
-    address: location.address,
+    id: facility.id,
+    name: facility.name,
+    type: facility.type,
+    address: facility.address,
   };
 }
 
@@ -108,38 +108,38 @@ export async function list_by_id_company(
   return company ? serialize_company(company) : null;
 }
 
-/** Insert a company and optionally a default warehouse location in one transaction. */
+/** Insert a company and optionally a default warehouse facility in one transaction. */
 export async function create_company(
   input: CreateCompanyInput,
   createdBy?: string,
 ): Promise<CreateCompanyResult> {
-  const location_name = input.location_name?.trim();
-  const location_address = input.location_address?.trim() ?? "";
+  const facility_name = input.facility_name?.trim();
+  const facility_address = input.facility_address?.trim() ?? "";
   return getDatabase().$transaction(async (tx) => {
     const company = await tx.company.create({
       data: { name: input.name, code: input.code, created_by: createdBy },
       include: company_include,
     });
-    if (!location_name) {
-      return { company: serialize_company(company), location: null };
+    if (!facility_name) {
+      return { company: serialize_company(company), facility: null };
     }
-    const location = await tx.location.create({
+    const facility = await tx.facility.create({
       data: {
         company_id: company.id,
-        name: location_name,
-        address: location_address,
+        name: facility_name,
+        address: facility_address,
         type: "warehouse",
         created_by: createdBy,
       },
       select: { id: true, name: true, type: true, address: true },
     });
-    const with_location = await tx.company.findFirstOrThrow({
+    const with_facility = await tx.company.findFirstOrThrow({
       where: { id: company.id },
       include: company_include,
     });
     return {
-      company: serialize_company(with_location),
-      location: serialize_location(location),
+      company: serialize_company(with_facility),
+      facility: serialize_facility(facility),
     };
   });
 }

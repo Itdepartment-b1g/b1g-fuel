@@ -21,7 +21,7 @@ function response() {
 test("create endpoints pass the authenticated creator to persistence", async () => {
   const creators: (string | undefined)[] = [];
   const company = response();
-  await create_company({ body: { name: "Company" } } as Request, company.res, undefined, { ...companies, create_company: async (...args) => { creators.push(args[2]); return { company: {} as CreateCompanyResult["company"], location: null }; } });
+  await create_company({ body: { name: "Company" } } as Request, company.res, undefined, { ...companies, create_company: async (...args) => { creators.push(args[2]); return { company: {} as CreateCompanyResult["company"], facility: null }; } });
   const role = response();
   await create_role({ body: { name: "Manager" } } as Request, role.res, undefined, { ...roles, create_role: async (...args) => { creators.push(args[2]); return {} as RoleSummary; } });
   const user = response();

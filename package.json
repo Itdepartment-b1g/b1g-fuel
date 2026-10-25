@@ -25,7 +25,9 @@
     "db:status": "prisma migrate status",
     "db:client": "prisma generate",
     "postinstall": "prisma generate",
-    "test:material-requests": "node --import tsx --test tests/material-requests-db.test.ts tests/material-requests-ui.test.tsx"
+    "test:material-requests": "node --import tsx --test tests/material-requests-db.test.ts tests/material-requests-ui.test.tsx",
+    "test:inventory": "node --import tsx --test tests/inventory-db.test.ts",
+    "test:facility": "node --import tsx --test tests/facility-db.test.ts"
   },
   "engines": {
     "node": ">=22.12.0"

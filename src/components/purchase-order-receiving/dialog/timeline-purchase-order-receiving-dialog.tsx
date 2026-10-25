@@ -34,7 +34,7 @@ export function TimelinePurchaseOrderReceivingDialog({ receipt, onClose }: { rec
   return (
     <TimelineDialog
       title="Receipt timeline"
-      description={`${receipt.receiving_no ?? "Draft"} · ${receipt.supplier.name} · ${receipt.location.name}`}
+      description={`${receipt.receiving_no ?? "Draft"} · ${receipt.supplier.name} · ${receipt.facility.name}`}
       entries={entries}
       onClose={onClose}
     >

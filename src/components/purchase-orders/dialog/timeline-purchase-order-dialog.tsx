@@ -108,8 +108,8 @@ function OrderDetails({ order }: { order: PurchaseOrderSummary }) {
   return (
     <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
       <Field label="Supplier" value={order.supplier.name} />
-      <Field label="Warehouse" value={order.location.name} />
-      <Field label="Address" value={order.location.address} />
+      <Field label="Warehouse" value={order.facility.name} />
+      <Field label="Address" value={order.facility.address} />
       <Field label="Company" value={order.company.name} />
       <Field label="Payment terms" value={order.payment_terms} />
       <Field label="Payment method" value={order.payment_method ? PAYMENT_LABEL[order.payment_method] : "—"} />
@@ -269,7 +269,7 @@ export function TimelinePurchaseOrderDialog({
   })] : [];
 
   return <TimelineDialog title="Order timeline"
-    description={order ? `${order.purchase_order_no} · ${order.supplier.name} · ${order.location.name}` : "Purchase order history"}
+    description={order ? `${order.purchase_order_no} · ${order.supplier.name} · ${order.facility.name}` : "Purchase order history"}
     entries={entries} loading={detailStatus === "loading" || (!order && !detailError)} error={detailError?.message}
     onRetry={() => { void dispatch(editPurchaseOrder(purchaseOrderId)); }} onClose={onClose}>
     <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Event colors">

@@ -13,31 +13,31 @@ export interface CompanySummary {
   created_at: string;
   updated_at: string;
   member_count: number;
-  location_count: number;
-  /** True when the company has at least one warehouse location. */
+  facility_count: number;
+  /** True when the company has at least one warehouse facility. */
   is_warehouse: boolean;
-  /** Name of the first warehouse location, when any. */
+  /** Name of the first warehouse facility, when any. */
   warehouse_name: string | null;
-  /** Address of the first warehouse location, when any. */
+  /** Address of the first warehouse facility, when any. */
   warehouse_address: string | null;
 }
 
-export type LocationType = "warehouse" | "hub";
+export type FacilityType = "warehouse" | "hub";
 
-export interface CompanyLocationSummary {
+export interface CompanyFacilitySummary {
   id: string;
   name: string;
-  type: LocationType;
+  type: FacilityType;
   address: string;
 }
 
 export interface CreateCompanyInput {
   code?: string;
   name: string;
-  /** Optional default warehouse name. When set, a location row is created. */
-  location_name?: string;
-  /** Optional warehouse address; used only when location_name is set. */
-  location_address?: string;
+  /** Optional default warehouse name. When set, a facility row is created. */
+  facility_name?: string;
+  /** Optional warehouse address; used only when facility_name is set. */
+  facility_address?: string;
 }
 
 export interface UpdateCompanyInput {
@@ -48,5 +48,5 @@ export interface UpdateCompanyInput {
 
 export interface CreateCompanyResult {
   company: CompanySummary;
-  location: CompanyLocationSummary | null;
+  facility: CompanyFacilitySummary | null;
 }

@@ -48,8 +48,8 @@ export interface PurchaseOrderSummary {
   id: string;
   company_id: string;
   company: { id: string; name: string };
-  location_id: string;
-  location: { id: string; name: string; address: string };
+  facility_id: string;
+  facility: { id: string; name: string; address: string };
   supplier_id: string;
   supplier: { id: string; name: string };
   purchase_order_no: string;
@@ -107,7 +107,7 @@ export interface DeletePurchaseOrderResponse {
 export interface PurchaseOrderOptions {
   companies: { id: string; name: string }[];
   suppliers: { id: string; name: string; company_id: string | null }[];
-  locations: { id: string; name: string; address: string; company_id: string }[];
+  facilities: { id: string; name: string; address: string; company_id: string }[];
   variants: {
     id: string;
     name: string;

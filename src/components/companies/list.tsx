@@ -285,8 +285,8 @@ export default function CompaniesList() {
         <CreateCompanyDialog
           onClose={() => setCreating(false)}
           onSaved={(company, detail) => {
-            const warehouse = detail?.locationName
-              ? ` Default warehouse “${detail.locationName}” was created.`
+            const warehouse = detail?.facilityName
+              ? ` Default warehouse “${detail.facilityName}” was created.`
               : "";
             toast.success(`${company.name} was created successfully.${warehouse}`);
             setPage(1);

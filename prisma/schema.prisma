@@ -30,7 +30,7 @@ enum page_grant_mode {
   assigned_pages
 }
 
-enum location_type {
+enum facility_type {
   warehouse
   hub
 }
@@ -61,7 +61,7 @@ model company {
   brands         brand[]
   variants       variant[]
   suppliers      supplier[]
-  locations      location[]
+  facilities      facility[]
   product_types   product_type[]
   products        product[]
   purchase_orders purchase_order[]
@@ -76,7 +76,7 @@ model company {
   @@index([created_by])
 }
 
-// Directed supply authorization. Location ownership and company memberships stay independent.
+// Directed supply authorization. Facility ownership and company memberships stay independent.
 model company_supply_relationship {
   id                    String   @id @default(uuid()) @db.Uuid
   requesting_company_id String   @db.Uuid
@@ -139,7 +139,7 @@ model user_company {
   roles            user_company_role[]
   pages            user_company_page[]
   permissions      user_company_permission[]
-  locations        user_location[]
+  facilities        user_facility[]
 
   @@unique([user_id, company_id])
   @@unique([id, company_id])
@@ -275,12 +275,12 @@ model supplier {
   @@unique([company_id, name])
 }
 
-model location {
+model facility {
   id         String        @id @default(uuid()) @db.Uuid
   company_id String        @db.Uuid
   created_by String?       @db.Uuid
   name       String        @db.VarChar(160)
-  type       location_type
+  type       facility_type
   address    String        @default("") @db.VarChar(160)
   is_active  Boolean       @default(true)
   created_at DateTime      @default(now()) @db.Timestamptz(6)
@@ -290,12 +290,12 @@ model location {
   material_requests_to material_request[] @relation("mr_warehouse")
   material_request_receivings material_request_receiving[]
   material_request_dispatches material_request_dispatch[]
-  stock_balances stock_balance[]
+  inventories inventory[]
   stock_movements stock_movement[]
   purchase_orders purchase_order[]
   receivings      receiving[]
-  users           user_location[]
-  assignment_history user_location_history[]
+  users           user_facility[]
+  assignment_history user_facility_history[]
 
   @@unique([company_id, name])
   @@unique([id, company_id])
@@ -305,27 +305,27 @@ model location {
 }
 
 // Company is repeated to enforce same-company assignments with composite foreign keys.
-model user_location {
+model user_facility {
   id              String       @id @default(uuid()) @db.Uuid
   company_id      String       @db.Uuid
   user_company_id String       @db.Uuid
-  location_id     String       @db.Uuid
+  facility_id     String       @db.Uuid
   assigned_by     String       @db.Uuid
   assigned_at     DateTime     @default(now()) @db.Timestamptz(6)
   membership      user_company @relation(fields: [user_company_id, company_id], references: [id, company_id], onDelete: Cascade, onUpdate: Restrict)
-  location        location     @relation(fields: [location_id, company_id], references: [id, company_id], onDelete: Restrict, onUpdate: Restrict)
+  facility        facility     @relation(fields: [facility_id, company_id], references: [id, company_id], onDelete: Restrict, onUpdate: Restrict)
 
-  @@unique([user_company_id, location_id])
-  @@index([location_id, company_id])
+  @@unique([user_company_id, facility_id])
+  @@index([facility_id, company_id])
   @@index([user_company_id, company_id])
   @@index([assigned_by])
 }
 
 // Snapshot each assignment period independently of current company membership.
-model user_location_history {
+model user_facility_history {
   id               String   @id @db.Uuid
   company_id       String   @db.Uuid
-  location_id      String   @db.Uuid
+  facility_id      String   @db.Uuid
   user_company_id  String   @db.Uuid
   user_id          String   @db.Uuid
   name             String   @db.VarChar(250)
@@ -335,10 +335,10 @@ model user_location_history {
   assigned_by_name String?  @db.VarChar(250)
   assigned_at      DateTime @db.Timestamptz(6)
   unassigned_at    DateTime? @db.Timestamptz(6)
-  location         location @relation(fields: [location_id, company_id], references: [id, company_id], onDelete: Restrict, onUpdate: Restrict)
+  facility         facility @relation(fields: [facility_id, company_id], references: [id, company_id], onDelete: Restrict, onUpdate: Restrict)
 
-  @@index([location_id, company_id])
-  @@index([location_id, user_created_at, assigned_at], map: "user_location_history_location_id_user_created_at_assigned_at_i")
+  @@index([facility_id, company_id])
+  @@index([facility_id, user_created_at, assigned_at], map: "user_facility_history_facility_id_user_created_at_assigned_at_i")
 }
 
 model product_type {
@@ -377,7 +377,7 @@ model product {
   material_request_items material_request_item[]
   material_request_receiving_items material_request_receiving_item[]
   material_request_dispatch_items material_request_dispatch_item[]
-  stock_balances stock_balance[]
+  inventories inventory[]
   stock_movements stock_movement[]
 
   @@unique([company_id, variant_id, product_type_id])
@@ -436,8 +436,8 @@ model material_request {
   supply_relationship company_supply_relationship @relation(fields: [supply_relationship_id], references: [id], onDelete: Restrict)
   requesting_company company @relation("mr_requester", fields: [requesting_company_id], references: [id], onDelete: Restrict)
   supplying_company company @relation("mr_supplier", fields: [supplying_company_id], references: [id], onDelete: Restrict)
-  requesting_hub location @relation("mr_hub", fields: [requesting_hub_id], references: [id], onDelete: Restrict)
-  supplying_warehouse location? @relation("mr_warehouse", fields: [supplying_warehouse_id], references: [id], onDelete: Restrict)
+  requesting_hub facility @relation("mr_hub", fields: [requesting_hub_id], references: [id], onDelete: Restrict)
+  supplying_warehouse facility? @relation("mr_warehouse", fields: [supplying_warehouse_id], references: [id], onDelete: Restrict)
   items material_request_item[]
   events material_request_event[]
   receivings material_request_receiving[]
@@ -494,7 +494,7 @@ model material_request_receiving {
   id String @id @default(uuid()) @db.Uuid
   requesting_company_id String @db.Uuid
   material_request_id String @db.Uuid
-  location_id String @db.Uuid
+  facility_id String @db.Uuid
   status material_request_receiving_status @default(draft)
   receipt_seq Int?
   receiving_no String? @db.VarChar(64)
@@ -505,15 +505,15 @@ model material_request_receiving {
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @updatedAt @db.Timestamptz(6)
   company company @relation(fields: [requesting_company_id], references: [id], onDelete: Restrict)
-  request material_request @relation(fields: [material_request_id, location_id, requesting_company_id], references: [id, requesting_hub_id, requesting_company_id], onDelete: Restrict, map: "material_request_receiving_request_fkey")
-  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  request material_request @relation(fields: [material_request_id, facility_id, requesting_company_id], references: [id, requesting_hub_id, requesting_company_id], onDelete: Restrict, map: "material_request_receiving_request_fkey")
+  facility facility @relation(fields: [facility_id], references: [id], onDelete: Restrict)
   items material_request_receiving_item[]
   events material_request_event[]
 
   @@unique([requesting_company_id, receipt_seq])
   @@unique([receiving_no])
   @@index([material_request_id])
-  @@index([location_id])
+  @@index([facility_id])
   @@index([status])
   @@index([created_by])
 }
@@ -531,7 +531,7 @@ model material_request_receiving_item {
   request_item material_request_item @relation(fields: [material_request_item_id], references: [id], onDelete: Restrict, map: "mr_receiving_item_request_item_fkey")
   product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
   unit measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
-  stock_movements stock_movement[]
+  stock_movement stock_movement?
 
   @@unique([material_request_receiving_id, material_request_item_id], map: "mr_receiving_item_line_key")
   @@index([material_request_item_id])
@@ -549,6 +549,7 @@ enum stock_movement_direction {
 }
 
 enum stock_movement_type {
+  po_receive_in
   dispatch_out
   receive_in
 }
@@ -557,7 +558,7 @@ model material_request_dispatch {
   id String @id @default(uuid()) @db.Uuid
   supplying_company_id String @db.Uuid
   material_request_id String @db.Uuid
-  location_id String @db.Uuid
+  facility_id String @db.Uuid
   status material_request_dispatch_status @default(posted)
   dispatch_seq Int
   dispatch_no String @db.VarChar(64)
@@ -569,13 +570,13 @@ model material_request_dispatch {
   updated_at DateTime @updatedAt @db.Timestamptz(6)
   company company @relation(fields: [supplying_company_id], references: [id], onDelete: Restrict)
   request material_request @relation(fields: [material_request_id], references: [id], onDelete: Restrict)
-  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  facility facility @relation(fields: [facility_id], references: [id], onDelete: Restrict)
   items material_request_dispatch_item[]
 
   @@unique([supplying_company_id, dispatch_seq], map: "mr_dispatch_company_seq_key")
   @@unique([dispatch_no])
   @@index([material_request_id])
-  @@index([location_id])
+  @@index([facility_id])
   @@index([created_by])
 }
 
@@ -592,7 +593,7 @@ model material_request_dispatch_item {
   request_item material_request_item @relation(fields: [material_request_item_id], references: [id], onDelete: Restrict, map: "mr_dispatch_item_request_item_fkey")
   product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
   unit measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
-  stock_movements stock_movement[]
+  stock_movement stock_movement?
 
   @@unique([material_request_dispatch_id, material_request_item_id], map: "mr_dispatch_item_line_key")
   @@index([material_request_item_id])
@@ -600,38 +601,39 @@ model material_request_dispatch_item {
   @@index([unit_id])
 }
 
-model stock_balance {
+model inventory {
   id String @id @default(uuid()) @db.Uuid
-  location_id String @db.Uuid
+  facility_id String @db.Uuid
   product_id String @db.Uuid
   qty Decimal @default(0) @db.Decimal(14, 3)
   updated_at DateTime @updatedAt @db.Timestamptz(6)
-  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  facility facility @relation(fields: [facility_id], references: [id], onDelete: Restrict)
   product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
 
-  @@unique([location_id, product_id])
+  @@unique([facility_id, product_id])
   @@index([product_id])
 }
 
 model stock_movement {
   id String @id @default(uuid()) @db.Uuid
-  location_id String @db.Uuid
+  facility_id String @db.Uuid
   product_id String @db.Uuid
   qty Decimal @db.Decimal(14, 3)
   direction stock_movement_direction
   type stock_movement_type
-  material_request_dispatch_item_id String? @db.Uuid
-  material_request_receiving_item_id String? @db.Uuid
+  po_receiving_item_id String? @unique @db.Uuid
+  material_request_dispatch_item_id String? @unique @db.Uuid
+  material_request_receiving_item_id String? @unique @db.Uuid
   created_by String @db.Uuid
   created_at DateTime @default(now()) @db.Timestamptz(6)
-  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  facility facility @relation(fields: [facility_id], references: [id], onDelete: Restrict)
   product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  po_receiving_item receiving_item? @relation(fields: [po_receiving_item_id], references: [id], onDelete: Restrict)
   dispatch_item material_request_dispatch_item? @relation(fields: [material_request_dispatch_item_id], references: [id], onDelete: Restrict, map: "stock_movement_dispatch_item_fkey")
   receiving_item material_request_receiving_item? @relation(fields: [material_request_receiving_item_id], references: [id], onDelete: Restrict, map: "stock_movement_receiving_item_fkey")
 
-  @@index([location_id, product_id, created_at])
-  @@index([material_request_dispatch_item_id])
-  @@index([material_request_receiving_item_id])
+  @@index([facility_id, product_id, created_at])
+  @@index([product_id])
   @@index([created_by])
 }
 
@@ -666,7 +668,7 @@ enum receiving_status {
 model purchase_order {
   id                    String                 @id @default(uuid()) @db.Uuid
   company_id            String                 @db.Uuid
-  location_id           String                 @db.Uuid
+  facility_id           String                 @db.Uuid
   supplier_id           String                 @db.Uuid
   created_by            String?                @db.Uuid
   order_seq             Int
@@ -679,7 +681,7 @@ model purchase_order {
   created_at            DateTime               @default(now()) @db.Timestamptz(6)
   updated_at            DateTime               @updatedAt @db.Timestamptz(6)
   company               company                @relation(fields: [company_id], references: [id], onDelete: Restrict)
-  location              location               @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  facility              facility               @relation(fields: [facility_id], references: [id], onDelete: Restrict)
   supplier              supplier               @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
   items                 purchase_order_item[]
   receivings            receiving[]
@@ -689,7 +691,7 @@ model purchase_order {
   @@unique([purchase_order_no])
   @@index([created_by])
   @@index([company_id])
-  @@index([location_id])
+  @@index([facility_id])
   @@index([supplier_id])
   @@index([status])
 }
@@ -732,7 +734,7 @@ model receiving {
   id                String                   @id @default(uuid()) @db.Uuid
   company_id        String                   @db.Uuid
   purchase_order_id String                   @db.Uuid
-  location_id       String                   @db.Uuid
+  facility_id       String                   @db.Uuid
   status            receiving_status         @default(draft)
   receipt_seq       Int?
   receiving_no      String?                  @db.VarChar(32)
@@ -744,7 +746,7 @@ model receiving {
   updated_at        DateTime                 @updatedAt @db.Timestamptz(6)
   company           company                  @relation(fields: [company_id], references: [id], onDelete: Restrict)
   purchase_order    purchase_order           @relation(fields: [purchase_order_id], references: [id], onDelete: Restrict)
-  location          location                 @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  facility          facility                 @relation(fields: [facility_id], references: [id], onDelete: Restrict)
   items             receiving_item[]
   events            purchase_order_event[]
 
@@ -752,7 +754,7 @@ model receiving {
   @@unique([receiving_no])
   @@index([company_id])
   @@index([purchase_order_id])
-  @@index([location_id])
+  @@index([facility_id])
   @@index([status])
   @@index([created_by])
 }
@@ -770,6 +772,7 @@ model receiving_item {
   purchase_order_item    purchase_order_item @relation(fields: [purchase_order_item_id], references: [id], onDelete: Restrict)
   product                product          @relation(fields: [product_id], references: [id], onDelete: Restrict)
   unit                   measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
+  stock_movement         stock_movement?
 
   @@unique([receiving_id, purchase_order_item_id])
   @@index([purchase_order_item_id])

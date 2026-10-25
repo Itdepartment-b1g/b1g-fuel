@@ -104,7 +104,7 @@ function EditReceivingFields({
   })));
   const [error, setError] = useState<string | null>(null);
   const selected = options.purchase_orders.find((order) => order.id === receipt.purchase_order_id);
-  const warehouse = receipt.location ?? selected?.location;
+  const warehouse = receipt.facility ?? selected?.facility;
   const supplier = receipt.supplier ?? selected?.supplier;
 
   function validate() {
@@ -150,10 +150,10 @@ function EditReceivingFields({
           Purchase order <span className="text-destructive">*</span>
           <select value={receipt.purchase_order_id} disabled className="h-10 w-full rounded-md border bg-white px-3 text-sm">
             {!options.purchase_orders.some((order) => order.id === receipt.purchase_order_id) && (
-              <option value={receipt.purchase_order_id}>{receipt.supplier.name} · {receipt.location.name}</option>
+              <option value={receipt.purchase_order_id}>{receipt.supplier.name} · {receipt.facility.name}</option>
             )}
             {options.purchase_orders.map((order) => (
-              <option key={order.id} value={order.id}>{order.supplier.name} · {order.location.name}</option>
+              <option key={order.id} value={order.id}>{order.supplier.name} · {order.facility.name}</option>
             ))}
           </select>
         </label>

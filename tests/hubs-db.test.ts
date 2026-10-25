@@ -66,8 +66,8 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       const staff = await get_record_access(agent, tx);
       const noPermissions = await get_record_access(nextAgent, tx);
       const outside = { ...supervisor, companyIds: [outsideCompany], grants: supervisor.grants.map((grant) => ({ ...grant, companyId: outsideCompany })) };
-      const warehouse = await tx.location.create({ data: { company_id: companyId, name: "Warehouse", type: "warehouse" } });
-      const foreignHub = await tx.location.create({ data: { company_id: outsideCompany, name: "Foreign hub", type: "hub" } });
+      const warehouse = await tx.facility.create({ data: { company_id: companyId, name: "Warehouse", type: "warehouse" } });
+      const foreignHub = await tx.facility.create({ data: { company_id: outsideCompany, name: "Foreign hub", type: "hub" } });
 
       const created = await request_hub(controller.create_hub, supervisor, { name: "  North hub  ", address: "  North road  " });
       assert.equal(created.status, 201);
@@ -93,12 +93,12 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.equal((await request_hub(controller.delete_hub, outside, undefined, { id: hub.id })).status, 404);
       assert.equal((await request_hub(controller.list_by_id_hub, staff, undefined, { id: hub.id })).status, 404);
 
-      const assignmentInput = { location_id: hub.id, user_company_id: membershipId };
+      const assignmentInput = { facility_id: hub.id, user_company_id: membershipId };
       const ownEditor = { ...staff, grants: [...staff.grants, { permission: "hubs.edit", scope: "own" as const, companyId }] };
       assert.equal((await request_hub(controller.assign_hub, ownEditor, assignmentInput)).status, 403);
       assert.equal((await request_hub(controller.assign_hub, outside, assignmentInput)).status, 404);
       assert.equal((await request_hub(controller.assign_hub, supervisor, { ...assignmentInput, user_company_id: outsideMembershipId })).status, 400);
-      assert.equal((await request_hub(controller.assign_hub, supervisor, { ...assignmentInput, location_id: warehouse.id })).status, 404);
+      assert.equal((await request_hub(controller.assign_hub, supervisor, { ...assignmentInput, facility_id: warehouse.id })).status, 404);
       const assigned = await request_hub(controller.assign_hub, supervisor, assignmentInput);
       assert.equal(assigned.status, 201);
       const assignment = (assigned.body as { assignment: HubAssignment }).assignment;
@@ -108,21 +108,21 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.deepEqual(assignment.roles, [{ id: staffRoleId, name: "Hub agent" }]);
       const repeated = await request_hub(controller.assign_hub, supervisor, assignmentInput);
       assert.deepEqual(repeated.body, assigned.body);
-      assert.equal(await tx.user_location.count({ where: { location_id: hub.id } }), 1);
-      assert.equal(await tx.user_location_history.count({ where: { id: assignment.id } }), 1);
-      const activeHistory = await request_hub(controller.list_hub_assignment_history, supervisor, undefined, { location_id: hub.id });
+      assert.equal(await tx.user_facility.count({ where: { facility_id: hub.id } }), 1);
+      assert.equal(await tx.user_facility_history.count({ where: { id: assignment.id } }), 1);
+      const activeHistory = await request_hub(controller.list_hub_assignment_history, supervisor, undefined, { facility_id: hub.id });
       assert.equal(activeHistory.status, 200);
       assert.equal((activeHistory.body as { assignments: HubAssignmentHistory[] }).assignments[0].unassigned_at, null);
-      assert.equal((await request_hub(controller.list_hub_assignment_history, outside, undefined, { location_id: hub.id })).status, 404);
-      assert.equal((await request_hub(controller.list_hub_assignment_history, ownEditor, undefined, { location_id: hub.id })).status, 403);
+      assert.equal((await request_hub(controller.list_hub_assignment_history, outside, undefined, { facility_id: hub.id })).status, 404);
+      assert.equal((await request_hub(controller.list_hub_assignment_history, ownEditor, undefined, { facility_id: hub.id })).status, 403);
 
       assert.equal((await request_hub(controller.list_by_id_hub, staff, undefined, { id: hub.id })).status, 200);
       const staffList = await request_hub(controller.list_hub, staff, undefined, { page_size: "10" });
       assert.deepEqual((staffList.body as { hubs: HubSummary[] }).hubs.map((row) => row.id), [hub.id]);
-      const roster = await request_hub(controller.list_hub_assignment, supervisor, undefined, { location_id: hub.id });
+      const roster = await request_hub(controller.list_hub_assignment, supervisor, undefined, { facility_id: hub.id });
       assert.equal((roster.body as { total: number }).total, 1);
       assert.deepEqual((roster.body as { assignments: HubAssignment[] }).assignments[0].roles, [{ id: staffRoleId, name: "Hub agent" }]);
-      const choices = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { location_id: hub.id });
+      const choices = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { facility_id: hub.id });
       const members = (choices.body as { members: Array<{ user_company_id: string }> }).members.map((member) => member.user_company_id);
       assert.ok(members.includes(nextMembershipId));
       assert.ok(!members.includes(membershipId));
@@ -131,11 +131,11 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.deepEqual(eligible.find((member) => member.user.id === actor)?.roles, [{ id: roleId, name: "Hub supervisor" }]);
       assert.deepEqual(eligible.find((member) => member.user.id === nextAgent)?.roles, []);
       assert.deepEqual(eligible.map((member) => member.user.id), [nextAgent, actor]);
-      const searchedChoice = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { location_id: hub.id, search: "replacement" });
+      const searchedChoice = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { facility_id: hub.id, search: "replacement" });
       assert.equal((searchedChoice.body as { total: number }).total, 1);
-      const searchedAssignment = await request_hub(controller.list_hub_assignment, supervisor, undefined, { location_id: hub.id, search: `hub-${agent}@example.test` });
+      const searchedAssignment = await request_hub(controller.list_hub_assignment, supervisor, undefined, { facility_id: hub.id, search: `hub-${agent}@example.test` });
       assert.equal((searchedAssignment.body as { total: number }).total, 1);
-      const noAssignmentMatch = await request_hub(controller.list_hub_assignment, supervisor, undefined, { location_id: hub.id, search: "does-not-exist" });
+      const noAssignmentMatch = await request_hub(controller.list_hub_assignment, supervisor, undefined, { facility_id: hub.id, search: "does-not-exist" });
       assert.equal((noAssignmentMatch.body as { total: number }).total, 0);
 
       // More than one page proves sorting happens before pagination and counts honor search.
@@ -146,8 +146,8 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       const extraMemberships = extraUsers.map((user) => ({ id: randomUUID(), user_id: user.id, company_id: companyId }));
       await tx.user.createMany({ data: extraUsers });
       await tx.user_company.createMany({ data: extraMemberships });
-      const firstChoices = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { location_id: hub.id, search: "Pagination member", page: "1", page_size: "10" });
-      const secondChoices = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { location_id: hub.id, search: "Pagination member", page: "2", page_size: "10" });
+      const firstChoices = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { facility_id: hub.id, search: "Pagination member", page: "1", page_size: "10" });
+      const secondChoices = await request_hub(controller.get_hub_assignment_option, supervisor, undefined, { facility_id: hub.id, search: "Pagination member", page: "2", page_size: "10" });
       const firstChoicePage = firstChoices.body as { total: number; members: Array<{ user: { id: string } }> };
       const secondChoicePage = secondChoices.body as typeof firstChoicePage;
       assert.equal(firstChoicePage.total, 12);
@@ -158,11 +158,11 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       );
       assert.equal(firstChoicePage.members.length, 10);
       assert.equal(secondChoicePage.members.length, 2);
-      await tx.user_location.createMany({ data: extraMemberships.map((membership) => ({
-        user_company_id: membership.id, company_id: companyId, location_id: hub.id, assigned_by: actor,
+      await tx.user_facility.createMany({ data: extraMemberships.map((membership) => ({
+        user_company_id: membership.id, company_id: companyId, facility_id: hub.id, assigned_by: actor,
       })) });
-      const firstAssignments = await request_hub(controller.list_hub_assignment, supervisor, undefined, { location_id: hub.id, search: "Pagination member", page: "1", page_size: "10" });
-      const secondAssignments = await request_hub(controller.list_hub_assignment, supervisor, undefined, { location_id: hub.id, search: "Pagination member", page: "2", page_size: "10" });
+      const firstAssignments = await request_hub(controller.list_hub_assignment, supervisor, undefined, { facility_id: hub.id, search: "Pagination member", page: "1", page_size: "10" });
+      const secondAssignments = await request_hub(controller.list_hub_assignment, supervisor, undefined, { facility_id: hub.id, search: "Pagination member", page: "2", page_size: "10" });
       const firstAssignedPage = firstAssignments.body as { total: number; assignments: HubAssignment[] };
       const secondAssignedPage = secondAssignments.body as typeof firstAssignedPage;
       assert.equal(firstAssignedPage.total, 12);
@@ -171,14 +171,14 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
         [...firstAssignedPage.assignments, ...secondAssignedPage.assignments].map((member) => member.user.id),
         extraUsers.toReversed().map((user) => user.id),
       );
-      await tx.user_location.deleteMany({ where: { location_id: hub.id, user_company_id: { in: extraMemberships.map((membership) => membership.id) } } });
+      await tx.user_facility.deleteMany({ where: { facility_id: hub.id, user_company_id: { in: extraMemberships.map((membership) => membership.id) } } });
 
       const updated = await request_hub(controller.update_hub, supervisor, { id: hub.id, name: "Renamed hub" });
       assert.equal(updated.status, 200);
       assert.equal((updated.body as { hub: HubSummary }).hub.created_by, actor);
       assert.equal((await request_hub(controller.delete_hub, supervisor, undefined, { id: hub.id })).status, 200);
-      assert.equal((await tx.location.findUniqueOrThrow({ where: { id: hub.id } })).is_active, false);
-      assert.equal(await tx.user_location.count({ where: { location_id: hub.id } }), 1);
+      assert.equal((await tx.facility.findUniqueOrThrow({ where: { id: hub.id } })).is_active, false);
+      assert.equal(await tx.user_facility.count({ where: { facility_id: hub.id } }), 1);
       assert.equal((await request_hub(controller.assign_hub, supervisor, { ...assignmentInput, user_company_id: nextMembershipId })).status, 409);
       const inactive = await request_hub(controller.list_hub, supervisor, undefined, { is_active: "false" });
       assert.equal((inactive.body as { total: number }).total, 1);
@@ -196,14 +196,14 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.equal((await request_hub(controller.update_hub, supervisor, { id: hub.id, is_active: true })).status, 200);
 
       assert.equal((await request_hub(controller.unassign_hub, supervisor, undefined, assignmentInput)).status, 200);
-      const closedHistory = await request_hub(controller.list_hub_assignment_history, supervisor, undefined, { location_id: hub.id, search: `hub-${agent}@example.test` });
+      const closedHistory = await request_hub(controller.list_hub_assignment_history, supervisor, undefined, { facility_id: hub.id, search: `hub-${agent}@example.test` });
       const closedPeriod = (closedHistory.body as { assignments: HubAssignmentHistory[] }).assignments[0];
       assert.equal(closedPeriod.name, "Hub agent");
       assert.equal(closedPeriod.assigned_by_name, "Hub supervisor");
       assert.ok(closedPeriod.unassigned_at);
       assert.ok(new Date(closedPeriod.unassigned_at) >= new Date(closedPeriod.assigned_at));
       assert.equal((await request_hub(controller.assign_hub, supervisor, assignmentInput)).status, 201);
-      const periods = await tx.user_location_history.findMany({ where: { location_id: hub.id, user_id: agent } });
+      const periods = await tx.user_facility_history.findMany({ where: { facility_id: hub.id, user_id: agent } });
       assert.equal(periods.length, 2);
       assert.equal(periods.filter((period) => period.unassigned_at === null).length, 1);
       assert.equal((await request_hub(controller.unassign_hub, supervisor, undefined, assignmentInput)).status, 200);
@@ -212,17 +212,17 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.equal((await request_hub(controller.assign_hub, supervisor, { ...assignmentInput, user_company_id: nextMembershipId })).status, 201);
       assert.equal((await request_hub(controller.list_by_id_hub, noPermissions, undefined, { id: hub.id })).status, 404);
       assert.deepEqual((await get_record_access(nextAgent, tx)).grants, []);
-      assert.equal((await tx.location.findUniqueOrThrow({ where: { id: hub.id } })).created_by, actor);
+      assert.equal((await tx.facility.findUniqueOrThrow({ where: { id: hub.id } })).created_by, actor);
 
       // Verify the database rejects cross-company links even when bypassing service checks.
       await tx.$executeRawUnsafe("SAVEPOINT hub_constraint");
-      await assert.rejects(tx.user_location.create({ data: {
-        company_id: companyId, location_id: hub.id, user_company_id: outsideMembershipId, assigned_by: actor,
+      await assert.rejects(tx.user_facility.create({ data: {
+        company_id: companyId, facility_id: hub.id, user_company_id: outsideMembershipId, assigned_by: actor,
       } }), (error: unknown) => Boolean(error && typeof error === "object" && "code" in error && error.code === "P2003"));
       await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT hub_constraint");
 
-      await assert.rejects(tx.user_location.create({ data: {
-        company_id: companyId, location_id: hub.id, user_company_id: nextMembershipId, assigned_by: actor,
+      await assert.rejects(tx.user_facility.create({ data: {
+        company_id: companyId, facility_id: hub.id, user_company_id: nextMembershipId, assigned_by: actor,
       } }), (error: unknown) => Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002"));
       await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT hub_constraint");
 
@@ -230,8 +230,8 @@ test("hub API preserves ownership, scopes assigned staff, enforces tenant bounda
       assert.equal((await request_hub(controller.create_hub, supervisor, { name: "Warehouse" })).status, 409);
       await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT hub_constraint");
       await tx.user_company.delete({ where: { id: nextMembershipId } });
-      assert.equal(await tx.user_location.count({ where: { location_id: hub.id } }), 0);
-      const removedMembershipHistory = await tx.user_location_history.findFirstOrThrow({ where: { location_id: hub.id, user_id: nextAgent } });
+      assert.equal(await tx.user_facility.count({ where: { facility_id: hub.id } }), 0);
+      const removedMembershipHistory = await tx.user_facility_history.findFirstOrThrow({ where: { facility_id: hub.id, user_id: nextAgent } });
       assert.ok(removedMembershipHistory.unassigned_at);
       assert.equal(removedMembershipHistory.name, "Replacement agent");
       assert.equal(removedMembershipHistory.user_company_id, nextMembershipId);

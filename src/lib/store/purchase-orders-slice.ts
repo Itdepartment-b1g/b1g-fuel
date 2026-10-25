@@ -50,7 +50,7 @@ type State = {
 const emptyOptions: PurchaseOrderOptions = {
   companies: [],
   suppliers: [],
-  locations: [],
+  facilities: [],
   variants: [],
   product_types: [],
   units: [],

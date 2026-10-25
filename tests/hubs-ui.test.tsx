@@ -53,7 +53,7 @@ test("assigning selected staff deduplicates IDs and keeps the mutation pending f
     return new Response(JSON.stringify({ assignment: { ...assignment, user_company_id: body.user_company_id } }));
   };
   try {
-    const result = await store.dispatch(assignHubStaff({ location_id: hub.id, user_company_ids: ["first", "second", "first"] })).unwrap();
+    const result = await store.dispatch(assignHubStaff({ facility_id: hub.id, user_company_ids: ["first", "second", "first"] })).unwrap();
     assert.deepEqual(sent, ["first", "second"]);
     assert.equal(result.assignments.length, 2);
     assert.equal(store.getState().hubs.mutationStatus, "succeeded");
@@ -73,7 +73,7 @@ test("a partial staff assignment failure reports completed IDs and leaves the re
   try {
     const store = makeStore();
     store.dispatch(listHub.pending("stale", {}));
-    const result = await store.dispatch(assignHubStaff({ location_id: hub.id, user_company_ids: ["first", "second", "third"] }));
+    const result = await store.dispatch(assignHubStaff({ facility_id: hub.id, user_company_ids: ["first", "second", "third"] }));
     assert.ok(assignHubStaff.rejected.match(result));
     assert.deepEqual(result.payload?.assigned_user_company_ids, ["first"]);
     assert.equal(result.payload?.status, 409);
@@ -95,8 +95,8 @@ const hub: HubSummary = {
   created_at: "2026-10-18T00:00:00Z", updated_at: "2026-10-18T00:00:00Z",
 };
 const page = { hubs: [hub], total: 1, page: 1, page_size: 10 };
-const query = { location_id: hub.id, page: 1 };
-const input = { location_id: hub.id, user_company_id: "membership" };
+const query = { facility_id: hub.id, page: 1 };
+const input = { facility_id: hub.id, user_company_id: "membership" };
 const assignment: HubAssignment = {
   ...input, id: "assignment", user: { id: "agent", name: "Agent", email: null },
   roles: [{ id: "agent-role", name: "Agent" }],
@@ -109,7 +109,7 @@ test("hub history reads are isolated by hub and stale responses are invalidated 
   const history = { assignments: [], total: 0, page: 1, page_size: 10 };
   store.dispatch(listHubAssignmentHistory.pending("old", query));
   store.dispatch(listHubAssignmentHistory.pending("new", query));
-  store.dispatch(listHubAssignmentHistory.pending("other", { location_id: "other-hub" }));
+  store.dispatch(listHubAssignmentHistory.pending("other", { facility_id: "other-hub" }));
   store.dispatch(listHubAssignmentHistory.fulfilled(history, "old", query));
   assert.equal(store.getState().hubs.assignmentHistory[hub.id].data, null);
   store.dispatch(listHubAssignmentHistory.fulfilled(history, "new", query));
@@ -117,14 +117,14 @@ test("hub history reads are isolated by hub and stale responses are invalidated 
   assert.equal(store.getState().hubs.assignmentHistory["other-hub"].status, "loading");
   store.dispatch(unassignHub.pending("remove", input));
   store.dispatch(unassignHub.fulfilled({ ...input, message: "Removed" }, "remove", input));
-  store.dispatch(listHubAssignmentHistory.fulfilled(history, "other", { location_id: "other-hub" }));
+  store.dispatch(listHubAssignmentHistory.fulfilled(history, "other", { facility_id: "other-hub" }));
   assert.equal(store.getState().hubs.assignmentHistory["other-hub"].data, null);
   assert.equal(store.getState().hubs.assignmentHistory[hub.id].status, "idle");
 });
 
 test("the assigned-users table contains all requested audit columns and renders active and ended assignments", () => {
   const current = {
-    id: "active", location_id: hub.id, user_company_id: "membership", user_id: "agent",
+    id: "active", facility_id: hub.id, user_company_id: "membership", user_id: "agent",
     name: "Aaron", email: "aaron@example.test", assigned_by: "creator", assigned_by_name: "Ada",
     assigned_at: "2026-10-18T00:00:00Z", unassigned_at: null,
   };
@@ -149,15 +149,15 @@ test("Redux ignores old hub details, list responses, and staff results from anot
   store.dispatch(editHub.pending("new-detail", hub.id));
   store.dispatch(editHub.fulfilled({ hub }, "old-detail", "old"));
   assert.equal(store.getState().hubs.selectedHub, null);
-  store.dispatch(listHubAssignment.pending("old-roster", { location_id: "other" }));
+  store.dispatch(listHubAssignment.pending("old-roster", { facility_id: "other" }));
   store.dispatch(listHubAssignment.pending("new-roster", query));
-  store.dispatch(listHubAssignment.fulfilled(roster, "old-roster", { location_id: "other" }));
+  store.dispatch(listHubAssignment.fulfilled(roster, "old-roster", { facility_id: "other" }));
   assert.equal(store.getState().hubs.assignments, null);
   store.dispatch(listHubAssignment.fulfilled(roster, "new-roster", query));
-  assert.equal(store.getState().hubs.assignmentsLocationId, hub.id);
-  store.dispatch(getHubAssignmentOption.pending("old-options", { location_id: "other" }));
+  assert.equal(store.getState().hubs.assignmentsFacilityId, hub.id);
+  store.dispatch(getHubAssignmentOption.pending("old-options", { facility_id: "other" }));
   store.dispatch(getHubAssignmentOption.pending("new-options", query));
-  store.dispatch(getHubAssignmentOption.fulfilled({ members: [], total: 0, page: 1, page_size: 10 }, "old-options", { location_id: "other" }));
+  store.dispatch(getHubAssignmentOption.fulfilled({ members: [], total: 0, page: 1, page_size: 10 }, "old-options", { facility_id: "other" }));
   assert.equal(store.getState().hubs.assignmentOptions, null);
 });
 

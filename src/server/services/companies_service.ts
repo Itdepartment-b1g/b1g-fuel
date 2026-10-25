@@ -16,21 +16,21 @@ export async function create_company(
   repository = companiesRepository,
   createdBy?: string,
 ) {
-  const location_name = input.location_name?.trim();
-  const location_address = input.location_address?.trim();
-  if (location_address && !location_name) {
+  const facility_name = input.facility_name?.trim();
+  const facility_address = input.facility_address?.trim();
+  if (facility_address && !facility_name) {
     throw new CompanyError(
       "invalid_input",
-      "Enter a warehouse name to save a location.",
+      "Enter a warehouse name to save a facility.",
     );
   }
-  if (location_name && location_name.length > 160) {
+  if (facility_name && facility_name.length > 160) {
     throw new CompanyError(
       "invalid_input",
       "Provide a warehouse name between 1 and 160 characters.",
     );
   }
-  if (location_address && location_address.length > 160) {
+  if (facility_address && facility_address.length > 160) {
     throw new CompanyError(
       "invalid_input",
       "Provide a warehouse address of at most 160 characters.",
@@ -40,10 +40,10 @@ export async function create_company(
     {
       name: input.name,
       ...(input.code !== undefined ? { code: input.code } : {}),
-      ...(location_name
+      ...(facility_name
         ? {
-            location_name,
-            location_address: location_address || "",
+            facility_name,
+            facility_address: facility_address || "",
           }
         : {}),
     },

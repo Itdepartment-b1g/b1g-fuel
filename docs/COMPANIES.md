@@ -14,21 +14,21 @@ All endpoints require an authenticated, provisioned user with the global `super_
 | --- | --- | --- |
 | GET | `/api/companies` | List with `page`, `page_size` and optional name `search` |
 | GET | `/api/companies?id=UUID` | Read one company as `{ company }` |
-| POST | `/api/companies` | Create using `{ "name": "B1G Branch" }` plus optional `location_name` / `location_address`; returns `{ company, location }` with 201 |
+| POST | `/api/companies` | Create using `{ "name": "B1G Branch" }` plus optional `facility_name` / `facility_address`; returns `{ company, facility }` with 201 |
 | PATCH | `/api/companies` | Rename using `{ "id": "UUID", "name": "Updated Branch" }` |
 | DELETE | `/api/companies?id=UUID` | Delete an empty company; returns `{ id, message }` |
 
 Names are trimmed, required, and limited to 160 characters. IDs must be UUIDs. Unknown body fields are rejected. Names are not unique in the current schema. List search is case-insensitive and limited to 160 characters. Pagination uses the shared backend helper with page sizes 10/20/50/100.
 
-Optional create fields: `location_name` creates a default `warehouse` location under the new company in the same transaction; `location_address` is stored only when a warehouse name is set. The create form shows a checkbox (“Does this company need a warehouse?”); warehouse fields appear only when it is checked, and warehouse name is then required. Company-only create (checkbox off) remains valid. Edit does not change locations.
+Optional create fields: `facility_name` creates a default `warehouse` facility under the new company in the same transaction; `facility_address` is stored only when a warehouse name is set. The create form shows a checkbox (“Does this company need a warehouse?”); warehouse fields appear only when it is checked, and warehouse name is then required. Company-only create (checkbox off) remains valid. Edit does not change facilities.
 
-The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, `member_count`, `location_count`, `is_warehouse`, `warehouse_name`, and `warehouse_address` (first warehouse by created date, or null when none).
+The list response is `{ companies, total, page, page_size }`. Each company includes `id`, `name`, ISO `created_at`/`updated_at` strings, `member_count`, `facility_count`, `is_warehouse`, `warehouse_name`, and `warehouse_address` (first warehouse by created date, or null when none).
 
 The companies table has a **Columns** menu (`TableMenu`) to show or hide Members, Warehouse, Warehouse name, and Warehouse address. Company and Created stay visible. Those optional columns are also freezable via each header menu.
 
-Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. Locations cascade when a company is deleted. Renaming preserves memberships.
+Deletion returns 409 if the company has memberships. Remove or reassign those memberships through a separate workflow first. The UI disables deletion for companies with members; the service checks again inside a transaction. Facilities cascade when a company is deleted. Renaming preserves memberships.
 
-Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Prisma queries and transaction-bound operations live in `companies_repository.ts`. Location table migration: `prisma/migrations/20261016080000_location`. Swagger documents Companies under `/docs`. See [Warehouse inventory](WAREHOUSE_INVENTORY.md).
+Validation and HTTP errors live in `companies_controller.ts`; business conditions live in `companies_service.ts`; Prisma queries and transaction-bound operations live in `companies_repository.ts`. The original location table was introduced in `prisma/migrations/20261016080000_location` and renamed in `prisma/migrations/20261025130000_rename_location_to_facility`. Swagger documents Companies under `/docs`. See [Warehouse inventory](WAREHOUSE_INVENTORY.md).
 
 ## Redux
 
@@ -41,11 +41,11 @@ Validation and HTTP errors live in `companies_controller.ts`; business condition
 Requests include session cookies. Thunks support `.unwrap()`; reads support `.abort()`. The slice tracks list/detail/mutation state separately, ignores stale reads, serializes mutations, and invalidates pending reads after a successful write. Components refetch the current list after mutations.
 
 ```ts
-const { company, location } = await dispatch(
+const { company, facility } = await dispatch(
   createCompany({
     name: "B1G Branch",
-    location_name: "Central Warehouse",
-    location_address: "Optional address",
+    facility_name: "Central Warehouse",
+    facility_address: "Optional address",
   }),
 ).unwrap();
 await dispatch(listCompany({ page: 1, page_size: 10 })).unwrap();

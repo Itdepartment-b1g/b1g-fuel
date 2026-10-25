@@ -64,11 +64,11 @@ export async function list_material_request(visibility: Prisma.material_requestW
 export function get_material_request_filter_data(where: Prisma.material_requestWhereInput, tx: DatabaseExecutor) {
   return tx.material_request.findMany({ where, select: { request_no: true, status: true, requesting_hub: { select: { id: true, name: true } }, supplying_company: { select: { id: true, name: true } } } });
 }
-export function get_request_location(id: string, tx: DatabaseExecutor) {
-  return tx.location.findUnique({ where: { id }, include: { company: { select: { name: true } } } });
+export function get_request_facility(id: string, tx: DatabaseExecutor) {
+  return tx.facility.findUnique({ where: { id }, include: { company: { select: { name: true } } } });
 }
-export function get_request_assignment(locationId: string, userId: string, tx: DatabaseExecutor) {
-  return tx.user_location.findFirst({ where: { location_id: locationId, membership: { user_id: userId } } });
+export function get_request_assignment(facilityId: string, userId: string, tx: DatabaseExecutor) {
+  return tx.user_facility.findFirst({ where: { facility_id: facilityId, membership: { user_id: userId } } });
 }
 export function get_request_relationship(requester: string, supplier: string, tx: DatabaseExecutor) {
   return tx.company_supply_relationship.findUnique({ where: { requesting_company_id_supplying_company_id: { requesting_company_id: requester, supplying_company_id: supplier } } });
@@ -77,7 +77,7 @@ export function lock_request_relationship(id: string, tx: DatabaseExecutor) {
   return tx.$queryRaw`SELECT id FROM company_supply_relationship WHERE id = ${id}::uuid FOR SHARE`;
 }
 export function get_request_assignments(userId: string, tx: DatabaseExecutor) {
-  return tx.user_location.findMany({ where: { membership: { user_id: userId } }, select: { location_id: true } });
+  return tx.user_facility.findMany({ where: { membership: { user_id: userId } }, select: { facility_id: true } });
 }
 export function get_request_product(ids: string[], companyId: string, tx: DatabaseExecutor) {
   return tx.product.findMany({ where: { id: { in: ids }, company_id: companyId }, include: { variant: { include: { brand: true } }, product_type: true, base_unit: true } });
@@ -131,20 +131,20 @@ export async function allocate_dispatch_number(companyId: string, companyName: s
 export function create_posted_request_dispatch(data: Prisma.material_request_dispatchUncheckedCreateInput, tx: DatabaseExecutor) {
   return tx.material_request_dispatch.create({ data, select: { id: true, dispatch_no: true, items: { select: { id: true, product_id: true, qty: true } } } });
 }
-export function list_location_stock(locationId: string, productIds: string[], tx: DatabaseExecutor) {
-  return tx.stock_balance.findMany({ where: { location_id: locationId, product_id: { in: productIds } }, select: { product_id: true, qty: true } });
+export function list_facility_stock(facilityId: string, productIds: string[], tx: DatabaseExecutor) {
+  return tx.inventory.findMany({ where: { facility_id: facilityId, product_id: { in: productIds } }, select: { product_id: true, qty: true } });
 }
-export async function take_stock(locationId: string, productId: string, qty: Prisma.Decimal, dispatchItemId: string, userId: string, tx: DatabaseExecutor) {
-  await tx.$queryRaw`SELECT id FROM stock_balance WHERE location_id = ${locationId}::uuid AND product_id = ${productId}::uuid FOR UPDATE`;
-  const updated = await tx.stock_balance.updateMany({ where: { location_id: locationId, product_id: productId, qty: { gte: qty } }, data: { qty: { decrement: qty } } });
+export async function take_stock(facilityId: string, productId: string, qty: Prisma.Decimal, dispatchItemId: string, userId: string, tx: DatabaseExecutor) {
+  await tx.$queryRaw`SELECT id FROM inventory WHERE facility_id = ${facilityId}::uuid AND product_id = ${productId}::uuid FOR UPDATE`;
+  const updated = await tx.inventory.updateMany({ where: { facility_id: facilityId, product_id: productId, qty: { gte: qty } }, data: { qty: { decrement: qty } } });
   if (updated.count !== 1) return false;
-  await tx.stock_movement.create({ data: { location_id: locationId, product_id: productId, qty, direction: "out", type: "dispatch_out", material_request_dispatch_item_id: dispatchItemId, created_by: userId } });
+  await tx.stock_movement.create({ data: { facility_id: facilityId, product_id: productId, qty, direction: "out", type: "dispatch_out", material_request_dispatch_item_id: dispatchItemId, created_by: userId } });
   return true;
 }
-export async function give_stock(locationId: string, productId: string, qty: Prisma.Decimal, receivingItemId: string, userId: string, tx: DatabaseExecutor) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${locationId}:${productId}`})::bigint)`;
-  await tx.stock_balance.upsert({ where: { location_id_product_id: { location_id: locationId, product_id: productId } }, create: { location_id: locationId, product_id: productId, qty }, update: { qty: { increment: qty } } });
-  await tx.stock_movement.create({ data: { location_id: locationId, product_id: productId, qty, direction: "in", type: "receive_in", material_request_receiving_item_id: receivingItemId, created_by: userId } });
+export async function give_stock(facilityId: string, productId: string, qty: Prisma.Decimal, receivingItemId: string, userId: string, tx: DatabaseExecutor) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${facilityId}:${productId}`})::bigint)`;
+  await tx.inventory.upsert({ where: { facility_id_product_id: { facility_id: facilityId, product_id: productId } }, create: { facility_id: facilityId, product_id: productId, qty }, update: { qty: { increment: qty } } });
+  await tx.stock_movement.create({ data: { facility_id: facilityId, product_id: productId, qty, direction: "in", type: "receive_in", material_request_receiving_item_id: receivingItemId, created_by: userId } });
 }
 export async function list_request_receipts(visibility: Prisma.material_requestWhereInput, search: string, pagination: Pagination, sorting: Sorting | undefined, tx: DatabaseExecutor) {
   const where: Prisma.material_request_receivingWhereInput = {
@@ -198,13 +198,13 @@ export async function list_request_receipts(visibility: Prisma.material_requestW
   };
 }
 export function list_request_hubs(tx: DatabaseExecutor) {
-  return tx.location.findMany({ where: { type: "hub" }, select: { id: true, name: true, company_id: true, company: { select: { name: true } } }, orderBy: { name: "asc" } });
+  return tx.facility.findMany({ where: { type: "hub" }, select: { id: true, name: true, company_id: true, company: { select: { name: true } } }, orderBy: { name: "asc" } });
 }
 export function list_request_suppliers(companyId: string, tx: DatabaseExecutor) {
   return tx.company_supply_relationship.findMany({ where: { requesting_company_id: companyId, is_active: true }, select: { supplying_company: { select: { id: true, name: true } } }, orderBy: { supplying_company: { name: "asc" } } });
 }
 export function list_request_warehouses(companyId: string, tx: DatabaseExecutor) {
-  return tx.location.findMany({ where: { company_id: companyId, type: "warehouse", is_active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+  return tx.facility.findMany({ where: { company_id: companyId, type: "warehouse", is_active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } });
 }
 export async function list_request_catalog(companyId: string, search: string, pagination: Pagination, tx: DatabaseExecutor) {
   const where: Prisma.productWhereInput = { company_id: companyId, OR: [

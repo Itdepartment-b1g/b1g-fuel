@@ -78,8 +78,8 @@ test("invalid hub input returns 400 before database access, including forged aud
     [controller.update_hub, { id: hubId }], [controller.update_hub, { id: hubId, company_id: otherCompany }],
     [controller.update_hub, { id: hubId, created_by: actor }], [controller.update_hub, { id: hubId, name: "" }],
     [controller.update_hub, { id: hubId, is_active: "true" }], [controller.update_hub, { id: "invalid", name: "Hub" }],
-    [controller.assign_hub, { location_id: hubId, user_company_id: "invalid" }],
-    [controller.assign_hub, { location_id: hubId, user_company_id: actor, assigned_by: actor }],
+    [controller.assign_hub, { facility_id: hubId, user_company_id: "invalid" }],
+    [controller.assign_hub, { facility_id: hubId, user_company_id: actor, assigned_by: actor }],
   ];
   for (const [handler, body] of cases) {
     const { res, state } = response();
@@ -95,13 +95,13 @@ test("invalid hub queries, sorting, and pagination return 400", async () => {
     [controller.list_hub, { page_size: "13" }], [controller.list_hub, { sort_by: "created_by" }],
     [controller.list_hub, { filters: "invalid-json" }],
     [controller.list_by_id_hub, { id: ["invalid"] }], [controller.delete_hub, {}],
-    [controller.list_hub_assignment, { location_id: "invalid" }], [controller.unassign_hub, { location_id: hubId }],
-    [controller.list_hub_assignment_history, { location_id: "invalid" }],
-    [controller.list_hub_assignment_history, { location_id: hubId, search: [] }],
-    [controller.list_hub_assignment_history, { location_id: hubId, page: "0" }],
-    [controller.list_hub_assignment, { location_id: hubId, search: ["invalid"] }],
-    [controller.list_hub_assignment, { location_id: hubId, search: "a".repeat(161) }],
-    [controller.get_hub_assignment_option, { location_id: hubId, search: [] }],
+    [controller.list_hub_assignment, { facility_id: "invalid" }], [controller.unassign_hub, { facility_id: hubId }],
+    [controller.list_hub_assignment_history, { facility_id: "invalid" }],
+    [controller.list_hub_assignment_history, { facility_id: hubId, search: [] }],
+    [controller.list_hub_assignment_history, { facility_id: hubId, page: "0" }],
+    [controller.list_hub_assignment, { facility_id: hubId, search: ["invalid"] }],
+    [controller.list_hub_assignment, { facility_id: hubId, search: "a".repeat(161) }],
+    [controller.get_hub_assignment_option, { facility_id: hubId, search: [] }],
   ];
   for (const [handler, query] of cases) {
     const { res, state } = response();

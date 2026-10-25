@@ -9,7 +9,7 @@ const query = (name: string, schema: object, required = false) => ({ name, in: "
 const error = { description: "Request failed", ...json(ref("Error")) };
 const errors = { "400": error, "401": error, "403": error, "404": error, "409": error, "500": error };
 const pagination = [query("page", { type: "integer", minimum: 1, default: 1 }), query("page_size", { type: "integer", enum: [10, 20, 50, 100] })];
-const locationId = query("location_id", uuid, true);
+const facilityId = query("facility_id", uuid, true);
 const name = { type: "string", minLength: 1, maxLength: 160 };
 const address = { type: "string", maxLength: 160 };
 const company = { type: "object", required: ["id", "name"], properties: { id: uuid, name: { type: "string" } } };
@@ -35,7 +35,7 @@ export const hubSchemas = {
     },
   },
   HubMutationResult: { type: "object", required: ["id", "message"], properties: { id: uuid, message: { type: "string" } } },
-  UnassignHubResult: { type: "object", required: ["location_id", "user_company_id", "message"], properties: { location_id: uuid, user_company_id: uuid, message: { type: "string" } } },
+  UnassignHubResult: { type: "object", required: ["facility_id", "user_company_id", "message"], properties: { facility_id: uuid, user_company_id: uuid, message: { type: "string" } } },
   Hub: {
     type: "object",
     required: ["id", "company_id", "company", "type", "name", "address", "is_active", "created_by", "created_by_name", "assigned_user_ids", "staff_count", "created_at", "updated_at"],
@@ -48,17 +48,17 @@ export const hubSchemas = {
   },
   HubAssignment: {
     type: "object",
-    required: ["id", "user_company_id", "location_id", "user", "roles", "assigned_by", "assigned_by_name", "assigned_at"],
+    required: ["id", "user_company_id", "facility_id", "user", "roles", "assigned_by", "assigned_by_name", "assigned_at"],
     properties: {
-      id: uuid, user_company_id: uuid, location_id: uuid, user, roles, assigned_by: uuid,
+      id: uuid, user_company_id: uuid, facility_id: uuid, user, roles, assigned_by: uuid,
       assigned_by_name: { type: "string", nullable: true }, assigned_at: { type: "string", format: "date-time" },
     },
   },
   HubAssignmentHistory: {
     type: "object",
-    required: ["id", "location_id", "user_company_id", "user_id", "name", "email", "assigned_by", "assigned_by_name", "assigned_at", "unassigned_at"],
+    required: ["id", "facility_id", "user_company_id", "user_id", "name", "email", "assigned_by", "assigned_by_name", "assigned_at", "unassigned_at"],
     properties: {
-      id: uuid, location_id: uuid, user_company_id: uuid, user_id: uuid,
+      id: uuid, facility_id: uuid, user_company_id: uuid, user_id: uuid,
       name: { type: "string" }, email: { type: "string", nullable: true },
       assigned_by: uuid, assigned_by_name: { type: "string", nullable: true },
       assigned_at: { type: "string", format: "date-time" },
@@ -77,8 +77,8 @@ export const hubSchemas = {
     properties: { id: uuid, name, address, is_active: { type: "boolean" } },
   },
   AssignHub: {
-    type: "object", additionalProperties: false, required: ["location_id", "user_company_id"],
-    properties: { location_id: uuid, user_company_id: uuid },
+    type: "object", additionalProperties: false, required: ["facility_id", "user_company_id"],
+    properties: { facility_id: uuid, user_company_id: uuid },
   },
 };
 
@@ -100,7 +100,7 @@ export const hubPaths = {
     },
     post: {
       tags: ["Hubs"], summary: "Create a company-owned hub", security: [{ session: [] }],
-      description: "Requires hubs.add. Creator is captured from the authenticated user. Location names are unique within a company, including warehouse names. Creating a hub does not assign staff.",
+      description: "Requires hubs.add. Creator is captured from the authenticated user. Facility names are unique within a company, including warehouse names. Creating a hub does not assign staff.",
       requestBody: body(ref("CreateHub")), responses: { "201": { description: "Hub created", ...json({ type: "object", properties: { hub: ref("Hub") } }) }, ...errors },
     },
     patch: {
@@ -135,7 +135,7 @@ export const hubPaths = {
     get: {
       tags: ["Hubs"], summary: "List unassigned company members", security: [{ session: [] }],
       description: "Requires company-level hubs.edit for this hub. Returns only members of the hub's company who are not already assigned. Search name or email. Sorted by user.created_at descending, with membership ID as the stable tie-breaker.",
-      parameters: [locationId, query("search", { type: "string", maxLength: 160 }), ...pagination],
+      parameters: [facilityId, query("search", { type: "string", maxLength: 160 }), ...pagination],
       responses: { "200": { description: "Eligible members", ...json({ type: "object", properties: {
         members: { type: "array", items: { type: "object", required: ["user_company_id", "user", "roles"], properties: { user_company_id: uuid, user, roles } } }, ...metadata,
       } }) }, ...errors },
@@ -145,7 +145,7 @@ export const hubPaths = {
     get: {
       tags: ["Hubs"], summary: "List assigned staff", security: [{ session: [] }],
       description: "Requires company-level hubs.edit for this hub. Search name or email. Sorted by user.created_at descending, with assignment ID as the stable tie-breaker.",
-      parameters: [locationId, query("search", { type: "string", maxLength: 160 }), ...pagination],
+      parameters: [facilityId, query("search", { type: "string", maxLength: 160 }), ...pagination],
       responses: { "200": { description: "Assignments", ...json({ type: "object", properties: { assignments: { type: "array", items: ref("HubAssignment") }, ...metadata } }) }, ...errors },
     },
     post: {
@@ -156,7 +156,7 @@ export const hubPaths = {
     delete: {
       tags: ["Hubs"], summary: "Unassign a staff member or agent", security: [{ session: [] }],
       description: "Requires company-level hubs.edit. Also allowed for an inactive hub. Historical transactions are unaffected.",
-      parameters: [locationId, query("user_company_id", uuid, true)],
+      parameters: [facilityId, query("user_company_id", uuid, true)],
       responses: { "200": { description: "Staff unassigned", ...json(ref("UnassignHubResult")) }, ...errors },
     },
   },
@@ -164,7 +164,7 @@ export const hubPaths = {
     get: {
       tags: ["Hubs"], summary: "List current and previous hub user assignments", security: [{ session: [] }],
       description: "Requires company-level hubs.edit. Includes assignment periods preserved after unassigning or company membership removal. Names and emails are snapshots from assignment time. Existing active assignments are backfilled; previously deleted assignments cannot be recovered. Newest-created users first.",
-      parameters: [locationId, query("search", { type: "string", maxLength: 160 }), ...pagination],
+      parameters: [facilityId, query("search", { type: "string", maxLength: 160 }), ...pagination],
       responses: { "200": { description: "Assignment history", ...json({ type: "object", required: ["assignments", "total", "page", "page_size"], properties: {
         assignments: { type: "array", items: ref("HubAssignmentHistory") }, ...metadata,
       } }) }, ...errors },

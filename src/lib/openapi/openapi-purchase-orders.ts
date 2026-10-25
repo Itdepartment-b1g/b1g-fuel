@@ -49,7 +49,7 @@ export const purchaseOrderSchemas = {
   },
   PurchaseOrder: {
     type: "object",
-    required: ["id", "company_id", "supplier_id", "location_id", "status", "items"],
+    required: ["id", "company_id", "supplier_id", "facility_id", "status", "items"],
     properties: {
       id,
       status: {

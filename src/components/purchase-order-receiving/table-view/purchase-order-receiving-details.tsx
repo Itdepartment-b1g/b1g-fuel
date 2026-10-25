@@ -25,7 +25,7 @@ export function PurchaseOrderReceivingDetails({ receipt }: { receipt: ReceivingS
       <div><dt className="text-muted-foreground">Created at</dt><dd className="mt-1 font-medium">{formatDateTime(receipt.created_at)}</dd></div>
       <div><dt className="text-muted-foreground">Posted by</dt><dd className="mt-1 font-medium">{receipt.posted_by_name || "—"}</dd></div>
       <div><dt className="text-muted-foreground">Posted at</dt><dd className="mt-1 font-medium">{formatDateTime(receipt.posted_at)}</dd></div>
-      <div className="sm:col-span-2"><dt className="text-muted-foreground">Warehouse address</dt><dd className="mt-1 font-medium break-words">{receipt.location.address || "—"}</dd></div>
+      <div className="sm:col-span-2"><dt className="text-muted-foreground">Warehouse address</dt><dd className="mt-1 font-medium break-words">{receipt.facility.address || "—"}</dd></div>
       <div className="sm:col-span-2 lg:col-span-4"><dt className="text-muted-foreground">Notes</dt><dd className="mt-1 font-medium whitespace-pre-wrap break-words">{receipt.notes || "—"}</dd></div>
     </dl>
     <ReceiptLines lines={receipt.items} />

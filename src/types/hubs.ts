@@ -29,19 +29,19 @@ export interface HubMember {
 }
 export interface HubAssignment extends HubMember {
   id: string;
-  location_id: string;
+  facility_id: string;
   assigned_by: string;
   assigned_by_name: string | null;
   assigned_at: string;
 }
 export interface HubAssignmentsPage extends ApiPaginationMetadata { assignments: HubAssignment[] }
 export interface HubAssignmentOptions extends ApiPaginationMetadata { members: HubMember[] }
-export interface AssignHubInput { location_id: string; user_company_id: string }
+export interface AssignHubInput { facility_id: string; user_company_id: string }
 export interface HubAssignmentResponse { assignment: HubAssignment }
 export interface UnassignHubResponse extends AssignHubInput { message: string }
 export interface HubAssignmentHistory {
   id: string;
-  location_id: string;
+  facility_id: string;
   user_company_id: string;
   user_id: string;
   name: string;

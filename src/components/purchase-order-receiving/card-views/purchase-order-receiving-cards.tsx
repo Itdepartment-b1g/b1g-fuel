@@ -63,7 +63,7 @@ export function ReceivingCards({
           </div>
           <h2 className="break-words font-semibold">{receipt.supplier.name}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {receipt.location.name} · {receipt.company.name}
+            {receipt.facility.name} · {receipt.company.name}
           </p>
           <dl className="mt-3 space-y-1 text-sm">
             <div className="flex justify-between gap-3">

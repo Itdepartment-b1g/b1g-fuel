@@ -22,7 +22,7 @@ export function CreateCompanyDialog({
   onSaved,
 }: {
   onClose: () => void;
-  onSaved: (company: CompanySummary, detail?: { locationName?: string }) => void;
+  onSaved: (company: CompanySummary, detail?: { facilityName?: string }) => void;
 }) {
   const router = useRouter();
   const { mutationStatus, mutationError } = useAppSelector(selectCompany);
@@ -42,7 +42,7 @@ export function CreateCompanyDialog({
         <DialogHeader>
           <DialogTitle>Create a company</DialogTitle>
           <DialogDescription>
-            Add a company. The warehouse name and address only create a warehouse location for that company. They are not fields on the company record.
+            Add a company. The warehouse name and address only create a warehouse facility for that company. They are not fields on the company record.
           </DialogDescription>
         </DialogHeader>
         <CreateCompanyFields onCancel={onClose} onSaved={onSaved} />
@@ -55,7 +55,7 @@ function CreateCompanyFields({
   onSaved,
   onCancel,
 }: {
-  onSaved: (company: CompanySummary, detail?: { locationName?: string }) => void;
+  onSaved: (company: CompanySummary, detail?: { facilityName?: string }) => void;
   onCancel: () => void;
 }) {
   const dispatch = useAppDispatch();
@@ -71,13 +71,13 @@ function CreateCompanyFields({
     if (busy.current) return;
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") ?? "").trim();
-    const location_name = String(form.get("location_name") ?? "").trim();
-    const location_address = String(form.get("location_address") ?? "").trim();
+    const facility_name = String(form.get("facility_name") ?? "").trim();
+    const facility_address = String(form.get("facility_address") ?? "").trim();
     if (!name) {
       setError("Enter a company name.");
       return;
     }
-    if (withWarehouse && !location_name) {
+    if (withWarehouse && !facility_name) {
       setError("Enter a warehouse name.");
       return;
     }
@@ -88,10 +88,10 @@ function CreateCompanyFields({
         createCompany({
           name,
           ...(form.get("code") ? { code: String(form.get("code")).trim().toUpperCase() } : {}),
-          ...(withWarehouse && location_name ? { location_name, location_address } : {}),
+          ...(withWarehouse && facility_name ? { facility_name, facility_address } : {}),
         }),
       ).unwrap();
-      onSaved(result.company, { locationName: result.location?.name });
+      onSaved(result.company, { facilityName: result.facility?.name });
     } catch (failure) {
       toast.error(toastErrorMessage(failure, "Could not create the company."));
     } finally {
@@ -127,23 +127,23 @@ function CreateCompanyFields({
           <span>
             Does this company need a warehouse?
             <span className="mt-1 block text-xs font-normal text-muted-foreground">
-              Check this only when this company needs a warehouse. It adds a warehouse location. The company itself stays the company record.
+              Check this only when this company needs a warehouse. It adds a warehouse facility. The company itself stays the company record.
             </span>
           </span>
         </label>
         {withWarehouse && (
           <fieldset className="space-y-4 rounded-lg border p-4">
-            <legend className="px-1 text-sm font-medium">Warehouse location</legend>
+            <legend className="px-1 text-sm font-medium">Warehouse facility</legend>
             <p className="text-xs text-muted-foreground">
-              Saved as a location with type warehouse, linked to this company.
+              Saved as a facility with type warehouse, linked to this company.
             </p>
             <label className="block space-y-2 text-sm font-medium">
               Warehouse name <span className="text-destructive">*</span>
-              <Input name="location_name" maxLength={160} required placeholder="Central Warehouse" disabled={pending} />
+              <Input name="facility_name" maxLength={160} required placeholder="Central Warehouse" disabled={pending} />
             </label>
             <label className="block space-y-2 text-sm font-medium">
               Warehouse address
-              <Input name="location_address" maxLength={160} placeholder="Optional address" disabled={pending} />
+              <Input name="facility_address" maxLength={160} placeholder="Optional address" disabled={pending} />
             </label>
           </fieldset>
         )}

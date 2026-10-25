@@ -114,7 +114,7 @@ export function ReceivePurchaseOrderDialog({
         <DialogHeader>
           <DialogTitle>Receive order</DialogTitle>
           <DialogDescription>
-            {order.supplier.name} · {order.location.name}. Enter the quantity that arrived. The order status updates when this receipt is posted.
+            {order.supplier.name} · {order.facility.name}. Enter the quantity that arrived. The order status updates when this receipt is posted.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

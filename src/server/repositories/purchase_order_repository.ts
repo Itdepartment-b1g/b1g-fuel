@@ -16,7 +16,7 @@ import type {
 
 const include = {
   company: { select: { id: true, name: true } },
-  location: { select: { id: true, name: true, address: true } },
+  facility: { select: { id: true, name: true, address: true } },
   supplier: { select: { id: true, name: true } },
   items: {
     orderBy: { id: "asc" as const },
@@ -70,7 +70,7 @@ type Header = Omit<CreatePurchaseOrderInput, "company_id" | "estimated_delivery_
 };
 
 export type SaveFailure =
-  | "invalid_location"
+  | "invalid_facility"
   | "many_warehouses"
   | "invalid_supplier"
   | "invalid_line"
@@ -91,8 +91,8 @@ function present(record: Row, names: Map<string, string>): ListPurchaseOrderResp
     id: record.id,
     company_id: record.company_id,
     company: record.company,
-    location_id: record.location_id,
-    location: record.location,
+    facility_id: record.facility_id,
+    facility: record.facility,
     supplier_id: record.supplier_id,
     supplier: record.supplier,
     purchase_order_no: record.purchase_order_no,
@@ -245,13 +245,13 @@ async function resolve_lines(
 }
 
 async function company_warehouse(tx: DatabaseExecutor, companyId: string) {
-  const warehouses = await tx.location.findMany({
+  const warehouses = await tx.facility.findMany({
     where: { company_id: companyId, type: "warehouse", is_active: true },
     select: { id: true },
     orderBy: [{ created_at: "asc" }, { id: "asc" }],
     take: 2,
   });
-  if (!warehouses.length) return "invalid_location" as const;
+  if (!warehouses.length) return "invalid_facility" as const;
   if (warehouses.length > 1) return "many_warehouses" as const;
   return warehouses[0].id;
 }
@@ -280,7 +280,7 @@ export async function list_purchase_orders(
     fields: {
       company: (values) => ({ company_id: { in: values } }),
       supplier: (values) => ({ supplier_id: { in: values } }),
-      location: (values) => ({ location_id: { in: values } }),
+      facility: (values) => ({ facility_id: { in: values } }),
     },
     date: (range) => ({ created_at: range }),
     status: {
@@ -296,7 +296,7 @@ export async function list_purchase_orders(
         (filter) => ({ notes: filter }),
         (filter) => ({ payment_terms: filter }),
         (filter) => ({ supplier: { name: filter } }),
-        (filter) => ({ location: { name: filter } }),
+        (filter) => ({ facility: { name: filter } }),
         (filter) => ({ company: { name: filter } }),
         (filter) => ({ purchase_order_no: filter }),
       ],
@@ -340,7 +340,7 @@ export function get_purchase_order_filter_data(access: RecordAccess) {
       status: true,
       company: { select: { id: true, name: true } },
       supplier: { select: { id: true, name: true } },
-      location: { select: { id: true, name: true } },
+      facility: { select: { id: true, name: true } },
     },
     orderBy: [{ created_at: "desc" }, { id: "asc" }],
   });
@@ -352,18 +352,18 @@ async function write_order(
   actor: string,
   id?: string,
 ) {
-  const location_id = await validate_header(tx, input);
+  const facility_id = await validate_header(tx, input);
   if (
-    location_id === "invalid_location" ||
-    location_id === "many_warehouses" ||
-    location_id === "invalid_supplier"
+    facility_id === "invalid_facility" ||
+    facility_id === "many_warehouses" ||
+    facility_id === "invalid_supplier"
   )
-    return location_id;
+    return facility_id;
   const items = await resolve_lines(tx, input.company_id, input.supplier_id, input.lines, actor);
   if (!Array.isArray(items)) return items;
   const data = {
     company_id: input.company_id,
-    location_id,
+    facility_id,
     supplier_id: input.supplier_id,
     payment_terms: input.payment_terms ?? "",
     payment_method: input.payment_method,

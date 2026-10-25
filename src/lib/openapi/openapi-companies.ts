@@ -30,7 +30,7 @@ export const companySchemas = {
       "created_at",
       "updated_at",
       "member_count",
-      "location_count",
+      "facility_count",
       "is_warehouse",
       "warehouse_name",
       "warehouse_address",
@@ -48,13 +48,13 @@ export const companySchemas = {
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
       member_count: { type: "integer", minimum: 0, readOnly: true },
-      location_count: { type: "integer", minimum: 0, readOnly: true },
+      facility_count: { type: "integer", minimum: 0, readOnly: true },
       is_warehouse: { type: "boolean", readOnly: true },
       warehouse_name: { type: "string", nullable: true, readOnly: true },
       warehouse_address: { type: "string", nullable: true, readOnly: true },
     },
   },
-  CompanyLocation: {
+  CompanyFacility: {
     type: "object",
     required: ["id", "name", "type", "address"],
     properties: {
@@ -79,9 +79,9 @@ export const companySchemas = {
     required: ["company"],
     properties: {
       company: ref("Company"),
-      location: {
+      facility: {
         nullable: true,
-        allOf: [ref("CompanyLocation")],
+        allOf: [ref("CompanyFacility")],
       },
     },
   },
@@ -92,15 +92,15 @@ export const companySchemas = {
     properties: {
       name,
       code,
-      location_name: {
+      facility_name: {
         type: "string",
         maxLength: 160,
         description: "Optional default warehouse name",
       },
-      location_address: {
+      facility_address: {
         type: "string",
         maxLength: 160,
-        description: "Optional warehouse address when location_name is set",
+        description: "Optional warehouse address when facility_name is set",
       },
     },
   },
