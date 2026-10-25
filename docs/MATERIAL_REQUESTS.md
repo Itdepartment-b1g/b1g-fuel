@@ -1,14 +1,20 @@
 # Material requests
 
-Open **Material requests** to create a draft for a hub, choose a linked supplier, and add products from that supplier's read-only catalog. Catalog search and pagination return only IDs, product labels and base units. Products are not copied into the requesting company's catalog, and costs, purchase orders and unrelated supplier records remain private.
+Open **Material requests** to create a draft for a hub, choose a linked supplier, and add products from that supplier's read-only catalog. Catalog search and pagination return IDs, product labels, brand, variant, product type, and base units. Products are not copied into the requesting company's catalog, and costs, purchase orders and unrelated supplier records remain private.
+
+Create and Edit show selected materials in the shared TableView with **Brand**, **Variant**, **Unit of Measure**, and editable **Qty** columns, plus a Remove action. Those columns wrap inside the dialog so the dialog scrolls vertically only. The view dialog uses the same fitting layout for requested materials. The variant column reads as the variant name and product type, for example `Premium (Fuel)`. Brand, variant, and product type come from separate API fields, preserving names that contain slashes. Quantity limits and validation remain unchanged. Draft editing uses current brand, variant, and product type names; submitted `product_label` snapshots remain unchanged.
 
 ## Workflow
+
+The list uses the shared SearchFilterBar for request-number/hub/supplier search, creation-date presets or a custom Manila date range, request status, and request-number/hub/supplier conditions. Values within one condition field match any choice; different fields must all match. Filter choices and counts include only requests the user can view. Filtering and sorting happen on the server before pagination. Changes to search, filters, sorting, or page size reset the list to page 1.
+
+The table uses shared column menus for Default, Ascending, Descending, and Freeze/Unfreeze. Reviewed by supports freezing only because it is derived from event history. The table/card switch displays the same API page and actions in either view. Page sizes use the shared 10/20/50/100 choices.
 
 `draft → submitted → approved / rejected`
 
 The create form offers **Save as draft** and **Submit request**. Drafts remain editable without a request number. Submit request creates and submits in one transaction, assigns a number, and makes the request available for supplier review. Submission requires requesting-side edit permission as well as add permission; failed submission leaves the form open without creating an extra draft.
 
-The table shows **View draft** for drafts and **View** after submission, plus Approve and Reject for requests the current user can review. **Reviewed by** shows **Awaiting review** while submitted, then the approving or rejecting user's name after review. Each action opens the material request preview; Approve and Reject also open their confirmation form with an optional note. Actions run only after confirmation.
+The table shows **View draft** for drafts and **View** after submission, plus Approve and Reject for requests the current user can review. **Reviewed by** shows **Awaiting review** while submitted, then the approving or rejecting user's name after review. The preview shows MR details and the requested-items table; activity history is in the separate Timeline dialog. Clicking Approve or Reject in the preview opens a confirmation dialog with the effects of the action, a required acknowledgment checkbox, and an optional note. Failed requests keep the confirmation open for retry.
 
 The requesting side can edit drafts, submit drafts, or cancel drafts only. Supplier reviewers can approve or reject submitted requests. Approval and rejection accept an optional note. Approval accepts all requested quantities and assigns a warehouse owned by the supplying company. Approved/rejected/cancelled requests cannot be edited or cancelled. Partial approval, dispatch, receiving, inventory movements and hub-to-hub transfers are future work.
 
@@ -16,7 +22,7 @@ Supplier users cannot see drafts, including drafts cancelled without submission.
 
 ## Ownership and permissions
 
-`material_request` stores both company IDs, the requesting hub, the supply relationship and an optional supplying warehouse. The server derives the requesting company from the hub and validates the active directed relationship. Products must belong to the supplier. Warehouse assignment is required at approval.
+`material_request` stores both company IDs, the requesting hub, the supply relationship and an optional supplying warehouse. The server derives the requesting company from the hub and validates the active directed relationship. Products must belong to the supplier. Approval automatically uses the reviewer's single assigned active warehouse in the supplying company, or that company's only eligible active warehouse. The name appears in the preview and confirmation. Missing or ambiguous warehouses block approval with a setup message; rejection remains available. A supplied warehouse ID must match the automatically resolved warehouse, preventing approval with an outdated preview.
 
 Configure the **Material requests** page and permissions in roles/memberships. Existing roles are not automatically granted access. Super Admin already has access. `materialRequests.view`, `.add`, and `.edit` govern reads, draft creation, and workflow changes. No deletion endpoint is provided.
 

@@ -21,6 +21,15 @@ const MARK_COLOR = {
   neutral: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
+export function TimelineLegend({ entries }: { entries: readonly TimelineEntry[] }) {
+  const kinds = [...new Map(entries.map((entry) => [entry.title, entry])).values()];
+  return <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Event colors">
+    {kinds.map((entry) => <li key={entry.title} className="inline-flex items-center gap-1.5">
+      <span className={`size-2.5 rounded-full border ${MARK_COLOR[entry.tone ?? "neutral"]}`} aria-hidden="true" />{entry.title}
+    </li>)}
+  </ul>;
+}
+
 export function Timeline({ entries }: { entries: readonly TimelineEntry[] }) {
   if (!entries.length)
     return <p className="text-sm text-muted-foreground">No activity yet.</p>;

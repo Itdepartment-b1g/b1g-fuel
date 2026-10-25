@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Provider } from "react-redux";
 import { makeStore } from "@/lib/store/store";
-import { actionMaterialRequest, createMaterialRequest, getMaterialRequestCatalog, listMaterialRequest } from "@/lib/store/material-requests-slice";
+import { actionMaterialRequest, createMaterialRequest, getMaterialRequestCatalog, getMaterialRequestFilterOption, listMaterialRequest } from "@/lib/store/material-requests-slice";
 import { RequestProductPicker } from "@/components/material-requests/request-product-picker";
 import type { MaterialRequest } from "@/types/material-requests";
 import { allocate_request_number } from "@/server/repositories/material_requests_repository";
@@ -13,6 +13,10 @@ import type { TableAction } from "@/components/common/table/table-view";
 import { materialRequestProgressEntries } from "@/components/material-requests/timeline-entries";
 import { MaterialRequestItems } from "@/components/material-requests/table-view/material-request-items";
 import { Timeline } from "@/components/common/timeline/timeline";
+import { MaterialRequestsCards } from "@/components/material-requests/card-views/material-requests-cards";
+import { MATERIAL_REQUEST_FILTER_DEFAULTS, MATERIAL_REQUEST_FILTER_OPTIONS } from "@/utils/material-request-filters";
+import { createQuickFilterState } from "@/utils/quick-filter";
+import { list_material_request as listMaterialRequestController } from "@/server/controllers/material_requests_controller";
 
 test("material request row actions show review choices only with permission and pass the selected request", () => {
   const row = { id: "request", request_no: "MR-BFD-202610-0000001", status: "submitted", created_at: "2026-10-25T00:00:00Z", requesting_hub: { name: "Manila hub" }, requesting_company: { name: "B1G Fuel Distribution" }, supplying_company: { name: "Supplier" }, permissions: { edit: false, submit: false, cancel: false, review: true } } as MaterialRequest;
@@ -27,6 +31,11 @@ test("material request row actions show review choices only with permission and 
   assert.match(html, />Reject<\/button>/);
   assert.match(html, />View<\/button>/);
   assert.match(html, />Timeline<\/button>/);
+  for (const header of ["Request number", "Requesting hub", "Supplier", "Status", "Reviewed by", "Created at"]) assert.ok(html.includes(`aria-label="${header} column options"`));
+  const cards = renderToStaticMarkup(<MaterialRequestsCards rows={[row]} onView={view} onApprove={approve} onReject={reject} onTimeline={timeline} />);
+  assert.match(cards, /MR-BFD-202610-0000001/);
+  assert.match(cards, /Awaiting review/);
+  assert.match(cards, /Actions for MR-BFD-202610-0000001/);
   const actions = table.props.actions(row) as TableAction<MaterialRequest>[];
   actions.forEach((action) => action.onSelect(row));
   assert.deepEqual(selected, ["approve", "reject", "view", "timeline"]);
@@ -37,6 +46,54 @@ test("material request row actions show review choices only with permission and 
   assert.match(readOnly, />Timeline<\/button>/);
   row.status = "draft";
   assert.match(renderToStaticMarkup(table), />View draft<\/button>/);
+});
+
+test("MR list serializes shared filters and sorting, and fetches authenticated filter choices", async () => {
+  const original = globalThis.fetch;
+  const store = makeStore();
+  const filters = createQuickFilterState(MATERIAL_REQUEST_FILTER_DEFAULTS);
+  filters.status = "submitted";
+  const query = { page: 2, page_size: 20, search: "Manila", filters, sort_by: "request_no", sort_order: "asc" as const };
+  try {
+    globalThis.fetch = async (url, init) => {
+      assert.equal(init?.credentials, "include");
+      const parsed = new URL(String(url), "http://localhost");
+      assert.equal(parsed.searchParams.get("sort_by"), "request_no");
+      assert.equal(parsed.searchParams.get("sort_order"), "asc");
+      assert.equal(parsed.searchParams.get("page"), "2");
+      assert.deepEqual(JSON.parse(parsed.searchParams.get("filters")!), filters);
+      return new Response(JSON.stringify({ requests: [], total: 0, page: 1, page_size: 20 }));
+    };
+    await store.dispatch(listMaterialRequest(query)).unwrap();
+    assert.deepEqual(store.getState().materialRequests.list.query, query);
+    globalThis.fetch = async (url, init) => {
+      assert.equal(url, "/api/material-requests/filter-options");
+      assert.equal(init?.credentials, "include");
+      return new Response(JSON.stringify(MATERIAL_REQUEST_FILTER_OPTIONS));
+    };
+    await store.dispatch(getMaterialRequestFilterOption()).unwrap();
+    assert.deepEqual(store.getState().materialRequests.filterOptions.data, MATERIAL_REQUEST_FILTER_OPTIONS);
+  } finally { globalThis.fetch = original; }
+});
+
+test("MR list rejects unsupported sorting and invalid shared filters before querying the database", async () => {
+  const filters = createQuickFilterState(MATERIAL_REQUEST_FILTER_DEFAULTS);
+  const queries = [
+    { sort_by: "reviewed_by", sort_order: "asc" },
+    { sort_by: "created_at", sort_order: "sideways" },
+    { filters: "not-json" },
+    { filters: JSON.stringify({ ...filters, status: "unknown" }) },
+    { filters: JSON.stringify({ ...filters, conditions: [{ id: "bad", field: "hub", value: "not-a-uuid" }] }) },
+    { filters: JSON.stringify({ ...filters, date: { preset: "custom", from: "2020-10-99", to: "" } }) },
+  ];
+  for (const query of queries) {
+    let code = 0;
+    let body: { error?: string } = {};
+    const response = { locals: { access: { userId: "actor", superAdmin: true, companyIds: [], grants: [], pages: [] } }, status(value: number) { code = value; return this; }, json(value: { error?: string }) { body = value; return this; } };
+    await listMaterialRequestController({ query } as unknown as Parameters<typeof listMaterialRequestController>[0], response as unknown as Parameters<typeof listMaterialRequestController>[1]);
+    assert.equal(code, 400);
+    assert.ok(body.error);
+  }
 });
 
 test("request numbers use company initials and count per company and Manila month", async () => {
@@ -108,7 +165,7 @@ test("create sends draft or submit intent in one authenticated request", async (
   } finally { globalThis.fetch = original; }
 });
 
-test("material requests reuse TableView expansion for materials, notes and timeline", () => {
+test("material request previews show details and materials without the separate timeline", () => {
   const record = {
     id: "request", request_no: "MR-BFD-202610-0000001", status: "submitted",
     created_at: "2026-10-25T00:00:00Z", created_by_name: "Request creator", submitted_at: "2026-10-25T01:00:00Z", needed_at: "2026-10-26T00:00:00Z",
@@ -122,9 +179,10 @@ test("material requests reuse TableView expansion for materials, notes and timel
   assert.match(collapsed, /aria-label="Expand row request" aria-expanded="false"/);
   assert.doesNotMatch(collapsed, /Premium fuel|Deliver before noon|Urgent delivery/);
   const details = renderToStaticMarkup(table.props.expandedRow(record));
-  for (const text of ["Manila hub", "Supplying company", "Awaiting assignment", "Request creator", "Deliver before noon", "Requested materials", "Premium fuel", "12.5", "Timeline", "Reviewer", "Urgent delivery"]) {
+  for (const text of ["Manila hub", "Supplying company", "Awaiting assignment", "Request creator", "Deliver before noon", "Requested materials", "Premium fuel", "12.5"]) {
     assert.ok(details.includes(text), `Missing request detail: ${text}`);
   }
+  assert.doesNotMatch(details, /Timeline|Reviewer|Urgent delivery/);
   record.needed_at = null;
   record.submitted_at = null;
   record.notes = "";
@@ -138,13 +196,16 @@ test("material picker renders paginated supplier choices and keeps selected item
   const store = makeStore();
   const query = { hub_id: "hub", supplier_id: "supplier", search: "", page: 1, page_size: 10 };
   store.dispatch(getMaterialRequestCatalog.pending("catalog", query));
-  store.dispatch(getMaterialRequestCatalog.fulfilled({ products: [{ id: "fuel", label: "Brand / Premium / Fuel", unit_id: "litre", unit_label: "L" }], total: 20, page: 1, page_size: 10 }, "catalog", query));
+  store.dispatch(getMaterialRequestCatalog.fulfilled({ products: [{ id: "fuel", label: "Brand / Premium / Fuel", brand_name: "Brand", variant_name: "Premium", product_type_name: "Fuel", unit_id: "litre", unit_label: "L" }], total: 20, page: 1, page_size: 10 }, "catalog", query));
   function render(supplierId = "supplier") {
-    return renderToStaticMarkup(<Provider store={store}><RequestProductPicker hubId="hub" supplierId={supplierId} disabled={false} onChange={() => {}} items={[{ product_id: "other-page", label: "Other selected material", unit_label: "L", requested_qty: "10" }]} /></Provider>);
+    return renderToStaticMarkup(<Provider store={store}><RequestProductPicker hubId="hub" supplierId={supplierId} disabled={false} onChange={() => {}} items={[{ product_id: "other-page", label: "Other selected material", brand_name: "Other brand", variant_name: "Other selected material", product_type_name: "Fuel", unit_label: "L", requested_qty: "10" }]} /></Provider>);
   }
   const html = render();
   assert.match(html, /Brand \/ Premium \/ Fuel/);
-  assert.match(html, /Other selected material/);
+  assert.match(html, /Other selected material \(Fuel\)/);
+  for (const header of ["Brand", "Variant", "Unit of Measure", "Qty"]) assert.ok(html.includes(`>${header}<`));
+  assert.match(html, /Other brand/);
+  assert.match(html, /value="10"/);
   assert.match(html, /Next/);
   assert.equal((html.match(/>Add</g) ?? []).length, 1);
   assert.doesNotMatch(render("another-supplier"), /Brand \/ Premium \/ Fuel/);
@@ -183,7 +244,7 @@ test("MR progress includes a materials table at each step and approved quantitie
 });
 
 test("MR material tables and cards paginate and handle empty materials", () => {
-  const items = Array.from({ length: 11 }, (_, index) => ({ id: String(index), product_id: "product", unit_id: "unit", product_label: `Material ${index + 1} end`, unit_label: "L", requested_qty: "10", approved_qty: null }));
+  const items = Array.from({ length: 11 }, (_, index) => ({ id: String(index), product_id: "product", unit_id: "unit", product_label: `Material ${index + 1} end`, brand_name: "Brand", variant_name: "Variant", product_type_name: "Fuel", unit_label: "L", requested_qty: "10", approved_qty: null }));
   for (const view of ["table", "cards"] as const) {
     const html = renderToStaticMarkup(<MaterialRequestItems items={items} view={view} />);
     assert.match(html, /Material 10 end/);

@@ -42,6 +42,8 @@ export interface TableViewProps<T> {
     | readonly TableAction<T>[]
     | ((row: T) => readonly TableAction<T>[]);
   actionsDisabled?: boolean;
+  /** Wrap columns inside the parent width instead of scrolling sideways. */
+  fit?: boolean;
   className?: string;
 }
 
@@ -66,6 +68,7 @@ export function TableView<T>({
   expansionMode = "single",
   actions,
   actionsDisabled = false,
+  fit = false,
   className,
 }: TableViewProps<T>) {
   const id = useId();
@@ -177,12 +180,19 @@ export function TableView<T>({
       : "Default";
   return (
     <div
-      className={cn("relative w-full min-w-0 overflow-x-auto", className)}
+      className={cn(
+        "relative w-full min-w-0",
+        fit ? "overflow-hidden" : "overflow-x-auto",
+        className,
+      )}
       aria-busy={loading}
     >
       <table
         ref={table}
-        className="w-max min-w-full border-separate border-spacing-0 text-sm"
+        className={cn(
+          "border-separate border-spacing-0 text-sm",
+          fit ? "w-full table-fixed" : "w-max min-w-full",
+        )}
       >
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -260,6 +270,7 @@ export function TableView<T>({
                 <TableColumnHeader
                   key={column.id}
                   column={column}
+                  wrap={fit}
                   pinned={pinned}
                   sorted={
                     selected
@@ -281,6 +292,7 @@ export function TableView<T>({
               <TableColumnHeader
                 column={{ id: "actions", header: "Actions" }}
                 align="right"
+                wrap={fit}
               />
             )}
           </tr>
@@ -328,6 +340,7 @@ export function TableView<T>({
                   actions={available}
                   showActions={showActions}
                   actionsDisabled={actionsDisabled}
+                  wrap={fit}
                   columnSpan={span}
                 />
               );

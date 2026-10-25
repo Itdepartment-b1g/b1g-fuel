@@ -1,13 +1,16 @@
 import type { Prisma } from "@/generated/prisma/client";
 import type { DatabaseExecutor } from "@/server/lib/database";
 import { paginationMetadata, type Pagination } from "@/server/lib/pagination";
+import { build_filter } from "@/server/lib/filter";
+import { build_sort, type Sorting } from "@/server/lib/sorting";
+import type { QuickFilterState } from "@/types/quick-filter";
 
 const include = {
   requesting_company: { select: { id: true, name: true } },
   supplying_company: { select: { id: true, name: true } },
   requesting_hub: { select: { id: true, name: true } },
   supplying_warehouse: { select: { id: true, name: true } },
-  items: { orderBy: { id: "asc" } },
+  items: { orderBy: { id: "asc" }, include: { product: { select: { variant: { select: { name: true, brand: { select: { name: true } } } }, product_type: { select: { name: true } } } } } },
   events: { orderBy: [{ created_at: "asc" }, { id: "asc" }] },
 } satisfies Prisma.material_requestInclude;
 export type RequestRecord = Prisma.material_requestGetPayload<{ include: typeof include }>;
@@ -18,7 +21,7 @@ export async function serialize_request(row: RequestRecord, tx: DatabaseExecutor
   return { ...row, created_by_name: names.get(row.created_by) ?? null,
     created_at: row.created_at.toISOString(), updated_at: row.updated_at.toISOString(),
     needed_at: row.needed_at?.toISOString() ?? null, submitted_at: row.submitted_at?.toISOString() ?? null,
-    items: row.items.map((item) => ({ ...item, requested_qty: item.requested_qty.toString(), approved_qty: item.approved_qty?.toString() ?? null })),
+    items: row.items.map(({ product, ...item }) => ({ ...item, brand_name: product.variant.brand.name, variant_name: product.variant.name, product_type_name: product.product_type.name, requested_qty: item.requested_qty.toString(), approved_qty: item.approved_qty?.toString() ?? null })),
     events: row.events.map((event) => ({ ...event, created_at: event.created_at.toISOString(), created_by_name: names.get(event.created_by) ?? null })),
   };
 }
@@ -26,11 +29,35 @@ export async function serialize_request(row: RequestRecord, tx: DatabaseExecutor
 export function get_request(id: string, tx: DatabaseExecutor) {
   return tx.material_request.findUnique({ where: { id }, include });
 }
-export async function list_material_request(where: Prisma.material_requestWhereInput, pagination: Pagination, tx: DatabaseExecutor) {
-  const rows = await tx.material_request.findMany({ where, include, orderBy: [{ created_at: "desc" }, { id: "asc" }], skip: pagination.skip, take: pagination.take });
+export async function list_material_request(visibility: Prisma.material_requestWhereInput, pagination: Pagination, tx: DatabaseExecutor, search = "", sorting?: Sorting, filters?: QuickFilterState) {
+  const where = build_filter<Prisma.material_requestWhereInput>(filters, {
+    where: visibility,
+    fields: {
+      request_no: (values) => ({ OR: values.map((value) => value === "draft" ? { request_no: null } : { request_no: { equals: value, mode: "insensitive" as const } }) }),
+      hub: (values) => ({ requesting_hub_id: { in: values } }),
+      supplier: (values) => ({ supplying_company_id: { in: values } }),
+    },
+    date: (range) => ({ created_at: range }),
+    status: { draft: { status: "draft" }, submitted: { status: "submitted" }, approved: { status: "approved" }, rejected: { status: "rejected" }, cancelled: { status: "cancelled" } },
+    search: { value: search, fields: [(value) => ({ request_no: value }), (value) => ({ requesting_hub: { name: value } }), (value) => ({ supplying_company: { name: value } })] },
+  });
+  const orderBy = build_sort<Prisma.material_requestOrderByWithRelationInput>(sorting, {
+    fields: {
+      request_no: (direction) => ({ request_no: { sort: direction, nulls: "last" } }),
+      requesting_hub: (direction) => ({ requesting_hub: { name: direction } }),
+      supplying_company: (direction) => ({ supplying_company: { name: direction } }),
+      status: (direction) => ({ status: direction }),
+      created_at: (direction) => ({ created_at: direction }),
+    },
+    default: { field: "created_at", direction: "desc" }, tieBreaker: { field: "id", order: { id: "asc" } },
+  });
+  const rows = await tx.material_request.findMany({ where, include, orderBy, skip: pagination.skip, take: pagination.take });
   const requests = [];
   for (const row of rows) requests.push(await serialize_request(row, tx));
   return { requests, ...paginationMetadata(await tx.material_request.count({ where }), pagination) };
+}
+export function get_material_request_filter_data(where: Prisma.material_requestWhereInput, tx: DatabaseExecutor) {
+  return tx.material_request.findMany({ where, select: { request_no: true, status: true, requesting_hub: { select: { id: true, name: true } }, supplying_company: { select: { id: true, name: true } } } });
 }
 export function get_request_location(id: string, tx: DatabaseExecutor) {
   return tx.location.findUnique({ where: { id }, include: { company: { select: { name: true } } } });
@@ -80,7 +107,7 @@ export function list_request_suppliers(companyId: string, tx: DatabaseExecutor) 
   return tx.company_supply_relationship.findMany({ where: { requesting_company_id: companyId, is_active: true }, select: { supplying_company: { select: { id: true, name: true } } }, orderBy: { supplying_company: { name: "asc" } } });
 }
 export function list_request_warehouses(companyId: string, tx: DatabaseExecutor) {
-  return tx.location.findMany({ where: { company_id: companyId, type: "warehouse" }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+  return tx.location.findMany({ where: { company_id: companyId, type: "warehouse", is_active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } });
 }
 export async function list_request_catalog(companyId: string, search: string, pagination: Pagination, tx: DatabaseExecutor) {
   const where: Prisma.productWhereInput = { company_id: companyId, OR: [
@@ -88,5 +115,5 @@ export async function list_request_catalog(companyId: string, search: string, pa
     { variant: { brand: { name: { contains: search, mode: "insensitive" } } } },
   ] };
   const rows = await tx.product.findMany({ where, include: { variant: { include: { brand: true } }, product_type: true, base_unit: true }, orderBy: [{ created_at: "desc" }, { id: "asc" }], skip: pagination.skip, take: pagination.take });
-  return { products: rows.map((product) => ({ id: product.id, label: `${product.variant.brand.name} / ${product.variant.name} / ${product.product_type.name}`, unit_id: product.base_unit_id, unit_label: product.base_unit.symbol })), ...paginationMetadata(await tx.product.count({ where }), pagination) };
+  return { products: rows.map((product) => ({ id: product.id, label: `${product.variant.brand.name} / ${product.variant.name} / ${product.product_type.name}`, brand_name: product.variant.brand.name, variant_name: product.variant.name, product_type_name: product.product_type.name, unit_id: product.base_unit_id, unit_label: product.base_unit.symbol })), ...paginationMetadata(await tx.product.count({ where }), pagination) };
 }

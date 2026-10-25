@@ -21,17 +21,20 @@ function TableRowCell<T>({
   row,
   pinned,
   style,
+  wrap,
 }: {
   column: TableColumn<T>;
   row: T;
   pinned: boolean;
   style?: CSSProperties;
+  wrap: boolean;
 }) {
   return (
     <td
       style={style}
       className={cn(
         rowCellClass,
+        wrap && "whitespace-normal break-words",
         pinned && "sticky z-10 border-r",
         column.className,
       )}
@@ -70,6 +73,7 @@ export function TableRow<T>({
   actions,
   showActions,
   actionsDisabled,
+  wrap = false,
   columnSpan,
 }: {
   row: T;
@@ -84,6 +88,7 @@ export function TableRow<T>({
   actions: readonly TableAction<T>[];
   showActions: boolean;
   actionsDisabled: boolean;
+  wrap?: boolean;
   columnSpan: number;
 }) {
   return (
@@ -114,11 +119,12 @@ export function TableRow<T>({
             row={row}
             pinned={pinned(column)}
             style={cellStyle(column)}
+            wrap={wrap}
           />
         ))}
         {showActions && (
           <td
-            className={cn(rowCellClass, "text-right whitespace-nowrap")}
+            className={cn(rowCellClass, "text-right", wrap ? "whitespace-normal" : "whitespace-nowrap")}
           >
             <div className="flex items-center justify-end gap-4">
               {actions.map((action) => {

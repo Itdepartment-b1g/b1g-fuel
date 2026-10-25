@@ -1,13 +1,15 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
 import type { MaterialRequest, MaterialRequestInput, CreateMaterialRequestInput, MaterialRequestAction, MaterialRequestsPage, RequestOptions, RequestCatalog } from "@/types/material-requests";
+import type { QuickFilterState } from "@/types/quick-filter";
+import type { ManagementFilterOptions } from "@/types/management-filters";
 type Failure = { status: number; message: string };
 type Config = { state: RootState; rejectValue: Failure };
-type Query = { page?: number; page_size?: number; search?: string; status?: string; hub_id?: string; supplier_id?: string };
+type Query = { page?: number; page_size?: number; search?: string; status?: string; hub_id?: string; supplier_id?: string; sort_by?: string; sort_order?: "asc" | "desc"; filters?: QuickFilterState };
 type Slot<T> = { data: T | null; loading: boolean; error: Failure | null; requestId: string | null; query?: Query };
 function slot<T>(): Slot<T> { return { data: null, loading: false, error: null, requestId: null }; }
-const initialState = { list: slot<MaterialRequestsPage>(), detail: slot<MaterialRequest>(), options: slot<RequestOptions>(), catalog: slot<RequestCatalog>(), mutation: slot<MaterialRequest>() };
-function params(query: Query) { const result = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") result.set(key, String(value)); return result; }
+const initialState = { list: slot<MaterialRequestsPage>(), detail: slot<MaterialRequest>(), options: slot<RequestOptions>(), catalog: slot<RequestCatalog>(), mutation: slot<MaterialRequest>(), filterOptions: slot<ManagementFilterOptions>() };
+function params(query: Query) { const result = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") result.set(key, key === "filters" ? JSON.stringify(value) : String(value)); return result; }
 function failure(error: unknown): Failure { return error && typeof error === "object" && "status" in error && "message" in error ? error as Failure : { status: 0, message: "Unable to reach the API. Try again." }; }
 async function request<T>(path: string, signal?: AbortSignal, method?: string, body?: unknown): Promise<T> {
   const response = await fetch(`/api/material-requests${path}`, { credentials: "include", signal, method, ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
@@ -17,6 +19,9 @@ async function request<T>(path: string, signal?: AbortSignal, method?: string, b
 }
 export const listMaterialRequest = createAsyncThunk<MaterialRequestsPage, Query, Config>("materialRequests/list", async (query, api) => {
   try { return await request(`?${params(query)}`, api.signal); } catch (error) { return api.rejectWithValue(failure(error)); }
+});
+export const getMaterialRequestFilterOption = createAsyncThunk<ManagementFilterOptions, void, Config>("materialRequests/filter-options", async (_, api) => {
+  try { return await request("/filter-options", api.signal); } catch (error) { return api.rejectWithValue(failure(error)); }
 });
 export const getMaterialRequest = createAsyncThunk<MaterialRequest, string, Config>("materialRequests/detail", async (id, api) => {
   try { return (await request<{ request: MaterialRequest }>(`?id=${encodeURIComponent(id)}`, api.signal)).request; } catch (error) { return api.rejectWithValue(failure(error)); }
@@ -40,6 +45,9 @@ export const actionMaterialRequest = createAsyncThunk<MaterialRequest, MaterialR
 
 const slice = createSlice({ name: "materialRequests", initialState, reducers: { clearMaterialRequestMutation(state) { if (!state.mutation.loading) state.mutation = slot<MaterialRequest>(); } }, extraReducers(builder) {
   builder
+    .addCase(getMaterialRequestFilterOption.pending, (state, action) => { state.filterOptions = { ...slot<ManagementFilterOptions>(), loading: true, requestId: action.meta.requestId }; })
+    .addCase(getMaterialRequestFilterOption.fulfilled, (state, action) => { if (state.filterOptions.requestId === action.meta.requestId) { state.filterOptions.data = action.payload; state.filterOptions.loading = false; state.filterOptions.requestId = null; } })
+    .addCase(getMaterialRequestFilterOption.rejected, (state, action) => { if (state.filterOptions.requestId === action.meta.requestId) { state.filterOptions.loading = false; state.filterOptions.error = action.meta.aborted ? null : action.payload ?? failure(action.error); state.filterOptions.requestId = null; } })
     .addCase(listMaterialRequest.pending, (state, action) => { state.list = { ...slot<MaterialRequestsPage>(), loading: true, requestId: action.meta.requestId, query: action.meta.arg }; })
     .addCase(listMaterialRequest.fulfilled, (state, action) => { if (state.list.requestId === action.meta.requestId) { state.list.data = action.payload; state.list.loading = false; state.list.requestId = null; } })
     .addCase(listMaterialRequest.rejected, (state, action) => { if (state.list.requestId === action.meta.requestId) { state.list.loading = false; state.list.error = action.meta.aborted ? null : action.payload ?? failure(action.error); state.list.requestId = null; } })

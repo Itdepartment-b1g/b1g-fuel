@@ -6,9 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/common/pagination";
 import { paginationFromApi } from "@/utils/pagination";
+import { TableView } from "@/components/common/table/table-view";
 export type SelectedMaterial = {
   product_id: string;
   label: string;
+  brand_name: string;
+  variant_name: string;
+  product_type_name: string;
   unit_label: string;
   requested_qty: string;
 };
@@ -51,10 +55,11 @@ export function RequestProductPicker({
     state.query.search === search;
   const data = current ? state.data : null;
   return (
-    <section className="space-y-3 rounded-lg border p-4">
+    <section className="min-w-0 space-y-3 rounded-lg border p-4">
       <h3 className="font-medium">Supplier products</h3>
       <div className="flex gap-2">
         <Input
+          className="min-w-0 flex-1"
           aria-label="Search supplier products"
           placeholder="Search brand or variant"
           value={draft}
@@ -65,6 +70,7 @@ export function RequestProductPicker({
         <Button
           type="button"
           variant="outline"
+          className="shrink-0"
           disabled={disabled}
           onClick={() => {
             setSearch(draft.trim());
@@ -95,7 +101,7 @@ export function RequestProductPicker({
                 key={product.id}
                 className="flex items-center justify-between gap-3 text-sm"
               >
-                <span>
+                <span className="min-w-0 break-words">
                   {product.label}{" "}
                   <span className="text-muted-foreground">
                     ({product.unit_label})
@@ -105,6 +111,7 @@ export function RequestProductPicker({
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="shrink-0"
                   disabled={
                     disabled ||
                     items.some((item) => item.product_id === product.id) ||
@@ -116,6 +123,9 @@ export function RequestProductPicker({
                       {
                         product_id: product.id,
                         label: product.label,
+                        brand_name: product.brand_name,
+                        variant_name: product.variant_name,
+                        product_type_name: product.product_type_name,
                         unit_label: product.unit_label,
                         requested_qty: "1",
                       },
@@ -146,53 +156,18 @@ export function RequestProductPicker({
       <h3 className="border-t pt-3 font-medium">
         Selected materials ({items.length})
       </h3>
-      {!items.length && (
-        <p className="text-sm text-muted-foreground">
-          Add at least one product.
-        </p>
-      )}
-      {items.map((item) => (
-        <div
-          key={item.product_id}
-          className="flex flex-wrap items-center gap-2 text-sm"
-        >
-          <span className="min-w-0 flex-1">{item.label}</span>
-          <Input
-            className="w-28"
-            aria-label={`Quantity for ${item.label}`}
-            type="number"
-            min="0.001"
-            max="99999999999.999"
-            step="0.001"
-            value={item.requested_qty}
-            required
-            disabled={disabled}
-            onChange={(event) =>
-              onChange(
-                items.map((row) =>
-                  row.product_id === item.product_id
-                    ? { ...row, requested_qty: event.target.value }
-                    : row,
-                ),
-              )
-            }
-          />
-          <span>{item.unit_label}</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={disabled}
-            onClick={() =>
-              onChange(
-                items.filter((row) => row.product_id !== item.product_id),
-              )
-            }
-          >
-            Remove
-          </Button>
-        </div>
-      ))}
+      <div className="min-w-0 overflow-hidden rounded-lg border">
+        <TableView data={items} rowKey={(item) => item.product_id} caption="Selected materials" sortingMode="server" fit
+          emptyDescription="Add at least one product." actionsDisabled={disabled}
+          columns={[
+            { id: "brand", header: "Brand", className: "w-[22%]", value: (item) => item.brand_name },
+            { id: "variant", header: "Variant", className: "w-[34%]", value: (item) => `${item.variant_name} (${item.product_type_name})` },
+            { id: "unit", header: "Unit of Measure", className: "w-[18%]", value: (item) => item.unit_label },
+            { id: "quantity", header: "Qty", className: "w-[16%]", cell: (item) => <Input className="w-full min-w-0" aria-label={`Quantity for ${item.label}`} type="number" min="0.001" max="99999999999.999" step="0.001" value={item.requested_qty} required disabled={disabled}
+              onChange={(event) => onChange(items.map((row) => row.product_id === item.product_id ? { ...row, requested_qty: event.target.value } : row))} /> },
+          ]}
+          actions={[{ id: "remove", label: "Remove", description: (item) => `Remove ${item.label}`, onSelect: (item) => onChange(items.filter((row) => row.product_id !== item.product_id)) }]} />
+      </div>
     </section>
   );
 }

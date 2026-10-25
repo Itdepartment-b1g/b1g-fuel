@@ -44,6 +44,7 @@ export function TableColumnHeader<T>({
   headerRef,
   menu = [],
   align = "left",
+  wrap = false,
 }: {
   column: TableColumn<T>;
   pinned?: boolean;
@@ -52,10 +53,11 @@ export function TableColumnHeader<T>({
   headerRef?: (node: HTMLTableCellElement | null) => void;
   menu?: TableMenuItem[];
   align?: "left" | "right";
+  wrap?: boolean;
 }) {
   const heading = (
     <>
-      <span className="whitespace-nowrap">{column.header}</span>
+      <span className={wrap ? "whitespace-normal break-words" : "whitespace-nowrap"}>{column.header}</span>
       {pinned && (
         <Pin
           className="size-3.5 shrink-0 text-gray-400"
@@ -88,6 +90,8 @@ export function TableColumnHeader<T>({
       style={style}
       className={cn(
         columnHeaderClass,
+        wrap && "whitespace-normal",
+        column.className,
         align === "right" ? "text-right" : "text-left",
         pinned &&
           "sticky z-20 border-r bg-white shadow-[2px_0_4px_-3px_rgba(0,0,0,0.3)]",

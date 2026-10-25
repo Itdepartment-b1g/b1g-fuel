@@ -14,14 +14,20 @@ const columns: TableColumn<RequestItem>[] = [
   { id: "requested", header: "Requested", value: (item) => item.requested_qty },
   { id: "approved", header: "Approved", value: (item) => item.approved_qty ?? "—" },
 ];
+const fittedColumns: TableColumn<RequestItem>[] = [
+  { ...columns[0], className: "w-[46%]" },
+  { ...columns[1], className: "w-[14%]" },
+  { ...columns[2], className: "w-[20%]" },
+  { ...columns[3], className: "w-[20%]" },
+];
 
-export function MaterialRequestItems({ items, view = "table" }: { items: RequestItem[]; view?: ListView }) {
+export function MaterialRequestItems({ items, view = "table", fit = false }: { items: RequestItem[]; view?: ListView; fit?: boolean }) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(PAGE_SIZES[0]);
   const paginated = paginateItems(items, page, limit);
-  return <section className="overflow-hidden rounded-xl border bg-muted/30">
+  return <section className="min-w-0 overflow-hidden rounded-xl border bg-muted/30">
     <div className="flex items-center justify-between gap-3 px-4 py-3"><h3 className="font-semibold">Requested materials</h3><p className="text-sm text-muted-foreground">{items.length} {items.length === 1 ? "line" : "lines"}</p></div>
-    {view === "table" ? <TableView data={paginated.items} rowKey={(item) => item.id} caption="Requested materials" sortingMode="server" columns={columns} emptyDescription="No materials yet." /> :
+    {view === "table" ? <TableView data={paginated.items} rowKey={(item) => item.id} caption="Requested materials" sortingMode="server" fit={fit} columns={fit ? fittedColumns : columns} emptyDescription="No materials yet." /> :
       <div className="grid gap-4 bg-card p-4 sm:grid-cols-2">
         {paginated.items.map((item) => <article key={item.id} className="rounded-xl border p-4">
           <h4 className="font-semibold break-words">{item.product_label}</h4><p className="mt-1 text-sm text-muted-foreground">{item.unit_label}</p>

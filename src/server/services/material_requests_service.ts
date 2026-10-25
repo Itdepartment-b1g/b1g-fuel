@@ -4,6 +4,10 @@ import type { RecordAccess } from "@/lib/auth/access-scope";
 import type { Pagination } from "@/server/lib/pagination";
 import { MR_UUID, type RequestInput, type CreateRequestInput, type ActionInput } from "@/server/schema/material_requests_schema";
 import * as repository from "@/server/repositories/material_requests_repository";
+import type { Sorting } from "@/server/lib/sorting";
+import type { QuickFilterState } from "@/types/quick-filter";
+import { build_filter_options } from "@/server/lib/quick-filters";
+import { MATERIAL_REQUEST_FILTER_OPTIONS } from "@/utils/material-request-filters";
 
 export class MaterialRequestError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -32,6 +36,15 @@ function request_permissions(row: Pick<repository.RequestRecord, "status" | "req
 }
 async function assignments_for(access: RecordAccess, tx: DatabaseExecutor) {
   return (await repository.get_request_assignments(access.userId, tx)).map((row) => row.location_id);
+}
+async function approval_warehouse(companyId: string, access: RecordAccess, assignments: string[], tx: DatabaseExecutor) {
+  const warehouses = (await repository.list_request_warehouses(companyId, tx)).filter((warehouse) => granted(access, "edit", companyId, warehouse.id, assignments));
+  const assigned = warehouses.filter((warehouse) => assignments.includes(warehouse.id));
+  const eligible = assigned.length ? assigned : warehouses;
+  return {
+    warehouse: eligible.length === 1 ? eligible[0] : null,
+    error: eligible.length === 1 ? null : eligible.length === 0 ? "No active supplying warehouse is available for your account. Ask an administrator to check the warehouse setup." : "More than one supplying warehouse is available. Ask an administrator to assign you to one warehouse before approving.",
+  };
 }
 function can_read(row: repository.RequestRecord, access: RecordAccess, assignments: string[]) {
   return granted(access, "view", row.requesting_company_id, row.requesting_hub_id, assignments) ||
@@ -131,12 +144,22 @@ export async function action_material_request(input: ActionInput, access: Record
     const companyId = review ? row.supplying_company_id : row.requesting_company_id;
     let warehouseId = row.supplying_warehouse_id;
     if (input.action === "approve") {
-      valid_id(input.supplying_warehouse_id);
-      const warehouse = await repository.get_request_location(input.supplying_warehouse_id, tx);
-      if (!warehouse || warehouse.type !== "warehouse" || warehouse.company_id !== companyId) throw new MaterialRequestError(400, "Select a warehouse belonging to the supplying company.");
+      let selectedId = input.supplying_warehouse_id;
+      if (selectedId === undefined) {
+        const resolved = await approval_warehouse(companyId, access, assignments, tx);
+        if (!resolved.warehouse) throw new MaterialRequestError(409, resolved.error!);
+        selectedId = resolved.warehouse.id;
+      }
+      valid_id(selectedId);
+      const warehouse = await repository.get_request_location(selectedId, tx);
+      if (!warehouse || warehouse.type !== "warehouse" || warehouse.company_id !== companyId || !warehouse.is_active) throw new MaterialRequestError(400, "An active warehouse belonging to the supplying company is required.");
       warehouseId = warehouse.id;
     }
     if (!granted(access, "edit", companyId, review ? warehouseId : row.requesting_hub_id, assignments)) throw new MaterialRequestError(403, "You cannot perform this action for this company or location.");
+    if (input.action === "approve" && input.supplying_warehouse_id !== undefined) {
+      const resolved = await approval_warehouse(companyId, access, assignments, tx);
+      if (!resolved.warehouse || resolved.warehouse.id !== warehouseId) throw new MaterialRequestError(409, resolved.error ?? "The supplying warehouse changed. Refresh the request preview before approving.");
+    }
     if ((input.action === "submit" && row.status !== "draft") || (review && row.status !== "submitted") || (input.action === "cancel" && row.status !== "draft"))
       throw new MaterialRequestError(409, "The request status no longer allows this action.");
     const status = input.action === "submit" ? "submitted" : input.action === "approve" ? "approved" : input.action === "reject" ? "rejected" : "cancelled";
@@ -161,22 +184,40 @@ export async function action_material_request(input: ActionInput, access: Record
 export async function list_by_id_material_request(id: string, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
     const { row, assignments } = await checked_request(id, access, tx);
-    return { ...await repository.serialize_request(row, tx), permissions: request_permissions(row, access, assignments) };
+    const permissions = request_permissions(row, access, assignments);
+    const resolved = permissions.review ? await approval_warehouse(row.supplying_company_id, access, assignments, tx) : null;
+    return { ...await repository.serialize_request(row, tx), permissions, approval_warehouse: resolved?.warehouse ?? null, approval_warehouse_error: resolved?.error ?? null };
   });
 }
-export async function list_material_request(search: string, status: string, pagination: Pagination, access: RecordAccess) {
-  if (search.length > 160 || (status && !["draft", "submitted", "approved", "rejected", "cancelled"].includes(status))) throw new MaterialRequestError(400, "Provide valid search and status filters.");
-  return getDatabase().$transaction(async (tx) => {
-    const assigned = await assignments_for(access, tx);
-    const OR: Prisma.material_requestWhereInput[] = access.superAdmin ? [{}] : access.grants.filter((grant) => grant.permission === "materialRequests.view").flatMap((grant) => {
+function request_visibility(access: RecordAccess, assigned: string[]): Prisma.material_requestWhereInput {
+  const OR: Prisma.material_requestWhereInput[] = access.superAdmin ? [{}] : access.grants.filter((grant) => grant.permission === "materialRequests.view").flatMap((grant) => {
       if (grant.scope === "all" && !grant.companyId) return [{}];
       const company = { in: grant.companyId ? [grant.companyId] : access.companyIds };
       return [{ requesting_company_id: company, ...(grant.scope === "own" ? { requesting_hub_id: { in: assigned } } : {}) },
         { supplying_company_id: company, submitted_at: { not: null }, ...(grant.scope === "own" ? { supplying_warehouse_id: { in: assigned } } : {}) }];
-    });
-    const where: Prisma.material_requestWhereInput = { AND: [{ OR }, ...(status ? [{ status: status as "draft" }] : []), ...(search ? [{ OR: [ { request_no: { contains: search, mode: "insensitive" as const } }, { requesting_hub: { name: { contains: search, mode: "insensitive" as const } } } ] }] : [])] };
-    const page = await repository.list_material_request(where, pagination, tx);
+  });
+  return { OR };
+}
+export async function list_material_request(search: string, status: string, pagination: Pagination, access: RecordAccess, sorting?: Sorting, filters?: QuickFilterState) {
+  if (search.length > 160 || (status && !["draft", "submitted", "approved", "rejected", "cancelled"].includes(status))) throw new MaterialRequestError(400, "Provide valid search and status filters.");
+  for (const condition of filters?.conditions ?? []) {
+    if ((condition.field === "hub" || condition.field === "supplier") && condition.value.trim()) valid_id(condition.value.trim());
+  }
+  return getDatabase().$transaction(async (tx) => {
+    const assigned = await assignments_for(access, tx);
+    const where: Prisma.material_requestWhereInput = { AND: [request_visibility(access, assigned), ...(status ? [{ status: status as "draft" }] : [])] };
+    const page = await repository.list_material_request(where, pagination, tx, search, sorting, filters);
     return { ...page, requests: page.requests.map((row) => ({ ...row, permissions: request_permissions(row, access, assigned) })) };
+  }, { isolationLevel: "RepeatableRead" });
+}
+export async function get_material_request_filter_option(access: RecordAccess) {
+  return getDatabase().$transaction(async (tx) => {
+    const rows = await repository.get_material_request_filter_data(request_visibility(access, await assignments_for(access, tx)), tx);
+    return build_filter_options(rows, MATERIAL_REQUEST_FILTER_OPTIONS, (row, field) => {
+      if (field === "request_no") return { value: row.request_no ?? "draft", label: row.request_no ?? "Draft" };
+      const value = field === "hub" ? row.requesting_hub : row.supplying_company;
+      return { value: value.id, label: value.name };
+    }, (row, status) => row.status === status);
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function get_material_request_options(hubId: string | undefined, supplierId: string | undefined, access: RecordAccess) {

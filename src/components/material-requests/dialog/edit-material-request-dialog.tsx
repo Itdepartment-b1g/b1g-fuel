@@ -15,7 +15,7 @@ export function EditMaterialRequestDialog({ requestId, onClose, onSaved }: { req
   const [revision, setRevision] = useState(0);
   useEffect(() => { const request = dispatch(getMaterialRequest(requestId)); return () => request.abort(); }, [dispatch, requestId, revision]);
   const record = detail.data?.id === requestId && !detail.loading ? detail.data : null;
-  return <Dialog open onOpenChange={(open) => { if (!open && !mutation.loading) onClose(); }}><DialogContent className={`max-h-[90dvh] overflow-y-auto sm:max-w-3xl ${mutation.loading ? "[&>button]:hidden" : ""}`} onEscapeKeyDown={(event) => { if (mutation.loading) event.preventDefault(); }} onPointerDownOutside={(event) => { if (mutation.loading) event.preventDefault(); }}>
+  return <Dialog open onOpenChange={(open) => { if (!open && !mutation.loading) onClose(); }}><DialogContent className={`max-h-[90dvh] overflow-x-hidden overflow-y-auto sm:max-w-3xl [&>*]:min-w-0 ${mutation.loading ? "[&>button]:hidden" : ""}`} onEscapeKeyDown={(event) => { if (mutation.loading) event.preventDefault(); }} onPointerDownOutside={(event) => { if (mutation.loading) event.preventDefault(); }}>
     <DialogHeader><DialogTitle>Edit material request draft</DialogTitle><DialogDescription>Update materials, quantities, notes, and the needed date.</DialogDescription></DialogHeader>
     {detail.error ? <p role="alert">{detail.error.message} <Button variant="outline" onClick={() => setRevision((value) => value + 1)}>Try again</Button></p> : !record ? <p role="status">Loading request...</p> : !record.permissions?.edit ? <p>This request cannot be edited.</p> : <EditMaterialRequestFields key={record.updated_at} record={record} onClose={onClose} onSaved={onSaved} />}
   </DialogContent></Dialog>;
@@ -25,7 +25,7 @@ function EditMaterialRequestFields({ record, onClose, onSaved }: { record: Mater
   const toast = useToast();
   const mutation = useAppSelector((state) => state.materialRequests.mutation);
   const busy = useRef(false);
-  const [items, setItems] = useState<SelectedMaterial[]>(() => record.items.map((item) => ({ product_id: item.product_id, label: item.product_label, unit_label: item.unit_label, requested_qty: item.requested_qty })));
+  const [items, setItems] = useState<SelectedMaterial[]>(() => record.items.map((item) => ({ product_id: item.product_id, label: item.product_label, brand_name: item.brand_name, variant_name: item.variant_name, product_type_name: item.product_type_name, unit_label: item.unit_label, requested_qty: item.requested_qty })));
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (busy.current || mutation.loading || !items.length) return;
     busy.current = true;
@@ -37,12 +37,12 @@ function EditMaterialRequestFields({ record, onClose, onSaved }: { record: Mater
     finally { busy.current = false; }
   }
   const neededDate = record.needed_at ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date(record.needed_at)) : "";
-  return <form className="space-y-4" onSubmit={save}>
+  return <form className="min-w-0 space-y-4" onSubmit={save}>
     <p className="text-sm">{record.requesting_hub.name} → {record.supplying_company.name}</p>
     <label className="block space-y-2 text-sm">Needed date<Input type="date" name="needed_at" defaultValue={neededDate} disabled={mutation.loading} /></label>
     <label className="block space-y-2 text-sm">Notes<Input name="notes" defaultValue={record.notes} maxLength={1000} disabled={mutation.loading} /></label>
     <RequestProductPicker hubId={record.requesting_hub_id} supplierId={record.supplying_company_id} items={items} onChange={setItems} disabled={mutation.loading} />
     {mutation.error && <p role="alert" className="text-sm text-destructive">{mutation.error.message}</p>}
-    <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={mutation.loading} onClick={onClose}>Cancel</Button><Button disabled={mutation.loading || !items.length}>Save changes</Button></div>
+    <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" disabled={mutation.loading} onClick={onClose}>Cancel</Button><Button disabled={mutation.loading || !items.length}>Save changes</Button></div>
   </form>;
 }
