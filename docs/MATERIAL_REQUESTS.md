@@ -6,7 +6,11 @@ Open **Material requests** to create a draft for a hub, choose a linked supplier
 
 `draft → submitted → approved / rejected`
 
-The requesting side can edit drafts, submit drafts, or cancel draft/submitted requests. Supplier reviewers can approve or reject submitted requests. Rejection requires a reason. Approval accepts all requested quantities and assigns a warehouse owned by the supplying company. Approved/rejected/cancelled requests cannot be edited or cancelled. Partial approval, dispatch, receiving, inventory movements and hub-to-hub transfers are future work.
+The create form offers **Save as draft** and **Submit request**. Drafts remain editable without a request number. Submit request creates and submits in one transaction, assigns a number, and makes the request available for supplier review. Submission requires requesting-side edit permission as well as add permission; failed submission leaves the form open without creating an extra draft.
+
+The table shows **View draft** for drafts and **View** after submission, plus Approve and Reject for requests the current user can review. **Reviewed by** shows **Awaiting review** while submitted, then the approving or rejecting user's name after review. Each action opens the material request preview; Approve and Reject also open their confirmation form with an optional note. Actions run only after confirmation.
+
+The requesting side can edit drafts, submit drafts, or cancel drafts only. Supplier reviewers can approve or reject submitted requests. Approval and rejection accept an optional note. Approval accepts all requested quantities and assigns a warehouse owned by the supplying company. Approved/rejected/cancelled requests cannot be edited or cancelled. Partial approval, dispatch, receiving, inventory movements and hub-to-hub transfers are future work.
 
 Supplier users cannot see drafts, including drafts cancelled without submission. Deactivating a company supply link stops new drafts and submissions; already-submitted documents remain available for review. Historical requests do not disappear when a link becomes inactive.
 
@@ -20,9 +24,9 @@ Company scope applies only to that company's side of a request. Own scope follow
 
 ## Numbering
 
-Set the requesting company's unique **Company code** in Companies before submitting. Existing companies retain a nullable code until configured. Codes contain 2–16 uppercase letters/digits, starting with a letter. A code becomes immutable after the first request number is issued, preventing code reuse and numbering collisions.
+The requesting company's initials are generated automatically from its name: **B1G Fuel Distribution → BFD**. No Company code is required. Punctuation separates words; initials are uppercase and limited to 46 characters to fit the stored request number.
 
-Drafts display **Draft** and do not consume a number. Submission allocates `MR-{CODE}-{YYYYMM}-{0000001}`, for example `MR-BFW-202610-0000001`. The counter is per requesting company and Manila calendar month. A database upsert increments it atomically; the request number, submitted status, product/unit snapshots and timeline event are committed in the same transaction. Row locks prevent concurrent actions from acting on an outdated request state. Cancelled submitted requests retain their number.
+Drafts display **Draft** and do not consume a number. Submission allocates `MR-{INITIALS}-{YYYYMM}-{0000001}`, for example `MR-BFD-202610-0000001`, then `MR-BFD-202610-0000002`. The counter is per requesting company and Manila calendar month, resetting each month. Number uniqueness is scoped to the requesting company, so companies with matching initials can both submit requests. Existing numbers remain unchanged when a company is renamed. A database upsert increments the counter atomically; the request number, submitted status, product/unit snapshots and timeline event are committed in the same transaction. Row locks prevent concurrent actions from acting on an outdated request state. Submitted requests cannot be cancelled. Historical cancelled requests retain any previously assigned number.
 
 ## Models and history
 

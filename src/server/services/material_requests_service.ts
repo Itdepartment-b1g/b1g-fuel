@@ -2,7 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type { RecordAccess } from "@/lib/auth/access-scope";
 import type { Pagination } from "@/server/lib/pagination";
-import { MR_UUID, type RequestInput, type ActionInput } from "@/server/schema/material_requests_schema";
+import { MR_UUID, type RequestInput, type CreateRequestInput, type ActionInput } from "@/server/schema/material_requests_schema";
 import * as repository from "@/server/repositories/material_requests_repository";
 
 export class MaterialRequestError extends Error {
@@ -21,6 +21,14 @@ function granted(access: RecordAccess, action: string, companyId: string, locati
     ((grant.scope === "all" && !grant.companyId) ||
       ((grant.companyId ? grant.companyId === companyId : access.companyIds.includes(companyId)) &&
         (grant.scope !== "own" || Boolean(locationId && assignments.includes(locationId))))));
+}
+function request_permissions(row: Pick<repository.RequestRecord, "status" | "requesting_company_id" | "requesting_hub_id" | "supplying_company_id" | "supplying_warehouse_id">, access: RecordAccess, assignments: string[]) {
+  const requester = granted(access, "edit", row.requesting_company_id, row.requesting_hub_id, assignments);
+  const reviewer = granted(access, "edit", row.supplying_company_id, row.supplying_warehouse_id, assignments);
+  return {
+    edit: requester && row.status === "draft", submit: requester && row.status === "draft",
+    cancel: requester && row.status === "draft", review: reviewer && row.status === "submitted",
+  };
 }
 async function assignments_for(access: RecordAccess, tx: DatabaseExecutor) {
   return (await repository.get_request_assignments(access.userId, tx)).map((row) => row.location_id);
@@ -74,12 +82,25 @@ async function checked_input(input: RequestInput, access: RecordAccess, tx: Data
   return { hub, relationship, notes: clean_note(input.notes), neededAt, items: await checked_items(input, input.supplying_company_id, tx) };
 }
 
-export async function create_material_request(input: RequestInput, access: RecordAccess) {
+export async function create_material_request(input: CreateRequestInput, access: RecordAccess) {
+  if (!input || (input.submit !== undefined && typeof input.submit !== "boolean")) throw new MaterialRequestError(400, "Submit must be true or false.");
+  const { submit = false, ...draft } = input;
   return getDatabase().$transaction(async (tx) => {
-    const { hub, relationship, notes, neededAt, items } = await checked_input(input, access, tx, "add");
+    const { hub, relationship, notes, neededAt, items } = await checked_input(draft, access, tx, "add");
+    const now = new Date();
+    const events: Prisma.material_request_eventUncheckedCreateWithoutRequestInput[] = [{ kind: "created", to_status: "draft", created_by: access.userId, created_at: now }];
+    let requestNo: string | null = null;
+    if (submit) {
+      if (!granted(access, "edit", hub.company_id, hub.id, await assignments_for(access, tx))) throw new MaterialRequestError(403, "You cannot submit requests for this hub.");
+      await repository.lock_request_company(hub.company_id, tx);
+      requestNo = await repository.allocate_request_number(hub.company_id, hub.company.name, now, tx);
+      // Keep creation before submission when both timeline events are written together.
+      events.push({ kind: "submitted", from_status: "draft", to_status: "submitted", created_by: access.userId, created_at: new Date(now.getTime() + 1) });
+    }
     const row = await repository.create_material_request({ requesting_company_id: hub.company_id, supplying_company_id: relationship.supplying_company_id,
       requesting_hub_id: hub.id, supply_relationship_id: relationship.id, notes, needed_at: neededAt, created_by: access.userId,
-      items: { create: items }, events: { create: { kind: "created", to_status: "draft", created_by: access.userId, created_at: new Date() } } }, tx);
+      status: submit ? "submitted" : "draft", request_no: requestNo, submitted_at: submit ? now : null,
+      items: { create: items }, events: { create: events } }, tx);
     return repository.serialize_request(row, tx);
   });
 }
@@ -103,7 +124,6 @@ export async function action_material_request(input: ActionInput, access: Record
   valid_id(input.id);
   if (!["submit", "approve", "reject", "cancel"].includes(input.action)) throw new MaterialRequestError(400, "Choose a valid request action.");
   const note = clean_note(input.note);
-  if (input.action === "reject" && !note) throw new MaterialRequestError(400, "Explain why the request was rejected.");
   return getDatabase().$transaction(async (tx) => {
     await repository.lock_material_request(input.id, tx);
     const { row, assignments } = await checked_request(input.id, access, tx);
@@ -117,19 +137,17 @@ export async function action_material_request(input: ActionInput, access: Record
       warehouseId = warehouse.id;
     }
     if (!granted(access, "edit", companyId, review ? warehouseId : row.requesting_hub_id, assignments)) throw new MaterialRequestError(403, "You cannot perform this action for this company or location.");
-    if ((input.action === "submit" && row.status !== "draft") || (review && row.status !== "submitted") || (input.action === "cancel" && !["draft", "submitted"].includes(row.status)))
+    if ((input.action === "submit" && row.status !== "draft") || (review && row.status !== "submitted") || (input.action === "cancel" && row.status !== "draft"))
       throw new MaterialRequestError(409, "The request status no longer allows this action.");
     const status = input.action === "submit" ? "submitted" : input.action === "approve" ? "approved" : input.action === "reject" ? "rejected" : "cancelled";
     const data: Prisma.material_requestUncheckedUpdateInput = { status, events: { create: { kind: status, from_status: row.status, to_status: status, note, created_by: access.userId, created_at: new Date() } } };
     if (input.action === "submit") {
       await repository.lock_request_company(row.requesting_company_id, tx);
-      const hub = await repository.get_request_location(row.requesting_hub_id, tx);
-      if (!hub?.company.code) throw new MaterialRequestError(400, "Set the requesting company's code in Companies before submitting.");
       const checked = await checked_input({ requesting_hub_id: row.requesting_hub_id, supplying_company_id: row.supplying_company_id, items: row.items.map((item) => ({ product_id: item.product_id, requested_qty: item.requested_qty.toString() })) }, access, tx, "edit");
       await repository.replace_request_items(row.id, tx);
       data.items = { create: checked.items };
       const now = new Date();
-      data.request_no = await repository.allocate_request_number(row.requesting_company_id, hub.company.code, now, tx);
+      data.request_no = await repository.allocate_request_number(row.requesting_company_id, checked.hub.company.name, now, tx);
       data.submitted_at = now;
     }
     if (input.action === "approve") {
@@ -143,12 +161,7 @@ export async function action_material_request(input: ActionInput, access: Record
 export async function list_by_id_material_request(id: string, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
     const { row, assignments } = await checked_request(id, access, tx);
-    const requester = granted(access, "edit", row.requesting_company_id, row.requesting_hub_id, assignments);
-    const reviewer = granted(access, "edit", row.supplying_company_id, row.supplying_warehouse_id, assignments);
-    return { ...await repository.serialize_request(row, tx), permissions: {
-      edit: requester && row.status === "draft", submit: requester && row.status === "draft",
-      cancel: requester && ["draft", "submitted"].includes(row.status), review: reviewer && row.status === "submitted",
-    } };
+    return { ...await repository.serialize_request(row, tx), permissions: request_permissions(row, access, assignments) };
   });
 }
 export async function list_material_request(search: string, status: string, pagination: Pagination, access: RecordAccess) {
@@ -162,7 +175,8 @@ export async function list_material_request(search: string, status: string, pagi
         { supplying_company_id: company, submitted_at: { not: null }, ...(grant.scope === "own" ? { supplying_warehouse_id: { in: assigned } } : {}) }];
     });
     const where: Prisma.material_requestWhereInput = { AND: [{ OR }, ...(status ? [{ status: status as "draft" }] : []), ...(search ? [{ OR: [ { request_no: { contains: search, mode: "insensitive" as const } }, { requesting_hub: { name: { contains: search, mode: "insensitive" as const } } } ] }] : [])] };
-    return repository.list_material_request(where, pagination, tx);
+    const page = await repository.list_material_request(where, pagination, tx);
+    return { ...page, requests: page.requests.map((row) => ({ ...row, permissions: request_permissions(row, access, assigned) })) };
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function get_material_request_options(hubId: string | undefined, supplierId: string | undefined, access: RecordAccess) {

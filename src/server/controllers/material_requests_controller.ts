@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import * as service from "@/server/services/material_requests_service";
 import { MaterialRequestError } from "@/server/services/material_requests_service";
 import { parsePagination, PaginationError } from "@/server/lib/pagination";
-import type { RequestInput, ActionInput } from "@/server/schema/material_requests_schema";
+import type { RequestInput, CreateRequestInput, ActionInput } from "@/server/schema/material_requests_schema";
 
 export async function list_material_request(req: Request, res: Response) {
   try { res.status(200).json(await service.list_material_request(typeof req.query.search === "string" ? req.query.search : "", typeof req.query.status === "string" ? req.query.status : "", parsePagination(req.query), res.locals.access)); }
@@ -31,7 +31,7 @@ export async function list_by_id_material_request(req: Request, res: Response) {
 }
 
 export async function create_material_request(req: Request, res: Response) {
-  try { res.status(201).json({ request: await service.create_material_request(req.body as RequestInput, res.locals.access) }); }
+  try { res.status(201).json({ request: await service.create_material_request(req.body as CreateRequestInput, res.locals.access) }); }
   catch (error) {
     if (error instanceof MaterialRequestError) { res.status(error.status).json({ error: error.message }); return; }
     if (error instanceof PaginationError) { res.status(400).json({ error: error.message }); return; }

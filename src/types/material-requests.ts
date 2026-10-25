@@ -12,6 +12,7 @@ export type MaterialRequest = {
 };
 export type MaterialRequestInput = { requesting_hub_id: string; supplying_company_id: string; notes?: string; needed_at?: string | null; items: { product_id: string; requested_qty: string }[] };
 export type MaterialRequestAction = { id: string; action: "submit" | "approve" | "reject" | "cancel"; note?: string; supplying_warehouse_id?: string };
+export type CreateMaterialRequestInput = MaterialRequestInput & { submit?: boolean };
 export type RequestOptions = { hubs: { id: string; name: string; company_id: string; company: { name: string } }[]; suppliers: { id: string; name: string }[]; warehouses: { id: string; name: string }[] };
 export type CatalogProduct = { id: string; label: string; unit_id: string; unit_label: string };
 export type RequestCatalog = { products: CatalogProduct[]; total: number; page: number; page_size: number };

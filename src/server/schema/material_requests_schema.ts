@@ -8,3 +8,4 @@ export type RequestInput = {
   items: { product_id: string; requested_qty: string }[];
 };
 export type ActionInput = { id: string; action: RequestAction; note?: string; supplying_warehouse_id?: string };
+export type CreateRequestInput = RequestInput & { submit?: boolean };

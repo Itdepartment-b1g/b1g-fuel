@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { MaterialRequest, MaterialRequestInput, MaterialRequestAction, MaterialRequestsPage, RequestOptions, RequestCatalog } from "@/types/material-requests";
+import type { MaterialRequest, MaterialRequestInput, CreateMaterialRequestInput, MaterialRequestAction, MaterialRequestsPage, RequestOptions, RequestCatalog } from "@/types/material-requests";
 type Failure = { status: number; message: string };
 type Config = { state: RootState; rejectValue: Failure };
 type Query = { page?: number; page_size?: number; search?: string; status?: string; hub_id?: string; supplier_id?: string };
@@ -28,7 +28,7 @@ export const getMaterialRequestCatalog = createAsyncThunk<RequestCatalog, Query,
   try { return await request(`/catalog?${params(query)}`, api.signal); } catch (error) { return api.rejectWithValue(failure(error)); }
 });
 const canMutate = (_: unknown, api: { getState: () => RootState }) => !api.getState().materialRequests.mutation.loading;
-export const createMaterialRequest = createAsyncThunk<MaterialRequest, MaterialRequestInput, Config>("materialRequests/create", async (input, api) => {
+export const createMaterialRequest = createAsyncThunk<MaterialRequest, CreateMaterialRequestInput, Config>("materialRequests/create", async (input, api) => {
   try { return (await request<{ request: MaterialRequest }>("", undefined, "POST", input)).request; } catch (error) { return api.rejectWithValue(failure(error)); }
 }, { condition: canMutate });
 export const updateMaterialRequest = createAsyncThunk<MaterialRequest, { id: string; input: MaterialRequestInput }, Config>("materialRequests/update", async ({ id, input }, api) => {

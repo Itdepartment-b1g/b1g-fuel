@@ -391,7 +391,7 @@ enum material_request_event_kind {
 
 model material_request {
   id String @id @default(uuid()) @db.Uuid
-  request_no String? @unique @db.VarChar(64)
+  request_no String? @db.VarChar(64)
   supply_relationship_id String @db.Uuid
   requesting_company_id String @db.Uuid
   supplying_company_id String @db.Uuid
@@ -411,6 +411,7 @@ model material_request {
   supplying_warehouse location? @relation("mr_warehouse", fields: [supplying_warehouse_id], references: [id], onDelete: Restrict)
   items material_request_item[]
   events material_request_event[]
+  @@unique([requesting_company_id, request_no])
   @@index([requesting_company_id, created_at])
   @@index([supplying_company_id, status, created_at])
   @@index([requesting_hub_id])

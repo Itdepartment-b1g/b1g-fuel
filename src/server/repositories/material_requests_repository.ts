@@ -33,7 +33,7 @@ export async function list_material_request(where: Prisma.material_requestWhereI
   return { requests, ...paginationMetadata(await tx.material_request.count({ where }), pagination) };
 }
 export function get_request_location(id: string, tx: DatabaseExecutor) {
-  return tx.location.findUnique({ where: { id }, include: { company: { select: { code: true } } } });
+  return tx.location.findUnique({ where: { id }, include: { company: { select: { name: true } } } });
 }
 export function get_request_assignment(locationId: string, userId: string, tx: DatabaseExecutor) {
   return tx.user_location.findFirst({ where: { location_id: locationId, membership: { user_id: userId } } });
@@ -65,7 +65,8 @@ export function lock_material_request(id: string, tx: DatabaseExecutor) {
 export function lock_request_company(id: string, tx: DatabaseExecutor) {
   return tx.$queryRaw`SELECT id FROM company WHERE id = ${id}::uuid FOR SHARE`;
 }
-export async function allocate_request_number(companyId: string, code: string, now: Date, tx: DatabaseExecutor) {
+export async function allocate_request_number(companyId: string, companyName: string, now: Date, tx: DatabaseExecutor) {
+  const code = (companyName.match(/[\p{L}\p{N}]+/gu) ?? []).map((word) => [...word][0]).join("").toUpperCase().slice(0, 46) || "MR";
   const parts = new Intl.DateTimeFormat("en", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).formatToParts(now);
   const period = `${parts.find((part) => part.type === "year")!.value}${parts.find((part) => part.type === "month")!.value}`;
   const counter = await tx.material_request_counter.upsert({ where: { company_id_period: { company_id: companyId, period } }, create: { company_id: companyId, period, last_value: 1 }, update: { last_value: { increment: 1 } } });

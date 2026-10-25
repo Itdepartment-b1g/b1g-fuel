@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CircleCheck, ClipboardList, FilePlus, Hourglass, PackageCheck, type LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loading } from "@/components/common/loading";
+import { CircleCheck, FilePlus, Hourglass, PackageCheck, type LucideIcon } from "lucide-react";
+import { TimelineDialog } from "@/components/common/timeline/timeline-dialog";
+import type { TimelineEntry } from "@/components/common/timeline/timeline";
 import { Pagination } from "@/components/common/pagination";
 import { useListView } from "@/components/common/filter/search-filter-bar";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
@@ -35,22 +34,12 @@ const EVENT_ICON: Record<PurchaseOrderEvent["kind"], LucideIcon> = {
   closed: CircleCheck,
 };
 
-const EVENT_LEGEND: { kind: PurchaseOrderEvent["kind"]; label: string; swatch: string; mark: string }[] = [
-  { kind: "created", label: "Order created", swatch: "bg-sky-500", mark: "border-sky-300 bg-sky-50 text-sky-700" },
-  { kind: "confirmed", label: "Awaiting receipt", swatch: "bg-amber-500", mark: "border-amber-300 bg-amber-50 text-amber-700" },
-  { kind: "receipt_posted", label: "Order received", swatch: "bg-emerald-500", mark: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  { kind: "closed", label: "Order closed", swatch: "bg-slate-500", mark: "border-slate-300 bg-slate-100 text-slate-700" },
+const EVENT_LEGEND: { kind: PurchaseOrderEvent["kind"]; label: string; swatch: string; tone: TimelineEntry["tone"] }[] = [
+  { kind: "created", label: "Order created", swatch: "bg-sky-500", tone: "info" },
+  { kind: "confirmed", label: "Awaiting receipt", swatch: "bg-amber-500", tone: "warning" },
+  { kind: "receipt_posted", label: "Order received", swatch: "bg-emerald-500", tone: "success" },
+  { kind: "closed", label: "Order closed", swatch: "bg-slate-500", tone: "neutral" },
 ];
-
-function EventMark({ kind }: { kind: PurchaseOrderEvent["kind"] }) {
-  const Icon = EVENT_ICON[kind];
-  const color = EVENT_LEGEND.find((item) => item.kind === kind)?.mark ?? "";
-  return (
-    <span className={`absolute -left-[38px] top-0 flex size-7 items-center justify-center rounded-full border bg-card ${color}`}>
-      <Icon className="size-3.5" aria-hidden="true" />
-    </span>
-  );
-}
 
 function eventTitle(event: PurchaseOrderEvent) {
   if (event.kind === "created") return "Order created";
@@ -238,7 +227,6 @@ export function TimelinePurchaseOrderDialog({
   const router = useRouter();
   const { selectedPurchaseOrder, detailStatus, detailError } = useAppSelector(selectPurchaseOrder);
   const order = selectedPurchaseOrder?.id === purchaseOrderId ? selectedPurchaseOrder : null;
-  const stepCount = order ? 1 + order.events.filter((event) => event.kind !== "created").length : 0;
   const receivedByStep = order ? receivedAfterEachStep(order) : new Map<string, Map<string, number>>();
   const [view, setView] = useListView();
 
@@ -251,104 +239,47 @@ export function TimelinePurchaseOrderDialog({
     if (detailError?.status === 401) router.replace("/login");
   }, [detailError, router]);
 
-  return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="size-5" aria-hidden="true" />
-            Order timeline
-            {order && (
-              <span className="rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {stepCount} {stepCount === 1 ? "event" : "events"}
-              </span>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {order ? `${order.purchase_order_no} · ${order.supplier.name} · ${order.location.name}` : "Purchase order history"}
-          </DialogDescription>
-        </DialogHeader>
-        {detailStatus === "loading" || !order ? (
-          detailError ? (
-            <div>
-              <p role="alert" className="text-sm text-destructive">{detailError.message}</p>
-              <Button variant="outline" className="mt-3" onClick={() => dispatch(editPurchaseOrder(purchaseOrderId))}>
-                Try again
-              </Button>
-            </div>
-          ) : (
-            <Loading />
-          )
-        ) : (
-          <div className="space-y-6">
-          <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Event colors">
-            {EVENT_LEGEND.map((item) => (
-              <li key={item.kind} className="inline-flex items-center gap-1.5">
-                <span className={`size-2.5 rounded-full ${item.swatch}`} aria-hidden="true" />
-                {item.label}
-              </li>
-            ))}
-          </ul>
-          <div role="tablist" aria-label="Line display" className="flex w-fit rounded-lg border p-1">
-            <button type="button" role="tab" aria-selected={view === "table"} onClick={() => setView("table")} className={`rounded-md px-3 py-1.5 text-sm ${view === "table" ? "bg-gray-50 font-medium" : "text-muted-foreground"}`}>
-              Table
-            </button>
-            <button type="button" role="tab" aria-selected={view === "cards"} onClick={() => setView("cards")} className={`rounded-md px-3 py-1.5 text-sm ${view === "cards" ? "bg-gray-50 font-medium" : "text-muted-foreground"}`}>
-              Card view
-            </button>
-          </div>
-          <ol className="space-y-8 border-l border-border pl-6">
-            <li className="relative">
-              <EventMark kind="created" />
-              <p className="font-semibold">Order created</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {when(order.events.find((event) => event.kind === "created")?.created_at ?? order.created_at)}
-              </p>
-              <div className="mt-4 space-y-5">
-                <OrderDetails order={order} />
-                <LineTable
-                  key={`${order.id}-created`}
-                  title={order.supplier.name}
-                  view={view}
-                  rows={timelineRows(order, new Map())}
-                />
-              </div>
-            </li>
-            {order.events.filter((event) => event.kind !== "created").map((event) => {
-              const heading = event.receiving_no ? `${eventTitle(event)} · ${event.receiving_no}` : eventTitle(event);
-              return (
-                <li key={event.id} className="relative">
-                  <EventMark kind={event.kind} />
-                  <p className="font-semibold">{heading}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{when(event.created_at)}</p>
-                  <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
-                    <Field
-                      label="Received at"
-                      value={event.kind === "receipt_posted" ? when(event.created_at) : "—"}
-                    />
-                    <Field
-                      label="Received by"
-                      value={event.kind === "receipt_posted" ? (event.created_by_name ?? "—") : "—"}
-                    />
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Status</dt>
-                      <dd className="mt-1 text-sm font-semibold">{PURCHASE_ORDER_STATUS_LABEL[event.status]}</dd>
-                    </div>
-                  </dl>
-                  <div className="mt-4">
-                    <LineTable
-                      title={order.supplier.name}
-                      view={view}
-                      rows={timelineRows(order, receivedByStep.get(event.id) ?? new Map())}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
+  const entries: TimelineEntry[] = order ? [{
+    id: `${order.id}-created`,
+    title: "Order created",
+    occurredAt: order.events.find((event) => event.kind === "created")?.created_at ?? order.created_at,
+    actorName: order.events.find((event) => event.kind === "created")?.created_by_name ?? order.created_by_name,
+    icon: <FilePlus />,
+    tone: "info",
+    content: <><OrderDetails order={order} /><LineTable key={`${order.id}-created`} title={order.supplier.name} view={view} rows={timelineRows(order, new Map())} /></>,
+  }, ...order.events.filter((event) => event.kind !== "created").map((event): TimelineEntry => {
+    const Icon = EVENT_ICON[event.kind];
+    return {
+      id: event.id,
+      title: event.receiving_no ? `${eventTitle(event)} · ${event.receiving_no}` : eventTitle(event),
+      occurredAt: event.created_at,
+      actorName: event.created_by_name,
+      note: event.note,
+      icon: <Icon />,
+      tone: EVENT_LEGEND.find((item) => item.kind === event.kind)?.tone,
+      content: <>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
+          <Field label="Received at" value={event.kind === "receipt_posted" ? when(event.created_at) : "—"} />
+          <Field label="Received by" value={event.kind === "receipt_posted" ? (event.created_by_name ?? "—") : "—"} />
+          <div><dt className="text-xs text-muted-foreground">Status</dt><dd className="mt-1 text-sm font-semibold">{PURCHASE_ORDER_STATUS_LABEL[event.status]}</dd></div>
+        </dl>
+        <LineTable title={order.supplier.name} view={view} rows={timelineRows(order, receivedByStep.get(event.id) ?? new Map())} />
+      </>,
+    };
+  })] : [];
+
+  return <TimelineDialog title="Order timeline"
+    description={order ? `${order.purchase_order_no} · ${order.supplier.name} · ${order.location.name}` : "Purchase order history"}
+    entries={entries} loading={detailStatus === "loading" || (!order && !detailError)} error={detailError?.message}
+    onRetry={() => { void dispatch(editPurchaseOrder(purchaseOrderId)); }} onClose={onClose}>
+    <ul className="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Event colors">
+      {EVENT_LEGEND.map((item) => <li key={item.kind} className="inline-flex items-center gap-1.5">
+        <span className={`size-2.5 rounded-full ${item.swatch}`} aria-hidden="true" />{item.label}
+      </li>)}
+    </ul>
+    <div role="group" aria-label="Line display" className="flex w-fit rounded-lg border p-1">
+      <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")} className={`rounded-md px-3 py-1.5 text-sm ${view === "table" ? "bg-gray-50 font-medium" : "text-muted-foreground"}`}>Table</button>
+      <button type="button" aria-pressed={view === "cards"} onClick={() => setView("cards")} className={`rounded-md px-3 py-1.5 text-sm ${view === "cards" ? "bg-gray-50 font-medium" : "text-muted-foreground"}`}>Card view</button>
+    </div>
+  </TimelineDialog>;
 }

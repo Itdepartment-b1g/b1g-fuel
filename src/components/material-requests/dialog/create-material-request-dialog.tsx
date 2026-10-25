@@ -7,10 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RequestProductPicker, type SelectedMaterial } from "../request-product-picker";
+import { useRecordAccess } from "@/components/providers/access-provider";
+import { canPerform } from "@/lib/auth/access-scope";
 
 export function CreateMaterialRequestDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const dispatch = useAppDispatch();
   const toast = useToast();
+  const access = useRecordAccess();
   const { options, mutation } = useAppSelector((state) => state.materialRequests);
   const [hubId, setHubId] = useState("");
   const [supplierId, setSupplierId] = useState("");
@@ -23,15 +26,16 @@ export function CreateMaterialRequestDialog({ onClose, onSaved }: { onClose: () 
     event.preventDefault();
     if (busy.current || mutation.loading || !items.length) return;
     const form = new FormData(event.currentTarget);
+    const submit = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "submit";
     busy.current = true;
     try {
-      await dispatch(createMaterialRequest({ requesting_hub_id: hubId, supplying_company_id: supplierId, notes: String(form.get("notes") ?? ""), needed_at: String(form.get("needed_at") ?? "") || null, items: items.map(({ product_id, requested_qty }) => ({ product_id, requested_qty })) })).unwrap();
-      toast.success("Material request draft created."); onSaved();
+      await dispatch(createMaterialRequest({ requesting_hub_id: hubId, supplying_company_id: supplierId, submit, notes: String(form.get("notes") ?? ""), needed_at: String(form.get("needed_at") ?? "") || null, items: items.map(({ product_id, requested_qty }) => ({ product_id, requested_qty })) })).unwrap();
+      toast.success(submit ? "Material request submitted." : "Material request draft saved."); onSaved();
     } catch (error) { toast.error(toastErrorMessage(error, "Could not create the request.")); }
     finally { busy.current = false; }
   }
   return <Dialog open onOpenChange={(open) => { if (!open && !mutation.loading) onClose(); }}><DialogContent className={`max-h-[90dvh] overflow-y-auto sm:max-w-3xl ${mutation.loading ? "[&>button]:hidden" : ""}`} onEscapeKeyDown={(event) => { if (mutation.loading) event.preventDefault(); }} onPointerDownOutside={(event) => { if (mutation.loading) event.preventDefault(); }}>
-    <DialogHeader><DialogTitle>Create material request</DialogTitle><DialogDescription>Save a draft, then submit it to receive a request number.</DialogDescription></DialogHeader>
+    <DialogHeader><DialogTitle>Create material request</DialogTitle><DialogDescription>Save as draft to continue later, or submit now for review and receive a request number.</DialogDescription></DialogHeader>
     <form onSubmit={save} className="space-y-4">
       <label className="block space-y-2 text-sm">Requesting hub<select className="h-10 w-full rounded-md border px-3" required value={hubId} disabled={mutation.loading || !choices} onChange={(event) => { setHubId(event.target.value); setSupplierId(""); setItems([]); }}><option value="">Select hub</option>{choices?.hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.company.name} / {hub.name}</option>)}</select></label>
       <label className="block space-y-2 text-sm">Supplying company<select className="h-10 w-full rounded-md border px-3" required value={supplierId} disabled={mutation.loading || !choices || !hubId} onChange={(event) => { setSupplierId(event.target.value); setItems([]); }}><option value="">Select supplier</option>{choices?.suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label>
@@ -41,7 +45,7 @@ export function CreateMaterialRequestDialog({ onClose, onSaved }: { onClose: () 
       <label className="block space-y-2 text-sm">Notes<Input name="notes" maxLength={1000} disabled={mutation.loading} /></label>
       {hubId && supplierId && <RequestProductPicker key={`${hubId}-${supplierId}`} hubId={hubId} supplierId={supplierId} items={items} onChange={setItems} disabled={mutation.loading} />}
       {mutation.error && <p role="alert" className="text-sm text-destructive">{mutation.error.message}</p>}
-      <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={mutation.loading} onClick={onClose}>Cancel</Button><Button disabled={mutation.loading || !choices || !items.length}>Save draft</Button></div>
+      <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" disabled={mutation.loading} onClick={onClose}>Cancel</Button><Button type="submit" name="intent" value="draft" variant="outline" disabled={mutation.loading || !choices || !items.length}>Save as draft</Button><Button type="submit" name="intent" value="submit" disabled={mutation.loading || !choices || !items.length || !canPerform(access, "materialRequests", "edit")}>Submit request</Button></div>
     </form>
   </DialogContent></Dialog>;
 }

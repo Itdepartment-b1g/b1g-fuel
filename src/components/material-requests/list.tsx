@@ -13,6 +13,7 @@ import { MaterialRequestsTableView } from "./table-view/material-requests-table-
 import { CreateMaterialRequestDialog } from "./dialog/create-material-request-dialog";
 import { EditMaterialRequestDialog } from "./dialog/edit-material-request-dialog";
 import { ViewMaterialRequestDialog } from "./dialog/view-material-request-dialog";
+import { TimelineMaterialRequestDialog } from "./dialog/timeline-material-request-dialog";
 
 export default function MaterialRequestsList() {
   const dispatch = useAppDispatch();
@@ -26,6 +27,8 @@ export default function MaterialRequestsList() {
   const [revision, setRevision] = useState(0);
   const [creating, setCreating] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [timelineId, setTimelineId] = useState<string | null>(null);
+  const [reviewAction, setReviewAction] = useState<"approve" | "reject" | "">("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const canView = canPerform(access, "materialRequests", "view");
   useEffect(() => {
@@ -41,16 +44,22 @@ export default function MaterialRequestsList() {
   const current = state.list.query?.page === page && state.list.query.search === search && state.list.query.status === status;
   const data = current ? state.list.data : null;
   function changed() { setRevision((value) => value + 1); }
+  function openPreview(id: string, action: "approve" | "reject" | "" = "") {
+    dispatch(clearMaterialRequestMutation());
+    setReviewAction(action);
+    setViewingId(id);
+  }
   if (!canView) return <p className="p-6 text-sm text-muted-foreground">You do not have access to material requests.</p>;
   return <div className="space-y-6 p-4 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-semibold">Material requests</h1><p className="text-sm text-muted-foreground">Request materials from a linked supplying company.</p></div>
       {canPerform(access, "materialRequests", "add") && <Button onClick={() => { dispatch(clearMaterialRequestMutation()); setCreating(true); }}>Create request</Button>}</div>
     <div className="flex flex-wrap gap-3 rounded-lg border bg-white p-4"><form className="flex min-w-0 flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); setSearch(draft.trim()); setPage(1); }}><Input aria-label="Search material requests" placeholder="Search request number or hub" value={draft} maxLength={160} onChange={(event) => setDraft(event.target.value)} /><Button variant="outline">Search</Button>{search && <Button type="button" variant="ghost" onClick={() => { setDraft(""); setSearch(""); setPage(1); }}>Clear</Button>}</form>
       <label className="flex items-center gap-2 text-sm">Status<select className="h-10 rounded-md border px-3" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">All</option>{["draft", "submitted", "approved", "rejected", "cancelled"].map((value) => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select></label></div>
-    {current && state.list.error ? <p role="alert">{state.list.error.message} <Button variant="outline" onClick={changed}>Try again</Button></p> : <MaterialRequestsTableView rows={data?.requests ?? []} loading={!data || state.list.loading} onView={(row) => { dispatch(clearMaterialRequestMutation()); setViewingId(row.id); }} />}
+    {current && state.list.error ? <p role="alert">{state.list.error.message} <Button variant="outline" onClick={changed}>Try again</Button></p> : <MaterialRequestsTableView rows={data?.requests ?? []} loading={!data || state.list.loading} onView={(row) => openPreview(row.id)} onApprove={(row) => openPreview(row.id, "approve")} onReject={(row) => openPreview(row.id, "reject")} onTimeline={(row) => setTimelineId(row.id)} />}
     {data && data.total > 0 && <Pagination metadata={paginationFromApi(data)} disabled={state.list.loading} onPrev={() => setPage(page - 1)} onNext={() => setPage(page + 1)} onPage={setPage} />}
     {creating && <CreateMaterialRequestDialog onClose={() => setCreating(false)} onSaved={() => { setCreating(false); setPage(1); changed(); }} />}
     {editingId && <EditMaterialRequestDialog requestId={editingId} onClose={() => setEditingId(null)} onSaved={() => { setEditingId(null); changed(); }} />}
-    {viewingId && <ViewMaterialRequestDialog requestId={viewingId} onClose={() => setViewingId(null)} onChanged={changed} onEdit={() => { dispatch(clearMaterialRequestMutation()); setEditingId(viewingId); setViewingId(null); }} />}
+    {timelineId && <TimelineMaterialRequestDialog key={timelineId} requestId={timelineId} onClose={() => setTimelineId(null)} />}
+    {viewingId && <ViewMaterialRequestDialog key={viewingId} requestId={viewingId} initialAction={reviewAction} onClose={() => setViewingId(null)} onChanged={changed} onEdit={() => { dispatch(clearMaterialRequestMutation()); setEditingId(viewingId); setViewingId(null); }} />}
   </div>;
 }

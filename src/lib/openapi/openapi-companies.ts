@@ -20,7 +20,7 @@ const name = {
   example: "B1G Fuel Manila",
 };
 const id = { type: "string", format: "uuid" };
-const code = { type: "string", pattern: "^[A-Z][A-Z0-9]{1,15}$", example: "BFW", description: "Unique company code. Required for material request submission; immutable after the first number is issued." };
+const code = { type: "string", pattern: "^[A-Z][A-Z0-9]{1,15}$", example: "BFW", description: "Optional unique company code. Material request numbers use company name initials automatically." };
 export const companySchemas = {
   Company: {
     type: "object",

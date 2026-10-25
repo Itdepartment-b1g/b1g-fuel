@@ -158,10 +158,6 @@ export async function update_company(
     }),
   );
 }
-export async function company_numbering_started(id: string, client: DatabaseExecutor) {
-  await client.$queryRaw`SELECT id FROM company WHERE id = ${id}::uuid FOR UPDATE`;
-  return client.material_request.findFirst({ where: { requesting_company_id: id, request_no: { not: null } }, select: { id: true } });
-}
 
 /** Delete a company by ID through the supplied database client. The service checks membership and controls the transaction before calling this query. */
 export async function delete_company(id: string, client: DatabaseExecutor, access?: RecordAccess) {
