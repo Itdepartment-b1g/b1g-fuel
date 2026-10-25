@@ -27,25 +27,22 @@ test("material request row actions show review choices only with permission and 
   function timeline(record: MaterialRequest) { assert.equal(record, row); selected.push("timeline"); }
   const table = MaterialRequestsTableView({ rows: [row], loading: false, onView: view, onApprove: approve, onReject: reject, onTimeline: timeline });
   const html = renderToStaticMarkup(table);
-  assert.match(html, />Approve<\/button>/);
-  assert.match(html, />Reject<\/button>/);
-  assert.match(html, />View<\/button>/);
-  assert.match(html, />Timeline<\/button>/);
+  assert.match(html, /aria-label="Actions for MR-BFD-202610-0000001"/);
+  assert.doesNotMatch(html, />Approve<\/button>|>Reject<\/button>|>View<\/button>|>Timeline<\/button>/);
   for (const header of ["Request number", "Requesting hub", "Supplier", "Status", "Reviewed by", "Created at"]) assert.ok(html.includes(`aria-label="${header} column options"`));
   const cards = renderToStaticMarkup(<MaterialRequestsCards rows={[row]} onView={view} onApprove={approve} onReject={reject} onTimeline={timeline} />);
   assert.match(cards, /MR-BFD-202610-0000001/);
   assert.match(cards, /Awaiting review/);
   assert.match(cards, /Actions for MR-BFD-202610-0000001/);
   const actions = table.props.actions(row) as TableAction<MaterialRequest>[];
+  assert.deepEqual(actions.map((action) => action.id), ["approve", "reject", "view", "timeline"]);
   actions.forEach((action) => action.onSelect(row));
   assert.deepEqual(selected, ["approve", "reject", "view", "timeline"]);
   row.permissions!.review = false;
-  const readOnly = renderToStaticMarkup(table);
-  assert.doesNotMatch(readOnly, />Approve<\/button>|>Reject<\/button>/);
-  assert.match(readOnly, />View<\/button>/);
-  assert.match(readOnly, />Timeline<\/button>/);
+  const readOnly = table.props.actions(row) as TableAction<MaterialRequest>[];
+  assert.deepEqual(readOnly.map((action) => action.id), ["view", "timeline"]);
   row.status = "draft";
-  assert.match(renderToStaticMarkup(table), />View draft<\/button>/);
+  assert.equal((table.props.actions(row) as TableAction<MaterialRequest>[]).find((action) => action.id === "view")?.label, "View draft");
 });
 
 test("MR list serializes shared filters and sorting, and fetches authenticated filter choices", async () => {

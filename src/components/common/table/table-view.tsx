@@ -42,6 +42,9 @@ export interface TableViewProps<T> {
     | readonly TableAction<T>[]
     | ((row: T) => readonly TableAction<T>[]);
   actionsDisabled?: boolean;
+  /** Collapse row actions into one vertical-dot menu. */
+  actionsMenu?: boolean;
+  actionsLabel?: (row: T) => string;
   /** Wrap columns inside the parent width instead of scrolling sideways. */
   fit?: boolean;
   className?: string;
@@ -68,6 +71,8 @@ export function TableView<T>({
   expansionMode = "single",
   actions,
   actionsDisabled = false,
+  actionsMenu = false,
+  actionsLabel,
   fit = false,
   className,
 }: TableViewProps<T>) {
@@ -340,6 +345,8 @@ export function TableView<T>({
                   actions={available}
                   showActions={showActions}
                   actionsDisabled={actionsDisabled}
+                  actionsMenu={actionsMenu}
+                  actionsLabel={actionsLabel?.(row) ?? `Actions for ${key}`}
                   wrap={fit}
                   columnSpan={span}
                 />

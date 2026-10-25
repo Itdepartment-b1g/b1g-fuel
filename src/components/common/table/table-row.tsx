@@ -3,6 +3,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CardActionsMenu } from "@/components/common/card-actions-menu";
 import type { TableColumn } from "./table-column";
 
 /** Left and right space inside each data cell. */
@@ -73,6 +74,8 @@ export function TableRow<T>({
   actions,
   showActions,
   actionsDisabled,
+  actionsMenu = false,
+  actionsLabel,
   wrap = false,
   columnSpan,
 }: {
@@ -88,6 +91,8 @@ export function TableRow<T>({
   actions: readonly TableAction<T>[];
   showActions: boolean;
   actionsDisabled: boolean;
+  actionsMenu?: boolean;
+  actionsLabel: string;
   wrap?: boolean;
   columnSpan: number;
 }) {
@@ -127,7 +132,21 @@ export function TableRow<T>({
             className={cn(rowCellClass, "text-right", wrap ? "whitespace-normal" : "whitespace-nowrap")}
           >
             <div className="flex items-center justify-end gap-4">
-              {actions.map((action) => {
+              {actionsMenu ? (
+                <CardActionsMenu
+                  label={actionsLabel}
+                  disabled={actionsDisabled || !actions.length}
+                  items={actions.map((action) => ({
+                    id: action.id,
+                    label: action.label,
+                    icon: action.icon,
+                    destructive: action.destructive,
+                    description: typeof action.description === "function" ? action.description(row) : action.description,
+                    disabled: typeof action.disabled === "function" ? action.disabled(row) : action.disabled,
+                    onSelect: () => action.onSelect(row),
+                  }))}
+                />
+              ) : actions.map((action) => {
                 const disabled =
                   actionsDisabled ||
                   (typeof action.disabled === "function"
