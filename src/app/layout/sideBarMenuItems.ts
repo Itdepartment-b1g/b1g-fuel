@@ -7,6 +7,7 @@ type MenuIcon = ComponentType<{ className?: string }>;
 export type SideBarMenuChild = {
   label: string;
   href: string;
+  icon: MenuIcon;
 };
 
 export type SideBarMenuItem = SideBarMenuChild & {
@@ -57,7 +58,7 @@ export function listSidebarMenu(pages: string[], access?: SideBarAccess): SideBa
         groups.set(groupDefinition.key, group);
         items.push(group);
       }
-      group.children!.push({ label: page.label, href: page.href });
+      group.children!.push({ label: page.label, href: page.href, icon: icons_by_page[page.key] });
     } else {
       items.push({ label: page.label, href: page.href, icon: icons_by_page[page.key], showChevron: false });
     }

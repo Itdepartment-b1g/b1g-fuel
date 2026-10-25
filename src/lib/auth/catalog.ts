@@ -33,7 +33,9 @@ export type PageCatalogGroup = {
 // Register pages and groups here when their features are added.
 // A later item may reuse a key so the sidebar can open another screen with the same access.
 // Role pages and permissions use the first item for that key.
-export function uniquePageCatalog(items: readonly PageCatalogItem[] = PAGE_CATALOG) {
+export function uniquePageCatalog(
+  items: readonly PageCatalogItem[] = PAGE_CATALOG,
+) {
   const seen = new Set<string>();
   return items.filter((item) => {
     if (seen.has(item.key)) return false;

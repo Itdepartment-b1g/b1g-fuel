@@ -194,23 +194,29 @@ export default function AppSideBar({
                       )}
                     </summary>
                     <ul className="ml-5 mt-1 space-y-1 border-l pl-3">
-                      {item.children.map((child) => (
-                        <li key={child.href}>
-                          <Link
-                            href={child.href}
-                            onClick={onClose}
-                            aria-current={
-                              isActive(child.href) ? "page" : undefined
-                            }
-                            className={cn(
-                              "block rounded-md px-3 py-2 text-sm hover:bg-accent",
-                              isActive(child.href) && "bg-accent font-medium",
-                            )}
-                          >
-                            {child.label}
-                          </Link>
-                        </li>
-                      ))}
+                      {item.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        return (
+                          <li key={child.href}>
+                            <Link
+                              href={child.href}
+                              onClick={onClose}
+                              aria-current={
+                                isActive(child.href) ? "page" : undefined
+                              }
+                              className={cn(
+                                "flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent",
+                                isActive(child.href) && "bg-accent font-medium",
+                              )}
+                            >
+                              <span aria-hidden="true">
+                                <ChildIcon className="size-4 shrink-0" />
+                              </span>
+                              {child.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </details>
                 ) : (
