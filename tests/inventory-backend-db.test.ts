@@ -4,10 +4,12 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { Client } from "pg";
+import type { Request, Response } from "express";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import type { RecordAccess } from "@/server/auth/record-access";
 import * as inventory from "@/server/services/inventory_service";
+import * as inventoryController from "@/server/controllers/inventory_controller";
 import * as receiving from "@/server/services/receiving_service";
 import * as requests from "@/server/services/material_requests_service";
 import { createQuickFilterState } from "@/utils/quick-filter";
@@ -232,6 +234,24 @@ test("inventory backend posts stock atomically and scopes reads by facility", { 
         const smallest = await inventory.list_inventory_brand(firstPage, "", matching, access(supplierCompany.id), { field, direction: "asc" });
         assert.equal(smallest.brands[0].id, otherBrand.id);
       }
+    });
+
+    await t.test("brands controller accepts the inventory page's default filter request", async () => {
+      const result = { status: 0, body: undefined as unknown };
+      const res = {
+        locals: { access: admin },
+        status(code: number) { result.status = code; return this; },
+        json(body: unknown) { result.body = body; return this; },
+      } as unknown as Response;
+      await inventoryController.list_inventory_brand({ query: {
+        search: "", page: "1", page_size: "10",
+        filters: JSON.stringify({ date: { preset: "all", from: "", to: "" }, conditions: [{ id: "9e0c93c0-69df-46f1-b92d-b14341be010d", field: "", value: "" }], status: "all", additional: { facility_type: "all" } }),
+      } } as unknown as Request, res);
+      assert.equal(result.status, 200);
+      const body = result.body as { brands: unknown[]; total: number; page: number; page_size: number };
+      assert.ok(body.brands.length > 0);
+      assert.equal(body.page, 1);
+      assert.equal(body.page_size, 10);
     });
 
     await t.test("history exposes saved balances, period totals, source references and all filtered export rows", async () => {
