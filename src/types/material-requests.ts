@@ -1,19 +1,23 @@
-export type MaterialRequestStatus = "draft" | "submitted" | "approved" | "rejected" | "cancelled";
-export type RequestItem = { id: string; product_id: string; unit_id: string; product_label: string; brand_name: string; variant_name: string; product_type_name: string; unit_label: string; requested_qty: string; approved_qty: string | null };
-export type RequestEvent = { id: string; kind: string; from_status: MaterialRequestStatus | null; to_status: MaterialRequestStatus; note: string; created_by: string; created_by_name: string | null; created_at: string };
+export type MaterialRequestStatus = "draft" | "submitted" | "approved" | "partially_dispatched" | "fully_dispatched" | "partially_received" | "received" | "closed" | "rejected" | "cancelled";
+export type RequestItem = { id: string; product_id: string; unit_id: string; product_label: string; brand_name: string; variant_name: string; product_type_name: string; unit_label: string; requested_qty: string; approved_qty: string | null; dispatched_qty: string; received_qty: string; available_qty?: string | null };
+export type RequestMovement = { id: string; number: string | null; posted_at: string | null; created_by_name: string | null; lines: { material_request_item_id: string; qty: string }[] };
+export type RequestEvent = { id: string; kind: string; from_status: MaterialRequestStatus | null; to_status: MaterialRequestStatus; note: string; created_by: string; created_by_name: string | null; created_at: string; material_request_receiving_id: string | null };
 export type MaterialRequest = {
   approval_warehouse?: { id: string; name: string } | null;
   approval_warehouse_error?: string | null;
-  permissions?: { edit: boolean; submit: boolean; cancel: boolean; review: boolean };
+  receiving_no?: string | null;
+  dispatch_no?: string | null;
+  permissions?: { edit: boolean; submit: boolean; cancel: boolean; review: boolean; dispatch: boolean; receive: boolean };
   id: string; request_no: string | null; requesting_company_id: string; supplying_company_id: string;
   requesting_hub_id: string; supplying_warehouse_id: string | null; status: MaterialRequestStatus;
   requesting_company: { id: string; name: string }; supplying_company: { id: string; name: string };
   requesting_hub: { id: string; name: string }; supplying_warehouse: { id: string; name: string } | null;
   notes: string; needed_at: string | null; created_by: string; created_by_name: string | null;
-  created_at: string; updated_at: string; submitted_at: string | null; items: RequestItem[]; events: RequestEvent[];
+  created_at: string; updated_at: string; submitted_at: string | null; items: RequestItem[]; events: RequestEvent[]; dispatches: RequestMovement[]; receivings: RequestMovement[];
 };
 export type MaterialRequestInput = { requesting_hub_id: string; supplying_company_id: string; notes?: string; needed_at?: string | null; items: { product_id: string; requested_qty: string }[] };
 export type MaterialRequestAction = { id: string; action: "submit" | "approve" | "reject" | "cancel"; note?: string; supplying_warehouse_id?: string };
+export type ReceiveMaterialRequestInput = { id: string; notes?: string; lines: { material_request_item_id: string; qty: string }[] };
 export type CreateMaterialRequestInput = MaterialRequestInput & { submit?: boolean };
 export type RequestOptions = { hubs: { id: string; name: string; company_id: string; company: { name: string } }[]; suppliers: { id: string; name: string }[]; warehouses: { id: string; name: string }[] };
 export type CatalogProduct = { id: string; label: string; brand_name: string; variant_name: string; product_type_name: string; unit_id: string; unit_label: string };

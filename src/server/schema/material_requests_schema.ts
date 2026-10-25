@@ -9,4 +9,6 @@ export type RequestInput = {
   items: { product_id: string; requested_qty: string }[];
 };
 export type ActionInput = { id: string; action: RequestAction; note?: string; supplying_warehouse_id?: string };
+export type ReceiveInput = { id: string; notes?: string; lines: { material_request_item_id: string; qty: string }[] };
+export type DispatchInput = ReceiveInput;
 export type CreateRequestInput = RequestInput & { submit?: boolean };

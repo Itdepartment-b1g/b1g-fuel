@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CircleAlert, CheckCircle2, X } from "lucide-react";
+import { CircleAlert, CheckCircle2, Info, X } from "lucide-react";
 
-type Toast = { id: number; message: string; kind: "success" | "error" };
+type Toast = { id: number; message: string; kind: "success" | "error" | "info" };
 type ToastApi = {
   success: (message: string) => void;
   error: (message: string) => void;
+  info: (message: string) => void;
 };
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -20,7 +21,8 @@ function ToastMessage({ toast, dismiss }: { toast: Toast; dismiss: (id: number) 
     return () => window.clearTimeout(timer);
   }, [toast.id, toast.kind, dismiss, hovered, focused]);
 
-  const Icon = toast.kind === "success" ? CheckCircle2 : CircleAlert;
+  const Icon = toast.kind === "success" ? CheckCircle2 : toast.kind === "info" ? Info : CircleAlert;
+  const tone = toast.kind === "success" ? "border-emerald-200 text-emerald-800" : toast.kind === "info" ? "border-slate-200 text-slate-700" : "border-red-200 text-destructive";
   return (
     <div
       role={toast.kind === "error" ? "alert" : "status"}
@@ -29,7 +31,7 @@ function ToastMessage({ toast, dismiss }: { toast: Toast; dismiss: (id: number) 
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}
-      className={`pointer-events-auto flex max-w-full items-start gap-3 rounded-xl border bg-white p-4 text-sm shadow-lg ${toast.kind === "success" ? "border-emerald-200 text-emerald-800" : "border-red-200 text-destructive"}`}
+      className={`pointer-events-auto flex max-w-full items-start gap-3 rounded-xl border bg-white p-4 text-sm shadow-lg ${tone}`}
     >
       <Icon className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
       <p className="min-w-0 flex-1 break-words">{toast.message}</p>
@@ -51,6 +53,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const api = useMemo<ToastApi>(() => ({
     success: (message) => notify(message, "success"),
     error: (message) => notify(message, "error"),
+    info: (message) => notify(message, "info"),
   }), [notify]);
 
   return (

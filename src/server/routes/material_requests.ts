@@ -13,3 +13,5 @@ materialRequestsRouter.get("/", requirePermission("materialRequests", "view"), (
 materialRequestsRouter.post("/", requirePermission("materialRequests", "add"), controller.create_material_request);
 materialRequestsRouter.patch("/", requirePermission("materialRequests", "edit"), controller.update_material_request);
 materialRequestsRouter.post("/action", requirePermission("materialRequests", "edit"), controller.action_material_request);
+materialRequestsRouter.post("/dispatch", requirePermission("materialRequests", "edit"), controller.dispatch_material_request);
+materialRequestsRouter.post("/receive", requirePermission("materialRequests", "edit"), controller.receive_material_request);

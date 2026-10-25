@@ -22,6 +22,9 @@ export function CreateMaterialRequestDialog({ onClose, onSaved }: { onClose: () 
   const busy = useRef(false);
   useEffect(() => { const request = dispatch(getMaterialRequestOptions({ hub_id: hubId })); return () => request.abort(); }, [dispatch, hubId, revision]);
   const choices = options.query?.hub_id === hubId ? options.data : null;
+  const assignedHubs = choices?.hubs ?? [];
+  const onlyHubId = assignedHubs.length === 1 ? assignedHubs[0].id : "";
+  useEffect(() => { if (onlyHubId && hubId !== onlyHubId) setHubId(onlyHubId); }, [onlyHubId, hubId]);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy.current || mutation.loading || !items.length) return;
@@ -37,7 +40,7 @@ export function CreateMaterialRequestDialog({ onClose, onSaved }: { onClose: () 
   return <Dialog open onOpenChange={(open) => { if (!open && !mutation.loading) onClose(); }}><DialogContent className={`max-h-[90dvh] overflow-x-hidden overflow-y-auto sm:max-w-3xl [&>*]:min-w-0 ${mutation.loading ? "[&>button]:hidden" : ""}`} onEscapeKeyDown={(event) => { if (mutation.loading) event.preventDefault(); }} onPointerDownOutside={(event) => { if (mutation.loading) event.preventDefault(); }}>
     <DialogHeader><DialogTitle>Create material request</DialogTitle><DialogDescription>Save as draft to continue later, or submit now for review and receive a request number.</DialogDescription></DialogHeader>
     <form onSubmit={save} className="min-w-0 space-y-4">
-      <label className="block space-y-2 text-sm">Requesting hub<select className="h-10 w-full rounded-md border px-3" required value={hubId} disabled={mutation.loading || !choices} onChange={(event) => { setHubId(event.target.value); setSupplierId(""); setItems([]); }}><option value="">Select hub</option>{choices?.hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.company.name} / {hub.name}</option>)}</select></label>
+      <div className="space-y-1 text-sm">{assignedHubs.length === 1 ? <><p className="font-medium">Your currently assigned hub</p><p>{assignedHubs[0].company.name} / {assignedHubs[0].name}</p><p className="text-muted-foreground">This request uses the hub you are assigned to.</p></> : assignedHubs.length > 1 ? <><p className="font-medium">Your currently assigned hubs</p><p className="text-muted-foreground">Choose one of the hubs you are assigned to.</p><select className="h-10 w-full rounded-md border px-3" required aria-label="Your assigned hubs" value={hubId} disabled={mutation.loading} onChange={(event) => { setHubId(event.target.value); setSupplierId(""); setItems([]); }}><option value="">Select your hub</option>{assignedHubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.company.name} / {hub.name}</option>)}</select></> : choices ? <p>You are not assigned to a hub. Ask an administrator to assign you before creating a request.</p> : <p role="status">Loading your hub...</p>}</div>
       <label className="block space-y-2 text-sm">Supplying company<select className="h-10 w-full rounded-md border px-3" required value={supplierId} disabled={mutation.loading || !choices || !hubId} onChange={(event) => { setSupplierId(event.target.value); setItems([]); }}><option value="">Select supplier</option>{choices?.suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label>
       {options.error && <p role="alert">{options.error.message} <Button type="button" variant="outline" onClick={() => setRevision((value) => value + 1)}>Try again</Button></p>}
       {choices && hubId && !choices.suppliers.length && <p className="text-sm text-muted-foreground">No active supplier links. Ask Super Admin to configure supply links for this company.</p>}

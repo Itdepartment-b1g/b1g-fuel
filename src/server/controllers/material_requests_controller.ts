@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import * as service from "@/server/services/material_requests_service";
 import { MaterialRequestError } from "@/server/services/material_requests_service";
 import { parsePagination, PaginationError } from "@/server/lib/pagination";
-import type { RequestInput, CreateRequestInput, ActionInput } from "@/server/schema/material_requests_schema";
+import type { RequestInput, CreateRequestInput, ActionInput, ReceiveInput, DispatchInput } from "@/server/schema/material_requests_schema";
 import { MR_SORT_FIELDS } from "@/server/schema/material_requests_schema";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
@@ -69,6 +69,32 @@ export async function update_material_request(req: Request, res: Response) {
 
 export async function action_material_request(req: Request, res: Response) {
   try { res.status(200).json({ request: await service.action_material_request(req.body as ActionInput, res.locals.access) }); }
+  catch (error) {
+    if (error instanceof MaterialRequestError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof PaginationError) { res.status(400).json({ error: error.message }); return; }
+    if (error && typeof error === "object" && "code" in error && ["P2002", "P2003", "P2034"].includes(String(error.code))) {
+      res.status(409).json({ error: "Related records changed or the request was updated concurrently. Refresh and try again." }); return;
+    }
+    console.error("Material request failed:", error);
+    res.status(500).json({ error: "The material request could not be completed." });
+  }
+}
+
+export async function dispatch_material_request(req: Request, res: Response) {
+  try { res.status(200).json({ request: await service.dispatch_material_request(req.body as DispatchInput, res.locals.access) }); }
+  catch (error) {
+    if (error instanceof MaterialRequestError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof PaginationError) { res.status(400).json({ error: error.message }); return; }
+    if (error && typeof error === "object" && "code" in error && ["P2002", "P2003", "P2034"].includes(String(error.code))) {
+      res.status(409).json({ error: "Related records changed or the request was updated concurrently. Refresh and try again." }); return;
+    }
+    console.error("Material request failed:", error);
+    res.status(500).json({ error: "The material request could not be completed." });
+  }
+}
+
+export async function receive_material_request(req: Request, res: Response) {
+  try { res.status(200).json({ request: await service.receive_material_request(req.body as ReceiveInput, res.locals.access) }); }
   catch (error) {
     if (error instanceof MaterialRequestError) { res.status(error.status).json({ error: error.message }); return; }
     if (error instanceof PaginationError) { res.status(400).json({ error: error.message }); return; }

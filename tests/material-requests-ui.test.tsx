@@ -19,28 +19,60 @@ import { createQuickFilterState } from "@/utils/quick-filter";
 import { list_material_request as listMaterialRequestController } from "@/server/controllers/material_requests_controller";
 
 test("material request row actions show review choices only with permission and pass the selected request", () => {
-  const row = { id: "request", request_no: "MR-BFD-202610-0000001", status: "submitted", created_at: "2026-10-25T00:00:00Z", requesting_hub: { name: "Manila hub" }, requesting_company: { name: "B1G Fuel Distribution" }, supplying_company: { name: "Supplier" }, permissions: { edit: false, submit: false, cancel: false, review: true } } as MaterialRequest;
+  const row = { id: "request", request_no: "MR-BFD-202610-0000001", status: "submitted", created_at: "2026-10-25T00:00:00Z", requesting_hub: { name: "Manila hub" }, requesting_company: { name: "B1G Fuel Distribution" }, supplying_company: { name: "Supplier" }, permissions: { edit: false, submit: false, cancel: false, review: true }, items: [{ requested_qty: "10", unit_label: "L" }, { requested_qty: "2.500", unit_label: "L" }] } as MaterialRequest;
   const selected: string[] = [];
   function view(record: MaterialRequest) { assert.equal(record, row); selected.push("view"); }
   function approve(record: MaterialRequest) { assert.equal(record, row); selected.push("approve"); }
   function reject(record: MaterialRequest) { assert.equal(record, row); selected.push("reject"); }
   function timeline(record: MaterialRequest) { assert.equal(record, row); selected.push("timeline"); }
-  const table = MaterialRequestsTableView({ rows: [row], loading: false, onView: view, onApprove: approve, onReject: reject, onTimeline: timeline });
+  function receive(record: MaterialRequest) { assert.equal(record, row); selected.push("receive"); }
+  function dispatchRequest(record: MaterialRequest) { assert.equal(record, row); selected.push("dispatch"); }
+  const table = MaterialRequestsTableView({ rows: [row], loading: false, onView: view, onApprove: approve, onReject: reject, onDispatch: dispatchRequest, onReceive: receive, onTimeline: timeline });
   const html = renderToStaticMarkup(table);
   assert.match(html, /aria-label="Actions for MR-BFD-202610-0000001"/);
-  assert.doesNotMatch(html, />Approve<\/button>|>Reject<\/button>|>View<\/button>|>Timeline<\/button>/);
-  for (const header of ["Request number", "Requesting hub", "Supplier", "Status", "Reviewed by", "Created at"]) assert.ok(html.includes(`aria-label="${header} column options"`));
-  const cards = renderToStaticMarkup(<MaterialRequestsCards rows={[row]} onView={view} onApprove={approve} onReject={reject} onTimeline={timeline} />);
+  assert.match(html, />Approve<\/button>/);
+  assert.match(html, />Reject<\/button>/);
+  assert.match(html, /text-emerald-600/);
+  assert.match(html, /text-rose-600/);
+  assert.doesNotMatch(html, />View<\/button>|>Timeline<\/button>/);
+  for (const header of ["Request number", "Requesting hub", "Supplier", "Request Progress", "Total SKUs", "Total Qty", "Reviewed by", "Created at"]) assert.ok(html.includes(`aria-label="${header} column options"`));
+  assert.match(html, /Pending/);
+  assert.match(html, />2</);
+  assert.match(html, /12\.5/);
+  assert.doesNotMatch(html, /12\.5 L/);
+  const cards = renderToStaticMarkup(<MaterialRequestsCards rows={[row]} onView={view} onApprove={approve} onReject={reject} onDispatch={dispatchRequest} onReceive={receive} onTimeline={timeline} />);
   assert.match(cards, /MR-BFD-202610-0000001/);
   assert.match(cards, /Awaiting review/);
   assert.match(cards, /Actions for MR-BFD-202610-0000001/);
+  assert.match(cards, />Approve<\/button>/);
+  assert.match(cards, />Reject<\/button>/);
+  assert.match(cards, /Total SKUs/);
+  assert.match(cards, /12\.5/);
+  assert.doesNotMatch(cards, /12\.5 L/);
   const actions = table.props.actions(row) as TableAction<MaterialRequest>[];
   assert.deepEqual(actions.map((action) => action.id), ["approve", "reject", "view", "timeline"]);
+  assert.ok(actions.find((action) => action.id === "view")?.icon);
+  assert.ok(actions.find((action) => action.id === "timeline")?.icon);
   actions.forEach((action) => action.onSelect(row));
   assert.deepEqual(selected, ["approve", "reject", "view", "timeline"]);
   row.permissions!.review = false;
   const readOnly = table.props.actions(row) as TableAction<MaterialRequest>[];
   assert.deepEqual(readOnly.map((action) => action.id), ["view", "timeline"]);
+  assert.doesNotMatch(renderToStaticMarkup(table), />Approve<\/button>|>Reject<\/button>|>Receive<\/button>/);
+  row.status = "approved";
+  row.events = [];
+  row.permissions!.receive = true;
+  row.permissions!.dispatch = true;
+  const receivable = table.props.actions(row) as TableAction<MaterialRequest>[];
+  assert.deepEqual(receivable.map((action) => action.id), ["dispatch", "receive", "view", "timeline"]);
+  assert.match(renderToStaticMarkup(table), />Receive<\/button>/);
+  assert.match(renderToStaticMarkup(table), /text-sky-600/);
+  receivable[1].onSelect(row);
+  assert.equal(selected.at(-1), "receive");
+  receivable[0].onSelect(row);
+  assert.equal(selected.at(-1), "dispatch");
+  row.permissions!.receive = false;
+  row.permissions!.dispatch = false;
   row.status = "draft";
   assert.equal((table.props.actions(row) as TableAction<MaterialRequest>[]).find((action) => action.id === "view")?.label, "View draft");
 });
@@ -121,7 +153,7 @@ test("Reviewed by shows the approval or rejection actor and stays empty before r
     ],
   } as MaterialRequest;
   function render() {
-    return renderToStaticMarkup(<MaterialRequestsTableView rows={[row]} loading={false} onView={() => {}} onApprove={() => {}} onReject={() => {}} onTimeline={() => {}} />);
+    return renderToStaticMarkup(<MaterialRequestsTableView rows={[row]} loading={false} onView={() => {}} onApprove={() => {}} onReject={() => {}} onDispatch={() => {}} onReceive={() => {}} onTimeline={() => {}} />);
   }
   assert.match(render(), /Reviewed by/);
   assert.match(render(), /Approval reviewer/);
@@ -171,7 +203,7 @@ test("material request previews show details and materials without the separate 
     items: [{ id: "item", product_id: "product", unit_id: "unit", product_label: "Premium fuel", unit_label: "L", requested_qty: "12.5", approved_qty: null }],
     events: [{ id: "event", kind: "submitted", from_status: "draft", to_status: "submitted", note: "Urgent delivery", created_by: "actor", created_by_name: "Reviewer", created_at: "2026-10-25T01:00:00Z" }],
   } as MaterialRequest;
-  const table = MaterialRequestsTableView({ rows: [record], loading: false, onView: () => {}, onApprove: () => {}, onReject: () => {}, onTimeline: () => {} });
+  const table = MaterialRequestsTableView({ rows: [record], loading: false, onView: () => {}, onApprove: () => {}, onReject: () => {}, onDispatch: () => {}, onReceive: () => {}, onTimeline: () => {} });
   const collapsed = renderToStaticMarkup(table);
   assert.match(collapsed, /aria-label="Expand row request" aria-expanded="false"/);
   assert.doesNotMatch(collapsed, /Premium fuel|Deliver before noon|Urgent delivery/);
@@ -241,7 +273,7 @@ test("MR progress includes a materials table at each step and approved quantitie
 });
 
 test("MR material tables and cards paginate and handle empty materials", () => {
-  const items = Array.from({ length: 11 }, (_, index) => ({ id: String(index), product_id: "product", unit_id: "unit", product_label: `Material ${index + 1} end`, brand_name: "Brand", variant_name: "Variant", product_type_name: "Fuel", unit_label: "L", requested_qty: "10", approved_qty: null }));
+  const items = Array.from({ length: 11 }, (_, index) => ({ id: String(index), product_id: "product", unit_id: "unit", product_label: `Material ${index + 1} end`, brand_name: "Brand", variant_name: "Variant", product_type_name: "Fuel", unit_label: "L", requested_qty: "10", approved_qty: null, dispatched_qty: "0", received_qty: "0" }));
   for (const view of ["table", "cards"] as const) {
     const html = renderToStaticMarkup(<MaterialRequestItems items={items} view={view} />);
     assert.match(html, /Material 10 end/);

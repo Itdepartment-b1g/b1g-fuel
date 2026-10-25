@@ -38,23 +38,21 @@ export function TableMenu({
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const positionMenu = () => {
     const rect = trigger.current?.getBoundingClientRect();
+    const node = menu.current;
     if (!rect) return;
-    const height =
-      menu.current?.offsetHeight ?? Math.min(items.length * 64 + 16, 300);
-    setPosition({
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - 272)),
-      top: Math.max(
-        8,
-        rect.bottom + height + 8 <= window.innerHeight
-          ? rect.bottom + 6
-          : rect.top - height - 6,
-      ),
-    });
+    const width = node?.offsetWidth ?? 160;
+    const height = node?.offsetHeight ?? Math.min(items.length * 44 + 16, 300);
+    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+    const top = Math.max(8, rect.bottom + height + 8 <= window.innerHeight ? rect.bottom + 6 : rect.top - height - 6);
+    setPosition((current) => current.left === left && current.top === top ? current : { left, top });
   };
   const close = (restoreFocus = true) => {
     setOpen(false);
     if (restoreFocus) trigger.current?.focus();
   };
+  useEffect(() => {
+    if (open) positionMenu();
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
@@ -130,7 +128,7 @@ export function TableMenu({
               }
             }}
             style={position}
-            className="fixed z-[100] max-h-[calc(100dvh-16px)] w-64 max-w-[calc(100vw-16px)] overflow-y-auto rounded-lg border bg-white p-1.5 text-sm text-primary shadow-lg"
+            className="fixed z-[100] max-h-[calc(100dvh-16px)] w-max max-w-[calc(100vw-16px)] overflow-y-auto rounded-lg border bg-white p-1.5 text-sm text-foreground shadow-lg"
             onBlur={(event) => {
               if (
                 event.relatedTarget &&
@@ -192,7 +190,7 @@ export function TableMenu({
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block font-medium">{item.label}</span>
+                    <span className="block whitespace-nowrap font-medium">{item.label}</span>
                     {item.description && (
                       <span className="mt-0.5 block text-xs text-muted-foreground">
                         {item.description}

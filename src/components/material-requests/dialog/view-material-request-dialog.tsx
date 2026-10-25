@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { MaterialRequest } from "@/types/material-requests";
 import { MaterialRequestDetails } from "../table-view/material-request-details";
 import { ReviewMaterialRequestDialog } from "./review-material-request-dialog";
 
@@ -27,12 +28,16 @@ export function ViewMaterialRequestDialog({
   initialAction = "",
   onClose,
   onEdit,
+  onDispatch,
+  onReceive,
   onChanged,
 }: {
   requestId: string;
   initialAction?: "approve" | "reject" | "";
   onClose: () => void;
   onEdit: () => void;
+  onDispatch: (request: MaterialRequest) => void;
+  onReceive: (request: MaterialRequest) => void;
   onChanged: () => void;
 }) {
   const dispatch = useAppDispatch();
@@ -186,6 +191,24 @@ export function ViewMaterialRequestDialog({
                       </Button>
                     )}
                   </>
+                )}
+                {record.permissions?.dispatch && (
+                  <Button
+                    variant="outline"
+                    disabled={mutation.loading}
+                    onClick={() => onDispatch(record)}
+                  >
+                    Dispatch
+                  </Button>
+                )}
+                {record.permissions?.receive && (
+                  <Button
+                    variant="outline"
+                    disabled={mutation.loading}
+                    onClick={() => onReceive(record)}
+                  >
+                    Receive
+                  </Button>
                 )}
                 {record.permissions?.cancel && (
                   <Button

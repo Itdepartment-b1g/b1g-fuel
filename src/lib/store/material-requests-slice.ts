@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, isAnyOf } from "@reduxjs/toolkit";
 import type { RootState } from "./store";
-import type { MaterialRequest, MaterialRequestInput, CreateMaterialRequestInput, MaterialRequestAction, MaterialRequestsPage, RequestOptions, RequestCatalog } from "@/types/material-requests";
+import type { MaterialRequest, MaterialRequestInput, CreateMaterialRequestInput, MaterialRequestAction, ReceiveMaterialRequestInput, MaterialRequestsPage, RequestOptions, RequestCatalog } from "@/types/material-requests";
 import type { QuickFilterState } from "@/types/quick-filter";
 import type { ManagementFilterOptions } from "@/types/management-filters";
 type Failure = { status: number; message: string };
@@ -42,6 +42,12 @@ export const updateMaterialRequest = createAsyncThunk<MaterialRequest, { id: str
 export const actionMaterialRequest = createAsyncThunk<MaterialRequest, MaterialRequestAction, Config>("materialRequests/action", async (input, api) => {
   try { return (await request<{ request: MaterialRequest }>("/action", undefined, "POST", input)).request; } catch (error) { return api.rejectWithValue(failure(error)); }
 }, { condition: canMutate });
+export const dispatchMaterialRequest = createAsyncThunk<MaterialRequest, ReceiveMaterialRequestInput, Config>("materialRequests/dispatch", async (input, api) => {
+  try { return (await request<{ request: MaterialRequest }>("/dispatch", undefined, "POST", input)).request; } catch (error) { return api.rejectWithValue(failure(error)); }
+}, { condition: canMutate });
+export const receiveMaterialRequest = createAsyncThunk<MaterialRequest, ReceiveMaterialRequestInput, Config>("materialRequests/receive", async (input, api) => {
+  try { return (await request<{ request: MaterialRequest }>("/receive", undefined, "POST", input)).request; } catch (error) { return api.rejectWithValue(failure(error)); }
+}, { condition: canMutate });
 
 const slice = createSlice({ name: "materialRequests", initialState, reducers: { clearMaterialRequestMutation(state) { if (!state.mutation.loading) state.mutation = slot<MaterialRequest>(); } }, extraReducers(builder) {
   builder
@@ -60,9 +66,9 @@ const slice = createSlice({ name: "materialRequests", initialState, reducers: { 
     .addCase(getMaterialRequestCatalog.pending, (state, action) => { state.catalog = { ...slot<RequestCatalog>(), loading: true, requestId: action.meta.requestId, query: action.meta.arg }; })
     .addCase(getMaterialRequestCatalog.fulfilled, (state, action) => { if (state.catalog.requestId === action.meta.requestId) { state.catalog.data = action.payload; state.catalog.loading = false; state.catalog.requestId = null; } })
     .addCase(getMaterialRequestCatalog.rejected, (state, action) => { if (state.catalog.requestId === action.meta.requestId) { state.catalog.loading = false; state.catalog.error = action.meta.aborted ? null : action.payload ?? failure(action.error); state.catalog.requestId = null; } })
-    .addMatcher(isAnyOf(createMaterialRequest.pending, updateMaterialRequest.pending, actionMaterialRequest.pending), (state, action) => { state.mutation = { ...slot<MaterialRequest>(), loading: true, requestId: action.meta.requestId }; })
-    .addMatcher(isAnyOf(createMaterialRequest.fulfilled, updateMaterialRequest.fulfilled, actionMaterialRequest.fulfilled), (state, action) => { if (state.mutation.requestId !== action.meta.requestId) return; state.mutation = { ...slot<MaterialRequest>(), data: action.payload }; state.list.requestId = null; state.list.loading = false; state.detail.requestId = null; state.detail.loading = false; state.detail.data = action.payload; })
-    .addMatcher(isAnyOf(createMaterialRequest.rejected, updateMaterialRequest.rejected, actionMaterialRequest.rejected), (state, action) => { if (state.mutation.requestId !== action.meta.requestId) return; state.mutation.loading = false; state.mutation.error = action.payload ?? failure(action.error); state.mutation.requestId = null; });
+    .addMatcher(isAnyOf(createMaterialRequest.pending, updateMaterialRequest.pending, actionMaterialRequest.pending, dispatchMaterialRequest.pending, receiveMaterialRequest.pending), (state, action) => { state.mutation = { ...slot<MaterialRequest>(), loading: true, requestId: action.meta.requestId }; })
+    .addMatcher(isAnyOf(createMaterialRequest.fulfilled, updateMaterialRequest.fulfilled, actionMaterialRequest.fulfilled, dispatchMaterialRequest.fulfilled, receiveMaterialRequest.fulfilled), (state, action) => { if (state.mutation.requestId !== action.meta.requestId) return; state.mutation = { ...slot<MaterialRequest>(), data: action.payload }; state.list.requestId = null; state.list.loading = false; state.detail.requestId = null; state.detail.loading = false; state.detail.data = action.payload; })
+    .addMatcher(isAnyOf(createMaterialRequest.rejected, updateMaterialRequest.rejected, actionMaterialRequest.rejected, dispatchMaterialRequest.rejected, receiveMaterialRequest.rejected), (state, action) => { if (state.mutation.requestId !== action.meta.requestId) return; state.mutation.loading = false; state.mutation.error = action.payload ?? failure(action.error); state.mutation.requestId = null; });
 } });
 export const materialRequestsReducer = slice.reducer;
 export const { clearMaterialRequestMutation } = slice.actions;

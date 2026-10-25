@@ -1,8 +1,8 @@
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { getDatabase, type DatabaseExecutor } from "@/server/lib/database";
 import type { RecordAccess } from "@/lib/auth/access-scope";
 import type { Pagination } from "@/server/lib/pagination";
-import { MR_UUID, type RequestInput, type CreateRequestInput, type ActionInput } from "@/server/schema/material_requests_schema";
+import { MR_UUID, type RequestInput, type CreateRequestInput, type ActionInput, type ReceiveInput, type DispatchInput } from "@/server/schema/material_requests_schema";
 import * as repository from "@/server/repositories/material_requests_repository";
 import type { Sorting } from "@/server/lib/sorting";
 import type { QuickFilterState } from "@/types/quick-filter";
@@ -26,13 +26,43 @@ function granted(access: RecordAccess, action: string, companyId: string, locati
       ((grant.companyId ? grant.companyId === companyId : access.companyIds.includes(companyId)) &&
         (grant.scope !== "own" || Boolean(locationId && assignments.includes(locationId))))));
 }
-function request_permissions(row: Pick<repository.RequestRecord, "status" | "requesting_company_id" | "requesting_hub_id" | "supplying_company_id" | "supplying_warehouse_id">, access: RecordAccess, assignments: string[]) {
+const DISPATCH_STATUSES = ["approved", "partially_dispatched", "fully_dispatched", "partially_received"];
+const RECEIVE_STATUSES = ["partially_dispatched", "fully_dispatched", "partially_received"];
+function decimal(value: { toString(): string }) {
+  return new Prisma.Decimal(value.toString());
+}
+function request_permissions(row: { status: string; requesting_company_id: string; requesting_hub_id: string; supplying_company_id: string; supplying_warehouse_id: string | null; items: { requested_qty: { toString(): string }; dispatched_qty: { toString(): string }; received_qty: { toString(): string } }[] }, access: RecordAccess, assignments: string[]) {
   const requester = granted(access, "edit", row.requesting_company_id, row.requesting_hub_id, assignments);
   const reviewer = granted(access, "edit", row.supplying_company_id, row.supplying_warehouse_id, assignments);
+  const remainingDispatch = row.items.some((item) => decimal(item.dispatched_qty).lessThan(decimal(item.requested_qty)));
+  const remainingReceive = row.items.some((item) => decimal(item.received_qty).lessThan(decimal(item.dispatched_qty)));
   return {
     edit: requester && row.status === "draft", submit: requester && row.status === "draft",
     cancel: requester && row.status === "draft", review: reviewer && row.status === "submitted",
+    dispatch: reviewer && DISPATCH_STATUSES.includes(row.status) && remainingDispatch,
+    receive: requester && RECEIVE_STATUSES.includes(row.status) && remainingReceive,
   };
+}
+function fulfillment_status(items: { requested_qty: Prisma.Decimal; dispatched_qty: Prisma.Decimal; received_qty: Prisma.Decimal }[]) {
+  if (items.every((item) => item.received_qty.greaterThanOrEqualTo(item.requested_qty))) return "received" as const;
+  if (items.some((item) => item.received_qty.greaterThan(0))) return "partially_received" as const;
+  if (items.every((item) => item.dispatched_qty.greaterThanOrEqualTo(item.requested_qty))) return "fully_dispatched" as const;
+  if (items.some((item) => item.dispatched_qty.greaterThan(0))) return "partially_dispatched" as const;
+  return "approved" as const;
+}
+function movement_lines(input: ReceiveInput) {
+  if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some((key) => !["id", "lines", "notes"].includes(key))) throw new MaterialRequestError(400, "Provide the request, quantities and an optional note only.");
+  valid_id(input.id);
+  const note = clean_note(input.notes);
+  if (!Array.isArray(input.lines) || !input.lines.length || input.lines.length > 100) throw new MaterialRequestError(400, "Include between 1 and 100 lines.");
+  for (const line of input.lines) {
+    if (!line || Object.keys(line).some((key) => !["material_request_item_id", "qty"].includes(key))) throw new MaterialRequestError(400, "Provide the request line and quantity only.");
+    valid_id(line.material_request_item_id);
+    if (typeof line.qty !== "string" || !/^\d{1,11}(\.\d{1,3})?$/.test(line.qty) || Number(line.qty) <= 0) throw new MaterialRequestError(400, "Quantities must be positive, with at most 11 whole digits and 3 decimal places.");
+  }
+  const ids = input.lines.map((line) => line.material_request_item_id.toLowerCase());
+  if (new Set(ids).size !== ids.length) throw new MaterialRequestError(400, "Each request line can appear only once.");
+  return { note, ids };
 }
 async function assignments_for(access: RecordAccess, tx: DatabaseExecutor) {
   return (await repository.get_request_assignments(access.userId, tx)).map((row) => row.location_id);
@@ -79,8 +109,10 @@ async function checked_items(input: RequestInput, companyId: string, tx: Databas
 async function checked_input(input: RequestInput, access: RecordAccess, tx: DatabaseExecutor, action: string) {
   if (!input || Object.keys(input).some((key) => !["requesting_hub_id", "supplying_company_id", "items", "notes", "needed_at"].includes(key))) throw new MaterialRequestError(400, "Provide hub, supplier, items, notes and needed date only.");
   valid_id(input.requesting_hub_id); valid_id(input.supplying_company_id);
+  const assignments = await assignments_for(access, tx);
   const hub = await repository.get_request_location(input.requesting_hub_id, tx);
-  if (!hub || hub.type !== "hub" || !granted(access, action, hub.company_id, hub.id, await assignments_for(access, tx))) throw new MaterialRequestError(403, "You cannot request materials for this hub.");
+  if (!hub || hub.type !== "hub" || !granted(access, action, hub.company_id, hub.id, assignments)) throw new MaterialRequestError(403, "You cannot request materials for this hub.");
+  if (action === "add" && !access.superAdmin && !assignments.includes(hub.id)) throw new MaterialRequestError(403, "You can only request materials for a hub you are assigned to.");
   let relationship = await repository.get_request_relationship(hub.company_id, input.supplying_company_id, tx);
   if (!relationship) throw new MaterialRequestError(400, "These companies do not have an active supply link.");
   await repository.lock_request_relationship(relationship.id, tx);
@@ -181,12 +213,89 @@ export async function action_material_request(input: ActionInput, access: Record
   });
 }
 
+export async function dispatch_material_request(input: DispatchInput, access: RecordAccess) {
+  const { note } = movement_lines(input);
+  return getDatabase().$transaction(async (tx) => {
+    await repository.lock_material_request(input.id, tx);
+    const { row, assignments } = await checked_request(input.id, access, tx);
+    if (!row.supplying_warehouse_id || !DISPATCH_STATUSES.includes(row.status)) throw new MaterialRequestError(409, "The request status no longer allows dispatch.");
+    if (!granted(access, "edit", row.supplying_company_id, row.supplying_warehouse_id, assignments)) throw new MaterialRequestError(403, "You can only dispatch materials from the supplying warehouse.");
+    const adds = input.lines.map((line) => {
+      const item = row.items.find((rowItem) => rowItem.id.toLowerCase() === line.material_request_item_id.toLowerCase());
+      if (!item || item.approved_qty === null) throw new MaterialRequestError(400, "Choose a line from this approved request.");
+      const qty = new Prisma.Decimal(line.qty);
+      if (qty.greaterThan(item.requested_qty.minus(item.dispatched_qty))) throw new MaterialRequestError(409, "Dispatched quantity cannot be more than the quantity still to dispatch.");
+      return { item, qty, next: item.dispatched_qty.plus(qty) };
+    });
+    const postedAt = new Date();
+    const number = await repository.allocate_dispatch_number(row.supplying_company_id, row.supplying_company.name, postedAt, tx);
+    const dispatch = await repository.create_posted_request_dispatch({
+      supplying_company_id: row.supplying_company_id, material_request_id: row.id, location_id: row.supplying_warehouse_id,
+      status: "posted", dispatch_seq: number.dispatch_seq, dispatch_no: number.dispatch_no, notes: note,
+      created_by: access.userId, posted_by: access.userId, posted_at: postedAt,
+      items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
+    }, tx);
+    for (const line of [...dispatch.items].sort((left, right) => left.product_id.localeCompare(right.product_id))) {
+      if (!await repository.take_stock(row.supplying_warehouse_id, line.product_id, line.qty, line.id, access.userId, tx)) throw new MaterialRequestError(409, "Not enough stock at the supplying warehouse.");
+    }
+    const nextItems = row.items.map((item) => ({ requested_qty: item.requested_qty, dispatched_qty: adds.find((line) => line.item.id === item.id)?.next ?? item.dispatched_qty, received_qty: item.received_qty }));
+    const status = fulfillment_status(nextItems);
+    const updated = await repository.update_material_request(row.id, {
+      status,
+      items: { update: adds.map((line) => ({ where: { id: line.item.id }, data: { dispatched_qty: line.next } })) },
+      events: { create: { kind: "dispatched", from_status: row.status, to_status: status, note, created_by: access.userId } },
+    }, tx);
+    return { ...await repository.serialize_request(updated, tx), dispatch_no: number.dispatch_no };
+  });
+}
+
+export async function receive_material_request(input: ReceiveInput, access: RecordAccess) {
+  const { note } = movement_lines(input);
+  return getDatabase().$transaction(async (tx) => {
+    await repository.lock_material_request(input.id, tx);
+    const { row, assignments } = await checked_request(input.id, access, tx);
+    if (!RECEIVE_STATUSES.includes(row.status)) throw new MaterialRequestError(409, "The request status no longer allows receiving.");
+    if (!granted(access, "edit", row.requesting_company_id, row.requesting_hub_id, assignments)) throw new MaterialRequestError(403, "You can only receive materials for a hub you can edit.");
+    const adds = input.lines.map((line) => {
+      const item = row.items.find((rowItem) => rowItem.id.toLowerCase() === line.material_request_item_id.toLowerCase());
+      if (!item || item.approved_qty === null) throw new MaterialRequestError(400, "Choose a line from this approved request.");
+      const qty = new Prisma.Decimal(line.qty);
+      if (qty.greaterThan(item.dispatched_qty.minus(item.received_qty))) throw new MaterialRequestError(409, "Received quantity cannot be more than the dispatched quantity still to receive.");
+      return { item, qty, next: item.received_qty.plus(qty) };
+    });
+    await repository.lock_request_company(row.requesting_company_id, tx);
+    const postedAt = new Date();
+    const number = await repository.allocate_receipt_number(row.requesting_company_id, row.requesting_company.name, postedAt, tx);
+    const receipt = await repository.create_posted_request_receipt({
+      requesting_company_id: row.requesting_company_id, material_request_id: row.id, location_id: row.requesting_hub_id,
+      status: "posted", receipt_seq: number.receipt_seq, receiving_no: number.receiving_no, notes: note,
+      created_by: access.userId, posted_by: access.userId, posted_at: postedAt,
+      items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
+    }, tx);
+    for (const line of receipt.items) await repository.give_stock(row.requesting_hub_id, line.product_id, line.qty, line.id, access.userId, tx);
+    const nextItems = row.items.map((item) => ({ requested_qty: item.requested_qty, dispatched_qty: item.dispatched_qty, received_qty: adds.find((line) => line.item.id === item.id)?.next ?? item.received_qty }));
+    const status = fulfillment_status(nextItems);
+    const updated = await repository.update_material_request(row.id, {
+      status,
+      items: { update: adds.map((line) => ({ where: { id: line.item.id }, data: { received_qty: line.next } })) },
+      events: { create: { kind: "receipt_posted", from_status: row.status, to_status: status, note, created_by: access.userId, material_request_receiving_id: receipt.id } },
+    }, tx);
+    return { ...await repository.serialize_request(updated, tx), receiving_no: number.receiving_no };
+  });
+}
+
 export async function list_by_id_material_request(id: string, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
     const { row, assignments } = await checked_request(id, access, tx);
     const permissions = request_permissions(row, access, assignments);
     const resolved = permissions.review ? await approval_warehouse(row.supplying_company_id, access, assignments, tx) : null;
-    return { ...await repository.serialize_request(row, tx), permissions, approval_warehouse: resolved?.warehouse ?? null, approval_warehouse_error: resolved?.error ?? null };
+    const request = await repository.serialize_request(row, tx);
+    if (permissions.dispatch && row.supplying_warehouse_id) {
+      const stock = await repository.list_location_stock(row.supplying_warehouse_id, row.items.map((item) => item.product_id), tx);
+      const available = new Map(stock.map((balance) => [balance.product_id, balance.qty.toString()]));
+      request.items = request.items.map((item) => ({ ...item, available_qty: available.get(item.product_id) ?? "0" }));
+    }
+    return { ...request, permissions, approval_warehouse: resolved?.warehouse ?? null, approval_warehouse_error: resolved?.error ?? null };
   });
 }
 function request_visibility(access: RecordAccess, assigned: string[]): Prisma.material_requestWhereInput {
@@ -199,7 +308,7 @@ function request_visibility(access: RecordAccess, assigned: string[]): Prisma.ma
   return { OR };
 }
 export async function list_material_request(search: string, status: string, pagination: Pagination, access: RecordAccess, sorting?: Sorting, filters?: QuickFilterState) {
-  if (search.length > 160 || (status && !["draft", "submitted", "approved", "rejected", "cancelled"].includes(status))) throw new MaterialRequestError(400, "Provide valid search and status filters.");
+  if (search.length > 160 || (status && !["draft", "submitted", "approved", "partially_dispatched", "fully_dispatched", "partially_received", "received", "closed", "rejected", "cancelled"].includes(status))) throw new MaterialRequestError(400, "Provide valid search and status filters.");
   for (const condition of filters?.conditions ?? []) {
     if ((condition.field === "hub" || condition.field === "supplier") && condition.value.trim()) valid_id(condition.value.trim());
   }
@@ -223,7 +332,7 @@ export async function get_material_request_filter_option(access: RecordAccess) {
 export async function get_material_request_options(hubId: string | undefined, supplierId: string | undefined, access: RecordAccess) {
   return getDatabase().$transaction(async (tx) => {
     const assigned = await assignments_for(access, tx);
-    const hubs = (await repository.list_request_hubs(tx)).filter((hub) => granted(access, "add", hub.company_id, hub.id, assigned) || granted(access, "edit", hub.company_id, hub.id, assigned));
+    const hubs = (await repository.list_request_hubs(tx)).filter((hub) => assigned.includes(hub.id) && (granted(access, "add", hub.company_id, hub.id, assigned) || granted(access, "edit", hub.company_id, hub.id, assigned)));
     const hub = hubs.find((row) => row.id === hubId);
     const suppliers = hub ? (await repository.list_request_suppliers(hub.company_id, tx)).map((row) => row.supplying_company) : [];
     let warehouses: { id: string; name: string }[] = [];

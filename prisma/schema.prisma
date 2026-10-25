@@ -69,6 +69,8 @@ model company {
   material_requests_sent material_request[] @relation("mr_requester")
   material_requests_received material_request[] @relation("mr_supplier")
   material_request_counters material_request_counter[]
+  material_request_receivings material_request_receiving[]
+  material_request_dispatches material_request_dispatch[]
   supply_relationships_as_requester company_supply_relationship[] @relation("requesting_company_supply")
   supply_relationships_as_supplier  company_supply_relationship[] @relation("supplying_company_supply")
   @@index([created_by])
@@ -117,6 +119,8 @@ model measurement_unit {
   purchase_order_items   purchase_order_item[]
   receiving_items        receiving_item[]
   material_request_items material_request_item[]
+  material_request_receiving_items material_request_receiving_item[]
+  material_request_dispatch_items material_request_dispatch_item[]
 
   @@unique([measurement_id, key])
   @@unique([measurement_id, symbol])
@@ -280,6 +284,10 @@ model location {
   company         company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
   material_requests_from material_request[] @relation("mr_hub")
   material_requests_to material_request[] @relation("mr_warehouse")
+  material_request_receivings material_request_receiving[]
+  material_request_dispatches material_request_dispatch[]
+  stock_balances stock_balance[]
+  stock_movements stock_movement[]
   purchase_orders purchase_order[]
   receivings      receiving[]
   users           user_location[]
@@ -363,6 +371,10 @@ model product {
   purchase_order_items purchase_order_item[]
   receiving_items      receiving_item[]
   material_request_items material_request_item[]
+  material_request_receiving_items material_request_receiving_item[]
+  material_request_dispatch_items material_request_dispatch_item[]
+  stock_balances stock_balance[]
+  stock_movements stock_movement[]
 
   @@unique([company_id, variant_id, product_type_id])
   @@index([created_by])
@@ -376,6 +388,11 @@ enum material_request_status {
   draft
   submitted
   approved
+  partially_dispatched
+  fully_dispatched
+  partially_received
+  received
+  closed
   rejected
   cancelled
 }
@@ -387,6 +404,14 @@ enum material_request_event_kind {
   approved
   rejected
   cancelled
+  receipt_posted
+  dispatched
+  closed
+}
+
+enum material_request_receiving_status {
+  draft
+  posted
 }
 
 model material_request {
@@ -411,7 +436,10 @@ model material_request {
   supplying_warehouse location? @relation("mr_warehouse", fields: [supplying_warehouse_id], references: [id], onDelete: Restrict)
   items material_request_item[]
   events material_request_event[]
+  receivings material_request_receiving[]
+  dispatches material_request_dispatch[]
   @@unique([requesting_company_id, request_no])
+  @@unique([id, requesting_hub_id, requesting_company_id], map: "material_request_hub_company_key")
   @@index([requesting_company_id, created_at])
   @@index([supplying_company_id, status, created_at])
   @@index([requesting_hub_id])
@@ -427,9 +455,13 @@ model material_request_item {
   unit_id String @db.Uuid
   requested_qty Decimal @db.Decimal(14, 3)
   approved_qty Decimal? @db.Decimal(14, 3)
+  dispatched_qty Decimal @default(0) @db.Decimal(14, 3)
+  received_qty Decimal @default(0) @db.Decimal(14, 3)
   product_label String @db.VarChar(600)
   unit_label String @db.VarChar(120)
   request material_request @relation(fields: [material_request_id], references: [id], onDelete: Restrict)
+  receivings material_request_receiving_item[]
+  dispatches material_request_dispatch_item[]
   product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
   unit measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
   @@unique([material_request_id, product_id])
@@ -446,8 +478,156 @@ model material_request_event {
   note String @default("") @db.VarChar(1000)
   created_by String @db.Uuid
   created_at DateTime @default(now()) @db.Timestamptz(6)
+  material_request_receiving_id String? @db.Uuid
   request material_request @relation(fields: [material_request_id], references: [id], onDelete: Restrict)
+  receiving material_request_receiving? @relation(fields: [material_request_receiving_id], references: [id], onDelete: Restrict, map: "material_request_event_receiving_fkey")
   @@index([material_request_id, created_at])
+  @@index([material_request_receiving_id])
+  @@index([created_by])
+}
+
+model material_request_receiving {
+  id String @id @default(uuid()) @db.Uuid
+  requesting_company_id String @db.Uuid
+  material_request_id String @db.Uuid
+  location_id String @db.Uuid
+  status material_request_receiving_status @default(draft)
+  receipt_seq Int?
+  receiving_no String? @db.VarChar(64)
+  notes String @default("") @db.VarChar(1000)
+  created_by String @db.Uuid
+  posted_by String? @db.Uuid
+  posted_at DateTime? @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  company company @relation(fields: [requesting_company_id], references: [id], onDelete: Restrict)
+  request material_request @relation(fields: [material_request_id, location_id, requesting_company_id], references: [id, requesting_hub_id, requesting_company_id], onDelete: Restrict, map: "material_request_receiving_request_fkey")
+  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  items material_request_receiving_item[]
+  events material_request_event[]
+
+  @@unique([requesting_company_id, receipt_seq])
+  @@unique([receiving_no])
+  @@index([material_request_id])
+  @@index([location_id])
+  @@index([status])
+  @@index([created_by])
+}
+
+model material_request_receiving_item {
+  id String @id @default(uuid()) @db.Uuid
+  material_request_receiving_id String @db.Uuid
+  material_request_item_id String @db.Uuid
+  product_id String @db.Uuid
+  unit_id String @db.Uuid
+  qty Decimal @db.Decimal(14, 3)
+  content_per_unit Decimal @default(1) @db.Decimal(14, 3)
+  base_qty Decimal @db.Decimal(14, 3)
+  receiving material_request_receiving @relation(fields: [material_request_receiving_id], references: [id], onDelete: Cascade, map: "mr_receiving_item_receiving_fkey")
+  request_item material_request_item @relation(fields: [material_request_item_id], references: [id], onDelete: Restrict, map: "mr_receiving_item_request_item_fkey")
+  product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  unit measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
+  stock_movements stock_movement[]
+
+  @@unique([material_request_receiving_id, material_request_item_id], map: "mr_receiving_item_line_key")
+  @@index([material_request_item_id])
+  @@index([product_id])
+  @@index([unit_id])
+}
+
+enum material_request_dispatch_status {
+  posted
+}
+
+enum stock_movement_direction {
+  in
+  out
+}
+
+enum stock_movement_type {
+  dispatch_out
+  receive_in
+}
+
+model material_request_dispatch {
+  id String @id @default(uuid()) @db.Uuid
+  supplying_company_id String @db.Uuid
+  material_request_id String @db.Uuid
+  location_id String @db.Uuid
+  status material_request_dispatch_status @default(posted)
+  dispatch_seq Int
+  dispatch_no String @db.VarChar(64)
+  notes String @default("") @db.VarChar(1000)
+  created_by String @db.Uuid
+  posted_by String @db.Uuid
+  posted_at DateTime @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  company company @relation(fields: [supplying_company_id], references: [id], onDelete: Restrict)
+  request material_request @relation(fields: [material_request_id], references: [id], onDelete: Restrict)
+  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  items material_request_dispatch_item[]
+
+  @@unique([supplying_company_id, dispatch_seq], map: "mr_dispatch_company_seq_key")
+  @@unique([dispatch_no])
+  @@index([material_request_id])
+  @@index([location_id])
+  @@index([created_by])
+}
+
+model material_request_dispatch_item {
+  id String @id @default(uuid()) @db.Uuid
+  material_request_dispatch_id String @db.Uuid
+  material_request_item_id String @db.Uuid
+  product_id String @db.Uuid
+  unit_id String @db.Uuid
+  qty Decimal @db.Decimal(14, 3)
+  content_per_unit Decimal @default(1) @db.Decimal(14, 3)
+  base_qty Decimal @db.Decimal(14, 3)
+  dispatch material_request_dispatch @relation(fields: [material_request_dispatch_id], references: [id], onDelete: Cascade, map: "mr_dispatch_item_dispatch_fkey")
+  request_item material_request_item @relation(fields: [material_request_item_id], references: [id], onDelete: Restrict, map: "mr_dispatch_item_request_item_fkey")
+  product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  unit measurement_unit @relation(fields: [unit_id], references: [id], onDelete: Restrict)
+  stock_movements stock_movement[]
+
+  @@unique([material_request_dispatch_id, material_request_item_id], map: "mr_dispatch_item_line_key")
+  @@index([material_request_item_id])
+  @@index([product_id])
+  @@index([unit_id])
+}
+
+model stock_balance {
+  id String @id @default(uuid()) @db.Uuid
+  location_id String @db.Uuid
+  product_id String @db.Uuid
+  qty Decimal @default(0) @db.Decimal(14, 3)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@unique([location_id, product_id])
+  @@index([product_id])
+}
+
+model stock_movement {
+  id String @id @default(uuid()) @db.Uuid
+  location_id String @db.Uuid
+  product_id String @db.Uuid
+  qty Decimal @db.Decimal(14, 3)
+  direction stock_movement_direction
+  type stock_movement_type
+  material_request_dispatch_item_id String? @db.Uuid
+  material_request_receiving_item_id String? @db.Uuid
+  created_by String @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  location location @relation(fields: [location_id], references: [id], onDelete: Restrict)
+  product product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  dispatch_item material_request_dispatch_item? @relation(fields: [material_request_dispatch_item_id], references: [id], onDelete: Restrict, map: "stock_movement_dispatch_item_fkey")
+  receiving_item material_request_receiving_item? @relation(fields: [material_request_receiving_item_id], references: [id], onDelete: Restrict, map: "stock_movement_receiving_item_fkey")
+
+  @@index([location_id, product_id, created_at])
+  @@index([material_request_dispatch_item_id])
+  @@index([material_request_receiving_item_id])
   @@index([created_by])
 }
 

@@ -72,11 +72,11 @@ export function TimelineDialog({
             <Timeline entries={entries} />
           </div>
         )}
-        <DialogFooter>
+        {/* <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Done
           </Button>
-        </DialogFooter>
+        </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );

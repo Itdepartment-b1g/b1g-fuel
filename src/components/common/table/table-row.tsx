@@ -59,6 +59,8 @@ export interface TableAction<T> {
   description?: string | ((row: T) => string | undefined);
   destructive?: boolean;
   className?: string;
+  /** Render beside the vertical-dot menu instead of inside it. */
+  inline?: boolean;
 }
 
 export function TableRow<T>({
@@ -131,22 +133,8 @@ export function TableRow<T>({
           <td
             className={cn(rowCellClass, "text-right", wrap ? "whitespace-normal" : "whitespace-nowrap")}
           >
-            <div className="flex items-center justify-end gap-4">
-              {actionsMenu ? (
-                <CardActionsMenu
-                  label={actionsLabel}
-                  disabled={actionsDisabled || !actions.length}
-                  items={actions.map((action) => ({
-                    id: action.id,
-                    label: action.label,
-                    icon: action.icon,
-                    destructive: action.destructive,
-                    description: typeof action.description === "function" ? action.description(row) : action.description,
-                    disabled: typeof action.disabled === "function" ? action.disabled(row) : action.disabled,
-                    onSelect: () => action.onSelect(row),
-                  }))}
-                />
-              ) : actions.map((action) => {
+            <div className={cn("flex items-center justify-end", actionsMenu ? "gap-2" : "gap-4")}>
+              {(actionsMenu ? actions.filter((action) => action.inline) : actions).map((action) => {
                 const disabled =
                   actionsDisabled ||
                   (typeof action.disabled === "function"
@@ -176,6 +164,21 @@ export function TableRow<T>({
                   </button>
                 );
               })}
+              {actionsMenu && (
+                <CardActionsMenu
+                  label={actionsLabel}
+                  disabled={actionsDisabled}
+                  items={actions.filter((action) => !action.inline).map((action) => ({
+                    id: action.id,
+                    label: action.label,
+                    icon: action.icon,
+                    destructive: action.destructive,
+                    description: typeof action.description === "function" ? action.description(row) : action.description,
+                    disabled: typeof action.disabled === "function" ? action.disabled(row) : action.disabled,
+                    onSelect: () => action.onSelect(row),
+                  }))}
+                />
+              )}
             </div>
           </td>
         )}

@@ -12,17 +12,22 @@ const include = {
   supplying_warehouse: { select: { id: true, name: true } },
   items: { orderBy: { id: "asc" }, include: { product: { select: { variant: { select: { name: true, brand: { select: { name: true } } } }, product_type: { select: { name: true } } } } } },
   events: { orderBy: [{ created_at: "asc" }, { id: "asc" }] },
+  dispatches: { orderBy: [{ posted_at: "asc" }, { id: "asc" }], include: { items: { orderBy: { id: "asc" } } } },
+  receivings: { orderBy: [{ posted_at: "asc" }, { id: "asc" }], include: { items: { orderBy: { id: "asc" } } } },
 } satisfies Prisma.material_requestInclude;
 export type RequestRecord = Prisma.material_requestGetPayload<{ include: typeof include }>;
 
 export async function serialize_request(row: RequestRecord, tx: DatabaseExecutor) {
-  const users = await tx.user.findMany({ where: { id: { in: [...new Set([row.created_by, ...row.events.map((event) => event.created_by)])] } }, select: { id: true, name: true } });
+  const users = await tx.user.findMany({ where: { id: { in: [...new Set([row.created_by, ...row.events.map((event) => event.created_by), ...row.dispatches.map((dispatch) => dispatch.created_by), ...row.receivings.map((receipt) => receipt.created_by)])] } }, select: { id: true, name: true } });
   const names = new Map(users.map((user) => [user.id, user.name]));
+  const movement = (lines: { material_request_item_id: string; qty: Prisma.Decimal }[]) => lines.map((line) => ({ material_request_item_id: line.material_request_item_id, qty: line.qty.toString() }));
   return { ...row, created_by_name: names.get(row.created_by) ?? null,
     created_at: row.created_at.toISOString(), updated_at: row.updated_at.toISOString(),
     needed_at: row.needed_at?.toISOString() ?? null, submitted_at: row.submitted_at?.toISOString() ?? null,
-    items: row.items.map(({ product, ...item }) => ({ ...item, brand_name: product.variant.brand.name, variant_name: product.variant.name, product_type_name: product.product_type.name, requested_qty: item.requested_qty.toString(), approved_qty: item.approved_qty?.toString() ?? null })),
+    items: row.items.map(({ product, ...item }) => ({ ...item, brand_name: product.variant.brand.name, variant_name: product.variant.name, product_type_name: product.product_type.name, requested_qty: item.requested_qty.toString(), approved_qty: item.approved_qty?.toString() ?? null, dispatched_qty: item.dispatched_qty.toString(), received_qty: item.received_qty.toString() })),
     events: row.events.map((event) => ({ ...event, created_at: event.created_at.toISOString(), created_by_name: names.get(event.created_by) ?? null })),
+    dispatches: row.dispatches.map((dispatch) => ({ id: dispatch.id, number: dispatch.dispatch_no, posted_at: dispatch.posted_at?.toISOString() ?? null, created_by_name: names.get(dispatch.created_by) ?? null, lines: movement(dispatch.items) })),
+    receivings: row.receivings.map((receipt) => ({ id: receipt.id, number: receipt.receiving_no, posted_at: receipt.posted_at?.toISOString() ?? null, created_by_name: names.get(receipt.created_by) ?? null, lines: movement(receipt.items) })),
   };
 }
 
@@ -38,7 +43,7 @@ export async function list_material_request(visibility: Prisma.material_requestW
       supplier: (values) => ({ supplying_company_id: { in: values } }),
     },
     date: (range) => ({ created_at: range }),
-    status: { draft: { status: "draft" }, submitted: { status: "submitted" }, approved: { status: "approved" }, rejected: { status: "rejected" }, cancelled: { status: "cancelled" } },
+    status: { draft: { status: "draft" }, submitted: { status: "submitted" }, approved: { status: "approved" }, partially_dispatched: { status: "partially_dispatched" }, fully_dispatched: { status: "fully_dispatched" }, partially_received: { status: "partially_received" }, received: { status: "received" }, closed: { status: "closed" }, rejected: { status: "rejected" }, cancelled: { status: "cancelled" } },
     search: { value: search, fields: [(value) => ({ request_no: value }), (value) => ({ requesting_hub: { name: value } }), (value) => ({ supplying_company: { name: value } })] },
   });
   const orderBy = build_sort<Prisma.material_requestOrderByWithRelationInput>(sorting, {
@@ -99,6 +104,47 @@ export async function allocate_request_number(companyId: string, companyName: st
   const counter = await tx.material_request_counter.upsert({ where: { company_id_period: { company_id: companyId, period } }, create: { company_id: companyId, period, last_value: 1 }, update: { last_value: { increment: 1 } } });
   if (counter.last_value > 9_999_999) throw new Error("Material request sequence exhausted.");
   return `MR-${code}-${period}-${String(counter.last_value).padStart(7, "0")}`;
+}
+export async function allocate_receipt_number(companyId: string, companyName: string, postedAt: Date, tx: DatabaseExecutor) {
+  const code = (companyName.match(/[\p{L}\p{N}]+/gu) ?? []).map((word) => [...word][0]).join("").toUpperCase().slice(0, 46) || "MR";
+  const parts = new Intl.DateTimeFormat("en", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).formatToParts(postedAt);
+  const period = `${parts.find((part) => part.type === "year")!.value}${parts.find((part) => part.type === "month")!.value}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`mr-receipt:${companyId}`})::bigint)`;
+  const latest = await tx.material_request_receiving.aggregate({ where: { requesting_company_id: companyId, receipt_seq: { not: null } }, _max: { receipt_seq: true } });
+  const receipt_seq = (latest._max.receipt_seq ?? 0) + 1;
+  if (receipt_seq > 9_999_999) throw new Error("Material request receipt sequence exhausted.");
+  return { receipt_seq, receiving_no: `MRR-${code}-${period}-${String(receipt_seq).padStart(7, "0")}` };
+}
+export function create_posted_request_receipt(data: Prisma.material_request_receivingUncheckedCreateInput, tx: DatabaseExecutor) {
+  return tx.material_request_receiving.create({ data, select: { id: true, receiving_no: true, items: { select: { id: true, product_id: true, qty: true } } } });
+}
+export async function allocate_dispatch_number(companyId: string, companyName: string, postedAt: Date, tx: DatabaseExecutor) {
+  const code = (companyName.match(/[\p{L}\p{N}]+/gu) ?? []).map((word) => [...word][0]).join("").toUpperCase().slice(0, 46) || "MR";
+  const parts = new Intl.DateTimeFormat("en", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).formatToParts(postedAt);
+  const period = `${parts.find((part) => part.type === "year")!.value}${parts.find((part) => part.type === "month")!.value}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`mr-dispatch:${companyId}`})::bigint)`;
+  const latest = await tx.material_request_dispatch.aggregate({ where: { supplying_company_id: companyId }, _max: { dispatch_seq: true } });
+  const dispatch_seq = (latest._max.dispatch_seq ?? 0) + 1;
+  if (dispatch_seq > 9_999_999) throw new Error("Material request dispatch sequence exhausted.");
+  return { dispatch_seq, dispatch_no: `MRD-${code}-${period}-${String(dispatch_seq).padStart(7, "0")}` };
+}
+export function create_posted_request_dispatch(data: Prisma.material_request_dispatchUncheckedCreateInput, tx: DatabaseExecutor) {
+  return tx.material_request_dispatch.create({ data, select: { id: true, dispatch_no: true, items: { select: { id: true, product_id: true, qty: true } } } });
+}
+export function list_location_stock(locationId: string, productIds: string[], tx: DatabaseExecutor) {
+  return tx.stock_balance.findMany({ where: { location_id: locationId, product_id: { in: productIds } }, select: { product_id: true, qty: true } });
+}
+export async function take_stock(locationId: string, productId: string, qty: Prisma.Decimal, dispatchItemId: string, userId: string, tx: DatabaseExecutor) {
+  await tx.$queryRaw`SELECT id FROM stock_balance WHERE location_id = ${locationId}::uuid AND product_id = ${productId}::uuid FOR UPDATE`;
+  const updated = await tx.stock_balance.updateMany({ where: { location_id: locationId, product_id: productId, qty: { gte: qty } }, data: { qty: { decrement: qty } } });
+  if (updated.count !== 1) return false;
+  await tx.stock_movement.create({ data: { location_id: locationId, product_id: productId, qty, direction: "out", type: "dispatch_out", material_request_dispatch_item_id: dispatchItemId, created_by: userId } });
+  return true;
+}
+export async function give_stock(locationId: string, productId: string, qty: Prisma.Decimal, receivingItemId: string, userId: string, tx: DatabaseExecutor) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${locationId}:${productId}`})::bigint)`;
+  await tx.stock_balance.upsert({ where: { location_id_product_id: { location_id: locationId, product_id: productId } }, create: { location_id: locationId, product_id: productId, qty }, update: { qty: { increment: qty } } });
+  await tx.stock_movement.create({ data: { location_id: locationId, product_id: productId, qty, direction: "in", type: "receive_in", material_request_receiving_item_id: receivingItemId, created_by: userId } });
 }
 export function list_request_hubs(tx: DatabaseExecutor) {
   return tx.location.findMany({ where: { type: "hub" }, select: { id: true, name: true, company_id: true, company: { select: { name: true } } }, orderBy: { name: "asc" } });
