@@ -1,5 +1,5 @@
 import { loadRecordAccess, requirePermission } from "@/server/auth/record-access";
-import { PAGE_CATALOG } from "@/lib/auth/catalog";
+import { uniquePageCatalog } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 import { rateLimit } from "express-rate-limit";
 import { Router } from "express";
@@ -35,7 +35,7 @@ rolesRouter.use(requireAuthUser, loadRecordAccess);
 rolesRouter.get("/assignments", requirePermission("roles", "view"), requirePermission("users", "view"), list_role_assignments);
 rolesRouter.get("/options", requireSuperAdmin, async (_req, res) => {
   const companies = await getDatabase().company.findMany({ select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
-  res.status(200).json({ companies, scopes: ["company", "global"], pages: PAGE_CATALOG.map(({ key, label, href }) => ({ key, label, href })), permissions: [...PERMISSION_CATALOG] });
+  res.status(200).json({ companies, scopes: ["company", "global"], pages: uniquePageCatalog().map(({ key, label, href }) => ({ key, label, href })), permissions: [...PERMISSION_CATALOG] });
 });
 rolesRouter.get("/filter-options", requirePermission("roles", "view"), get_role_filter_option);
 rolesRouter.get("/", requirePermission("roles", "view"), (req, res) =>

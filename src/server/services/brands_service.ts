@@ -46,8 +46,18 @@ export function can_create_brand(access: RecordAccess, companyId: string) {
 export function brand_company(access: RecordAccess, requested?: string) {
   return assigned_company(access, requested);
 }
+async function usable_supplier(companyId: string | null, supplierId: string) {
+  if (!supplierId) throw new BrandError("invalid_input", "Select a supplier.");
+  const supplier = await getDatabase().supplier.findFirst({
+    where: { id: supplierId, OR: companyId ? [{ company_id: null }, { company_id: companyId }] : [{ company_id: null }] },
+    select: { id: true },
+  });
+  if (!supplier) throw new BrandError("invalid_input", "Select a supplier for this company.");
+}
+
 export async function create_brand(input: CreateBrandInput, access: RecordAccess) {
   const company_id = brand_company(access, input.company_id ?? undefined);
+  await usable_supplier(company_id, input.supplier_id);
   return repository.create_brand({ ...input, company_id }, access.userId);
 }
 export function list_brands(pagination: Pagination, search: string, sorting: Sorting | undefined, access: RecordAccess, companyId?: string, filters?: QuickFilterState) {
@@ -66,6 +76,11 @@ export async function get_brand(id: string, access: RecordAccess) {
   return result;
 }
 export async function update_brand(input: UpdateBrandInput, access: RecordAccess) {
+  if (input.supplier_id) {
+    const current = await repository.get_brand(input.id, access);
+    if (!current) throw new BrandError("not_found", "Brand not found.");
+    await usable_supplier(current.company_id, input.supplier_id);
+  }
   const brand = await repository.update_brand(input, access);
   if (!brand) throw new BrandError("not_found", "Brand not found.");
   return brand;
@@ -76,5 +91,16 @@ export async function delete_brand(id: string, access: RecordAccess) {
   if (result === "conflict") throw new BrandError("conflict", "Delete this brand's variants first.");
 }
 export async function get_brand_options(access: RecordAccess) {
-  return { companies: await company_options(access) };
+  const catalog = access.grants.filter((grant) => grant.permission === "brandsAndVariants.add" || grant.permission === "brandsAndVariants.edit");
+  const all = access.superAdmin || catalog.some((grant) => grant.scope === "all" && !grant.companyId);
+  const ids = [...new Set(catalog.flatMap((grant) => grant.companyId ? [grant.companyId] : access.companyIds))];
+  const [companies, suppliers] = await Promise.all([
+    company_options(access),
+    getDatabase().supplier.findMany({
+      where: all ? {} : { OR: [{ company_id: null }, { company_id: { in: ids } }] },
+      select: { id: true, name: true, company_id: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+    }),
+  ]);
+  return { companies, suppliers };
 }

@@ -1,6 +1,6 @@
 import { ROLE_SORT_FIELDS } from "@/server/schema/roles_schema";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/utils/pagination";
-import { PAGE_CATALOG } from "@/lib/auth/catalog";
+import { uniquePageCatalog } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 
 const error = {
@@ -23,7 +23,7 @@ const pages = {
   type: "array",
   maxItems: 200,
   uniqueItems: true,
-  items: { type: "string", enum: PAGE_CATALOG.map((page) => page.key) },
+  items: { type: "string", enum: uniquePageCatalog().map((page) => page.key) },
 };
 const permissions = {
   type: "array",

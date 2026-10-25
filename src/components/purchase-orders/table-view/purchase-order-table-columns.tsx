@@ -64,7 +64,7 @@ export const PURCHASE_ORDER_TABLE_COLUMNS: TableColumn<PurchaseOrderSummary>[] =
   },
   {
     id: "estimated_delivery_at",
-    header: "Expected",
+    header: "Needed date",
     sortable: true,
     cell: (row) => row.estimated_delivery_on ?? "—",
   },

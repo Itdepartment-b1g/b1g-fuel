@@ -13,6 +13,7 @@ import { receivingReducer } from "./receiving-slice";
 import { hubsReducer } from "./hubs-slice";
 import { companySupplyReducer } from "./company-supply-slice";
 import { materialRequestsReducer } from "./material-requests-slice";
+import { materialRequestReceivingsReducer } from "./material-request-receivings-slice";
 
 export const makeStore = () =>
   configureStore({
@@ -31,6 +32,7 @@ export const makeStore = () =>
       hubs: hubsReducer,
       companySupply: companySupplyReducer,
       materialRequests: materialRequestsReducer,
+      materialRequestReceivings: materialRequestReceivingsReducer,
     },
   });
 export type AppStore = ReturnType<typeof makeStore>;

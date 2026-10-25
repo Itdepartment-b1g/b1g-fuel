@@ -96,11 +96,11 @@ test("a posted receipt number counts per company", () => {
   assert.equal(company_code("AB"), "ABX");
   assert.equal(
     receiving_number("Warehouse", new Date("2026-10-16T16:00:00.000Z"), 1),
-    "RR-WAR-202610-0000001",
+    "RRPO-WAR-202610-0000001",
   );
   assert.equal(
     receiving_number("Warehouse", new Date("2026-11-02T00:00:00.000Z"), 2),
-    "RR-WAR-202611-0000002",
+    "RRPO-WAR-202611-0000002",
   );
 });
 

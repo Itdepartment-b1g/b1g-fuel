@@ -34,6 +34,7 @@ const icons_by_page: Record<PageKey, MenuIcon> = {
   [PAGE_KEYS.purchaseOrders]: ClipboardList,
   [PAGE_KEYS.receiving]: PackageCheck,
   [PAGE_KEYS.materialRequests]: ClipboardList,
+  [PAGE_KEYS.materialRequestReceiving]: PackageCheck,
 };
 
 export function listSidebarMenu(pages: string[], access?: SideBarAccess): SideBarMenuItem[] {

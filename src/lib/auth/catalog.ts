@@ -11,6 +11,7 @@ export const PAGE_KEYS = {
   receiving: "receiving",
   hubs: "hubs",
   materialRequests: "materialRequests",
+  materialRequestReceiving: "materialRequestReceiving",
 } as const;
 
 export type PageKey = (typeof PAGE_KEYS)[keyof typeof PAGE_KEYS];
@@ -30,8 +31,20 @@ export type PageCatalogGroup = {
 };
 
 // Register pages and groups here when their features are added.
+// A later item may reuse a key so the sidebar can open another screen with the same access.
+// Role pages and permissions use the first item for that key.
+export function uniquePageCatalog(items: readonly PageCatalogItem[] = PAGE_CATALOG) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.key)) return false;
+    seen.add(item.key);
+    return true;
+  });
+}
+
 export const PAGE_CATALOG: readonly PageCatalogItem[] = [
   { key: PAGE_KEYS.materialRequests, label: "Material requests", href: "/material-requests", view_permission: "materialRequests.view" },
+  { key: PAGE_KEYS.materialRequestReceiving, label: "Material request receiving", href: "/material-request-receiving", view_permission: "materialRequestReceiving.view" },
   {
     key: PAGE_KEYS.home,
     label: "Dashboard",
@@ -89,8 +102,8 @@ export const PAGE_CATALOG: readonly PageCatalogItem[] = [
   },
   {
     key: PAGE_KEYS.receiving,
-    label: "Receiving",
-    href: "/receiving",
+    label: "Purchase order receiving",
+    href: "/purchase-order-receiving",
     view_permission: "receiving.view",
   },
   {

@@ -18,7 +18,7 @@ type State = {
   listRequestId: string | null; detailRequestId: string | null; optionsRequestId: string | null; mutationRequestId: string | null;
 };
 const initialState: State = {
-  brands: [], total: 0, selectedBrand: null, options: { companies: [] },
+  brands: [], total: 0, selectedBrand: null, options: { companies: [], suppliers: [] },
   filterOptions: BRAND_FILTER_OPTIONS, filterOptionsStatus: "idle", filterOptionsError: null, filterOptionsRequestId: null,
   listStatus: "idle", detailStatus: "idle", optionsStatus: "idle", mutationStatus: "idle",
   listError: null, detailError: null, optionsError: null, mutationError: null,

@@ -82,9 +82,11 @@ function CreateBrandFields({
   const busy = useRef(false);
   const [name, setName] = useState("");
   const [companyId, setCompanyId] = useState(options.companies.length === 1 ? options.companies[0].id : "");
+  const [supplierId, setSupplierId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const shared = Boolean(access?.superAdmin);
   const chooseCompany = !shared && options.companies.length > 1;
+  const suppliers = options.suppliers.filter((supplier) => !supplier.company_id || (Boolean(companyId) && supplier.company_id === companyId));
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,11 +99,16 @@ function CreateBrandFields({
       setError("Select a company.");
       return;
     }
+    if (!supplierId) {
+      setError("Select a supplier.");
+      return;
+    }
     busy.current = true;
     setError(null);
     try {
       const result = await dispatch(createBrand({
         ...(shared || !companyId ? {} : { company_id: companyId }),
+        supplier_id: supplierId,
         name: name.trim(),
       })).unwrap();
       toast.success(`${result.brand.name} was created successfully.`);
@@ -120,10 +127,19 @@ function CreateBrandFields({
           Brand name
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Shell" required maxLength={160} />
         </label>
+        <label className="space-y-2 text-sm font-medium">
+          Supplier
+          <select value={supplierId} onChange={(event) => setSupplierId(event.target.value)} required className="h-10 w-full rounded-md border bg-white px-3 text-sm">
+            <option value="">Select a supplier</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+            ))}
+          </select>
+        </label>
         {chooseCompany && (
           <label className="space-y-2 text-sm font-medium">
             Company
-            <select value={companyId} onChange={(event) => setCompanyId(event.target.value)} required className="h-10 w-full rounded-md border bg-white px-3 text-sm">
+            <select value={companyId} onChange={(event) => { setCompanyId(event.target.value); setSupplierId(""); }} required className="h-10 w-full rounded-md border bg-white px-3 text-sm">
               <option value="">Select a company</option>
               {options.companies.map((company) => (
                 <option key={company.id} value={company.id}>{company.name}</option>

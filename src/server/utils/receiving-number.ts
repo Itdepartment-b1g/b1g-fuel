@@ -13,5 +13,5 @@ export function receiving_number(companyName: string, postedAt: Date, seq: numbe
   }).formatToParts(postedAt);
   const year = parts.find((part) => part.type === "year")?.value ?? "0000";
   const month = parts.find((part) => part.type === "month")?.value ?? "00";
-  return `RR-${company_code(companyName)}-${year}${month}-${String(seq).padStart(7, "0")}`;
+  return `RRPO-${company_code(companyName)}-${year}${month}-${String(seq).padStart(7, "0")}`;
 }

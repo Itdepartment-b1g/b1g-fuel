@@ -35,8 +35,9 @@ test("material request row actions show review choices only with permission and 
   assert.match(html, /text-emerald-600/);
   assert.match(html, /text-rose-600/);
   assert.doesNotMatch(html, />View<\/button>|>Timeline<\/button>/);
-  for (const header of ["Request number", "Requesting hub", "Supplier", "Request Progress", "Total SKUs", "Total Qty", "Reviewed by", "Created at"]) assert.ok(html.includes(`aria-label="${header} column options"`));
+  for (const header of ["Request number", "Requesting hub", "Supplier", "Request Progress", "Next action", "Total SKUs", "Total Qty", "Reviewed by", "Created at"]) assert.ok(html.includes(`aria-label="${header} column options"`));
   assert.match(html, /Pending/);
+  assert.match(html, /Awaiting approval/);
   assert.match(html, />2</);
   assert.match(html, /12\.5/);
   assert.doesNotMatch(html, /12\.5 L/);
@@ -65,6 +66,7 @@ test("material request row actions show review choices only with permission and 
   row.permissions!.dispatch = true;
   const receivable = table.props.actions(row) as TableAction<MaterialRequest>[];
   assert.deepEqual(receivable.map((action) => action.id), ["dispatch", "receive", "view", "timeline"]);
+  assert.match(renderToStaticMarkup(table), /Awaiting dispatch/);
   assert.match(renderToStaticMarkup(table), />Receive<\/button>/);
   assert.match(renderToStaticMarkup(table), /text-sky-600/);
   receivable[1].onSelect(row);

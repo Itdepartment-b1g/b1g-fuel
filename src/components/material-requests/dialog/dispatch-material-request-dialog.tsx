@@ -62,7 +62,6 @@ export function DispatchMaterialRequestDialog({ requestId, onClose, onSaved }: {
     if (!entered.length) { setError("Enter the quantity to dispatch."); return; }
     if (entered.some((line) => !/^\d{1,11}(\.\d{1,3})?$/.test(line.qty.trim()) || Number(line.qty) <= 0)) { setError("Enter a dispatched quantity greater than 0."); return; }
     if (entered.some((line) => Number(line.qty) > Number(line.outstanding_qty))) { setError("Dispatched quantity cannot be more than the quantity still to dispatch."); return; }
-    if (entered.some((line) => Number(line.qty) > Number(line.available_qty))) { setError("Not enough stock at the supplying warehouse."); return; }
     busy.current = true;
     setError(null);
     try {
@@ -81,7 +80,7 @@ export function DispatchMaterialRequestDialog({ requestId, onClose, onSaved }: {
       <DialogContent className={`max-h-[90dvh] overflow-x-hidden overflow-y-auto sm:max-w-2xl [&>*]:min-w-0 ${pending ? "[&>button]:hidden" : ""}`}>
         <DialogHeader>
           <DialogTitle>Dispatch materials</DialogTitle>
-          <DialogDescription>Send only what the warehouse has on hand. The request stays open for another dispatch when stock is short.</DialogDescription>
+          <DialogDescription>Dispatch part or all of the quantity still to send. The request stays open until the rest is dispatched.</DialogDescription>
         </DialogHeader>
         {!request && !detail.error && <Loading />}
         {detail.error && <p role="alert" className="text-sm text-destructive">{detail.error.message}</p>}

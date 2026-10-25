@@ -1,4 +1,4 @@
-import { PAGE_CATALOG } from "./catalog";
+import { uniquePageCatalog } from "./catalog";
 
 export const PERMISSION_ACTIONS = ["view", "edit", "add", "delete"] as const;
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
@@ -11,7 +11,7 @@ export type PermissionCatalogItem = {
 
 // These keys describe saved role settings. Administrative routes still require super-admin access.
 export const PERMISSION_CATALOG: readonly PermissionCatalogItem[] =
-  PAGE_CATALOG.flatMap((page) =>
+  uniquePageCatalog().flatMap((page) =>
     PERMISSION_ACTIONS.map((action) => ({
       key:
         action === "view"

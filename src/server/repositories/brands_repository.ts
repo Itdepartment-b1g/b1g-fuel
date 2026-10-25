@@ -9,6 +9,7 @@ import type { BrandSummary, CreateBrandInput, UpdateBrandInput } from "@/server/
 
 const brandInclude = {
   company: { select: { id: true, name: true } },
+  supplier: { select: { id: true, name: true } },
   _count: { select: { variants: true } },
 } satisfies Prisma.brandInclude;
 type BrandRecord = Prisma.brandGetPayload<{ include: typeof brandInclude }>;
@@ -90,7 +91,7 @@ export async function update_brand(input: UpdateBrandInput, access: RecordAccess
       include: brandInclude,
     });
     if (!current) return null;
-    const record = await tx.brand.update({ where: { id: input.id }, data: { name: input.name }, include: brandInclude });
+    const record = await tx.brand.update({ where: { id: input.id }, data: { name: input.name, ...(input.supplier_id ? { supplier_id: input.supplier_id } : {}) }, include: brandInclude });
     const names = await creator_names([record.created_by], tx);
     return serialize_brand(record, record.created_by ? names.get(record.created_by) ?? null : null);
   });

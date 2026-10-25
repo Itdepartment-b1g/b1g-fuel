@@ -23,3 +23,6 @@ export type RequestOptions = { hubs: { id: string; name: string; company_id: str
 export type CatalogProduct = { id: string; label: string; brand_name: string; variant_name: string; product_type_name: string; unit_id: string; unit_label: string };
 export type RequestCatalog = { products: CatalogProduct[]; total: number; page: number; page_size: number };
 export type MaterialRequestsPage = { requests: MaterialRequest[]; total: number; page: number; page_size: number };
+export type MaterialRequestReceiptLine = { id: string; product_label: string; unit_label: string; qty: string; requested_qty: string; dispatched_qty: string; received_qty: string };
+export type MaterialRequestReceipt = { id: string; receiving_no: string | null; notes: string; created_at: string; posted_at: string | null; posted_by_name: string | null; request_id: string; request_no: string | null; requesting_hub_name: string; requesting_company_name: string; supplying_company_name: string; line_count: number; qty: string; lines: MaterialRequestReceiptLine[] };
+export type MaterialRequestReceiptsPage = { receipts: MaterialRequestReceipt[]; total: number; page: number; page_size: number };

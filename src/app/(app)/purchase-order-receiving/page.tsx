@@ -1,8 +1,8 @@
 "use client";
 
-import ListReceiving from "@/components/receiving/list";
+import ListReceiving from "@/components/purchase-order-receiving/list";
 
-export default function ReceivingPage() {
+export default function PurchaseOrderReceivingPage() {
   return (
     <div>
       <ListReceiving />

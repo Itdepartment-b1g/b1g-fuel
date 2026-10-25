@@ -1,12 +1,13 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { History, Pencil, Trash2 } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { TableView } from "@/components/common/table/table-view";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { TableSort } from "@/types/table-views";
 import type { ReceivingSummary } from "@/types/receiving";
-import { RECEIVING_TABLE_COLUMNS } from "./receiving-table-columns";
+import { RECEIVING_TABLE_COLUMNS } from "./purchase-order-receiving-table-columns";
+import { PurchaseOrderReceivingDetails } from "./purchase-order-receiving-details";
 
 export function ReceivingTableView(props: {
   receivings: ReceivingSummary[];
@@ -15,6 +16,7 @@ export function ReceivingTableView(props: {
   onSortingChange: (sorting: TableSort | null) => void;
   onEdit: (row: ReceivingSummary) => void;
   onDelete: (row: ReceivingSummary) => void;
+  onTimeline: (row: ReceivingSummary) => void;
   disabled: boolean;
 }) {
   const access = useRecordAccess();
@@ -22,7 +24,8 @@ export function ReceivingTableView(props: {
     <TableView
       data={props.receivings}
       rowKey={(row) => row.id}
-      caption="Receiving"
+      caption="Purchase order receiving"
+      expandedRow={(row) => <PurchaseOrderReceivingDetails receipt={row} />}
       loading={props.loading}
       sortingMode="server"
       sorting={props.sorting}
@@ -39,6 +42,12 @@ export function ReceivingTableView(props: {
           icon: <Pencil />,
           disabled: !canPerform(access, "receiving", "view", row),
           onSelect: props.onEdit,
+        },
+        {
+          id: "timeline",
+          label: "Timeline",
+          icon: <History className="text-amber-600" />,
+          onSelect: props.onTimeline,
         },
         {
           id: "delete",

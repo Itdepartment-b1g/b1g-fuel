@@ -3,11 +3,20 @@ import * as service from "@/server/services/material_requests_service";
 import { MaterialRequestError } from "@/server/services/material_requests_service";
 import { parsePagination, PaginationError } from "@/server/lib/pagination";
 import type { RequestInput, CreateRequestInput, ActionInput, ReceiveInput, DispatchInput } from "@/server/schema/material_requests_schema";
-import { MR_SORT_FIELDS } from "@/server/schema/material_requests_schema";
+import { MR_RECEIPT_SORT_FIELDS, MR_SORT_FIELDS } from "@/server/schema/material_requests_schema";
 import { parse_sort, SortingError } from "@/server/lib/sorting";
 import { parse_quick_filters, QuickFilterError } from "@/server/lib/quick-filters";
 import { MATERIAL_REQUEST_FILTER_OPTIONS } from "@/utils/material-request-filters";
 
+export async function list_material_request_receipts(req: Request, res: Response) {
+  try { res.status(200).json(await service.list_material_request_receipts(typeof req.query.search === "string" ? req.query.search : "", parsePagination(req.query), res.locals.access, parse_sort(req.query, MR_RECEIPT_SORT_FIELDS))); }
+  catch (error) {
+    if (error instanceof MaterialRequestError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof PaginationError || error instanceof SortingError) { res.status(400).json({ error: error.message }); return; }
+    console.error("Material request receipts failed:", error);
+    res.status(500).json({ error: "Material request receipts could not be loaded." });
+  }
+}
 export async function list_material_request(req: Request, res: Response) {
   try { res.status(200).json(await service.list_material_request(typeof req.query.search === "string" ? req.query.search : "", typeof req.query.status === "string" ? req.query.status : "", parsePagination(req.query), res.locals.access, parse_sort(req.query, MR_SORT_FIELDS), parse_quick_filters(req.query.filters, MATERIAL_REQUEST_FILTER_OPTIONS))); }
   catch (error) {

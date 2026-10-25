@@ -12,6 +12,12 @@ export const BRAND_TABLE_COLUMNS: TableColumn<BrandSummary>[] = [
     className: "font-semibold",
   },
   {
+    id: "supplier",
+    header: "Supplier",
+    freezable: true,
+    value: (brand) => brand.supplier?.name ?? "—",
+  },
+  {
     id: "company",
     header: "Company",
     freezable: true,

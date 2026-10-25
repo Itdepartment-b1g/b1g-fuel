@@ -39,6 +39,7 @@ export function canPerform(
     | "purchaseOrders"
     | "receiving"
     | "materialRequests"
+    | "materialRequestReceiving"
   | "hubs",
   action: string,
   record?: {
@@ -82,6 +83,7 @@ export function canPerform(
           resource === "purchaseOrders" ||
           resource === "receiving" ||
           resource === "materialRequests" ||
+          resource === "materialRequestReceiving" ||
           resource === "hubs"
         ? Boolean(record.company_id && companyIds.includes(record.company_id))
         : Boolean(

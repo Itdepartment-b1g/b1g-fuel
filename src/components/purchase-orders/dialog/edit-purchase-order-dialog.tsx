@@ -54,6 +54,11 @@ function forCompany<T extends { company_id: string | null }>(rows: T[], companyI
   return rows.filter((row) => !row.company_id || row.company_id === companyId);
 }
 
+function supplierVariants<T extends { company_id: string | null; brand: { supplier_id: string | null } }>(rows: T[], companyId: string, supplierId: string) {
+  if (!supplierId) return [];
+  return forCompany(rows, companyId).filter((row) => row.brand.supplier_id === supplierId);
+}
+
 export function EditPurchaseOrderDialog({
   purchaseOrderId,
   onClose,
@@ -166,7 +171,7 @@ function EditPurchaseOrderFields({
   const suppliers = forCompany(options.suppliers, order.company_id);
   const locations = options.locations.filter((location) => location.company_id === order.company_id);
   const warehouse = locations.length === 1 ? locations[0] : locations.length === 0 ? order.location : undefined;
-  const variants = forCompany(options.variants, order.company_id);
+  const variants = supplierVariants(options.variants, order.company_id, supplierId);
   const productTypes = forCompany(options.product_types, order.company_id);
 
   function validate(confirming: boolean) {
@@ -240,7 +245,10 @@ function EditPurchaseOrderFields({
             Supplier <span className="text-destructive">*</span>
             <select
               value={supplierId}
-              onChange={(event) => setSupplierId(event.target.value)}
+              onChange={(event) => {
+                setSupplierId(event.target.value);
+                setLines((current) => current.map((line) => ({ ...line, variant_id: "" })));
+              }}
               required
               className="h-10 w-full rounded-md border bg-white px-3 text-sm"
             >
@@ -296,7 +304,7 @@ function EditPurchaseOrderFields({
             </select>
           </label>
           <label className="block space-y-2 text-sm font-medium">
-            Expected delivery
+            Needed date
             <Input
               type="date"
               value={deliveryOn}
@@ -326,6 +334,7 @@ function EditPurchaseOrderFields({
               Add line
             </Button>
           </div>
+          {supplierId && !variants.length ? <p className="text-sm text-muted-foreground">This supplier has no brands yet. Assign the supplier on the brand, then choose its variant.</p> : null}
           {lines.map((line, index) => (
             <div key={line.key} className="grid gap-3 rounded-md border p-3 sm:grid-cols-4">
               <label className="block space-y-2 text-sm font-medium">
@@ -342,7 +351,7 @@ function EditPurchaseOrderFields({
                   }
                   className="h-10 w-full rounded-md border bg-white px-3 text-sm"
                 >
-                  <option value="">Select</option>
+                  <option value="">{supplierId ? "Select" : "Select a supplier first"}</option>
                   {variants.map((variant) => (
                     <option key={variant.id} value={variant.id}>
                       {variant.brand.name} · {variant.name}

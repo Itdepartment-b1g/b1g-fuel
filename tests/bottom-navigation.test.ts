@@ -22,6 +22,6 @@ test("bottom navigation only includes pages the user can open", () => {
   );
   assert.deepEqual(
     items.map((item) => item.href),
-    ["/dashboard", "/purchase-orders", "/receiving"],
+    ["/dashboard", "/purchase-orders", "/purchase-order-receiving"],
   );
 });

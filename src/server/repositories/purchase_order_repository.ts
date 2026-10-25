@@ -182,6 +182,7 @@ function usable(companyId: string | null, expected: string) {
 async function resolve_lines(
   tx: DatabaseExecutor,
   companyId: string,
+  supplierId: string,
   lines: PurchaseOrderLineInput[],
   actor: string,
 ) {
@@ -190,7 +191,7 @@ async function resolve_lines(
     const [variant, productType, unit] = await Promise.all([
       tx.variant.findUnique({
         where: { id: line.variant_id },
-        select: { id: true, company_id: true },
+        select: { id: true, company_id: true, brand: { select: { supplier_id: true } } },
       }),
       tx.product_type.findUnique({
         where: { id: line.product_type_id },
@@ -203,6 +204,7 @@ async function resolve_lines(
     ]);
     if (
       !variant ||
+      variant.brand.supplier_id !== supplierId ||
       !usable(variant.company_id, companyId) ||
       !productType ||
       !usable(productType.company_id, companyId) ||
@@ -357,7 +359,7 @@ async function write_order(
     location_id === "invalid_supplier"
   )
     return location_id;
-  const items = await resolve_lines(tx, input.company_id, input.lines, actor);
+  const items = await resolve_lines(tx, input.company_id, input.supplier_id, input.lines, actor);
   if (!Array.isArray(items)) return items;
   const data = {
     company_id: input.company_id,

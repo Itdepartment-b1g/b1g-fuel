@@ -159,7 +159,7 @@ export function EditRoleFields({
           <p className="text-xs text-muted-foreground">Select a page, then choose what this role can do on that page.</p>
           {optionsStatus === "loading" ? (
             <p role="status" className="text-sm text-muted-foreground">Loading pages?</p>
-          ) : options.pages.length ? options.pages.map((page) => {
+          ) : options.pages.length ? options.pages.filter((page, index, list) => list.findIndex((item) => item.key === page.key) === index).map((page) => {
             const selected = pages.includes(page.key);
             const choices = options.permissions.filter((permission) => permission.page_key === page.key);
             return (

@@ -53,6 +53,8 @@ export const brandAndVariantSchemas = {
       created_by: { ...id, nullable: true, readOnly: true },
       created_by_name: { type: "string", nullable: true, readOnly: true },
       name,
+      supplier_id: { ...id, nullable: true },
+      supplier: { type: "object", nullable: true, properties: { id, name } },
       variant_count: { type: "integer", readOnly: true },
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
@@ -61,14 +63,14 @@ export const brandAndVariantSchemas = {
   CreateBrand: {
     type: "object",
     additionalProperties: false,
-    required: ["name"],
-    properties: { company_id: id, name },
+    required: ["name", "supplier_id"],
+    properties: { company_id: id, supplier_id: id, name },
   },
   UpdateBrand: {
     type: "object",
     additionalProperties: false,
     required: ["id", "name"],
-    properties: { id, name },
+    properties: { id, name, supplier_id: id },
   },
   BrandResponse: { type: "object", required: ["brand"], properties: { brand: ref("Brand") } },
   BrandsPage: {

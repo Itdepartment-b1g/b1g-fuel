@@ -112,7 +112,7 @@ export interface PurchaseOrderOptions {
     id: string;
     name: string;
     company_id: string | null;
-    brand: { id: string; name: string };
+    brand: { id: string; name: string; supplier_id: string | null };
   }[];
   product_types: {
     id: string;

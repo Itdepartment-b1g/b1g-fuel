@@ -11,7 +11,7 @@ import type {
   CreateRoleInput,
   UpdateRoleInput,
 } from "@/server/schema/roles_schema";
-import { PAGE_CATALOG } from "@/lib/auth/catalog";
+import { uniquePageCatalog } from "@/lib/auth/catalog";
 import { PERMISSION_CATALOG } from "@/lib/auth/permissions";
 
 const role_id_pattern =
@@ -42,7 +42,7 @@ export async function list_role_assignments(req: Request, res: Response) {
 const role_mapping_rules: ReadonlyArray<
   readonly ["pages" | "permissions", string, readonly string[]]
 > = [
-  ["pages", "page", PAGE_CATALOG.map((page) => page.key)],
+  ["pages", "page", uniquePageCatalog().map((page) => page.key)],
   [
     "permissions",
     "permission",

@@ -51,7 +51,7 @@ export function BrandsCards({
           </div>
           <h2 className="break-words font-semibold">{brand.name}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {brand.company?.name ?? "All companies"} · {brand.created_by_name ?? "—"}
+            {brand.supplier?.name ?? "No supplier"} · {brand.company?.name ?? "All companies"} · {brand.created_by_name ?? "—"}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
             {brand.variant_count} {brand.variant_count === 1 ? "variant" : "variants"}

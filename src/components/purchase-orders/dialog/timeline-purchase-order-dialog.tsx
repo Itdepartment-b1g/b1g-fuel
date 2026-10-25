@@ -113,7 +113,7 @@ function OrderDetails({ order }: { order: PurchaseOrderSummary }) {
       <Field label="Company" value={order.company.name} />
       <Field label="Payment terms" value={order.payment_terms} />
       <Field label="Payment method" value={order.payment_method ? PAYMENT_LABEL[order.payment_method] : "—"} />
-      <Field label="Expected delivery" value={order.estimated_delivery_on ?? "—"} />
+      <Field label="Needed date" value={order.estimated_delivery_on ?? "—"} />
       <Field label="Created by" value={order.created_by_name ?? "—"} />
       <Field label="Notes" value={order.notes} />
       <div>

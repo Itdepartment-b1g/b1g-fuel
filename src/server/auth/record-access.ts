@@ -217,7 +217,7 @@ export const loadRecordAccess: RequestHandler = async (_req, res, next) => {
 };
 
 export function requirePermission(
-  resource: Resource | "materialRequests",
+  resource: Resource | "materialRequests" | "materialRequestReceiving",
   action: "view" | "add" | "edit" | "delete",
 ): RequestHandler {
   return (_req, res, next) => {

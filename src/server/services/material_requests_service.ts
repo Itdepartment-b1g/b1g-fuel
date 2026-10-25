@@ -236,7 +236,7 @@ export async function dispatch_material_request(input: DispatchInput, access: Re
       items: { create: adds.map((line) => ({ material_request_item_id: line.item.id, product_id: line.item.product_id, unit_id: line.item.unit_id, qty: line.qty, content_per_unit: new Prisma.Decimal(1), base_qty: line.qty })) },
     }, tx);
     for (const line of [...dispatch.items].sort((left, right) => left.product_id.localeCompare(right.product_id))) {
-      if (!await repository.take_stock(row.supplying_warehouse_id, line.product_id, line.qty, line.id, access.userId, tx)) throw new MaterialRequestError(409, "Not enough stock at the supplying warehouse.");
+      await repository.take_stock(row.supplying_warehouse_id, line.product_id, line.qty, line.id, access.userId, tx);
     }
     const nextItems = row.items.map((item) => ({ requested_qty: item.requested_qty, dispatched_qty: adds.find((line) => line.item.id === item.id)?.next ?? item.dispatched_qty, received_qty: item.received_qty }));
     const status = fulfillment_status(nextItems);
@@ -298,14 +298,18 @@ export async function list_by_id_material_request(id: string, access: RecordAcce
     return { ...request, permissions, approval_warehouse: resolved?.warehouse ?? null, approval_warehouse_error: resolved?.error ?? null };
   });
 }
-function request_visibility(access: RecordAccess, assigned: string[]): Prisma.material_requestWhereInput {
-  const OR: Prisma.material_requestWhereInput[] = access.superAdmin ? [{}] : access.grants.filter((grant) => grant.permission === "materialRequests.view").flatMap((grant) => {
+function request_visibility(access: RecordAccess, assigned: string[], permission = "materialRequests.view"): Prisma.material_requestWhereInput {
+  const OR: Prisma.material_requestWhereInput[] = access.superAdmin ? [{}] : access.grants.filter((grant) => grant.permission === permission).flatMap((grant) => {
       if (grant.scope === "all" && !grant.companyId) return [{}];
       const company = { in: grant.companyId ? [grant.companyId] : access.companyIds };
       return [{ requesting_company_id: company, ...(grant.scope === "own" ? { requesting_hub_id: { in: assigned } } : {}) },
         { supplying_company_id: company, submitted_at: { not: null }, ...(grant.scope === "own" ? { supplying_warehouse_id: { in: assigned } } : {}) }];
   });
   return { OR };
+}
+export async function list_material_request_receipts(search: string, pagination: Pagination, access: RecordAccess, sorting?: Sorting) {
+  if (search.length > 160) throw new MaterialRequestError(400, "Provide a valid search.");
+  return getDatabase().$transaction(async (tx) => repository.list_request_receipts(request_visibility(access, await assignments_for(access, tx), "materialRequestReceiving.view"), search.trim(), pagination, sorting, tx), { isolationLevel: "RepeatableRead" });
 }
 export async function list_material_request(search: string, status: string, pagination: Pagination, access: RecordAccess, sorting?: Sorting, filters?: QuickFilterState) {
   if (search.length > 160 || (status && !["draft", "submitted", "approved", "partially_dispatched", "fully_dispatched", "partially_received", "received", "closed", "rejected", "cancelled"].includes(status))) throw new MaterialRequestError(400, "Provide valid search and status filters.");

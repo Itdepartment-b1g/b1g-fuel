@@ -1,11 +1,12 @@
 "use client";
 
-import { PackageCheck, Pencil, Trash2 } from "lucide-react";
+import { History, PackageCheck, Pencil, Trash2 } from "lucide-react";
 import { CardActionsMenu } from "@/components/common/card-actions-menu";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { ReceivingSummary } from "@/types/receiving";
 import { formatDateTime } from "@/utils/date";
+import { purchaseOrderReceiptSkuCount, purchaseOrderReceiptTotalQty } from "../table-view/purchase-order-receiving-table-columns";
 
 const STATUS_LABEL = { draft: "Draft", posted: "Posted" };
 
@@ -14,11 +15,13 @@ export function ReceivingCards({
   disabled,
   onEdit,
   onDelete,
+  onTimeline,
 }: {
   receivings: ReceivingSummary[];
   disabled: boolean;
   onEdit: (row: ReceivingSummary) => void;
   onDelete: (row: ReceivingSummary) => void;
+  onTimeline: (row: ReceivingSummary) => void;
 }) {
   const access = useRecordAccess();
   if (!receivings.length) {
@@ -41,6 +44,13 @@ export function ReceivingCards({
                   onSelect: () => onEdit(receipt),
                 },
                 {
+                  id: "timeline",
+                  label: "Timeline",
+                  icon: <History className="text-amber-600" />,
+                  disabled,
+                  onSelect: () => onTimeline(receipt),
+                },
+                {
                   id: "delete",
                   label: "Delete",
                   icon: <Trash2 />,
@@ -61,8 +71,12 @@ export function ReceivingCards({
               <dd>{STATUS_LABEL[receipt.status]}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Lines</dt>
-              <dd>{receipt.line_count}</dd>
+              <dt className="text-muted-foreground">Total SKUs</dt>
+              <dd>{purchaseOrderReceiptSkuCount(receipt)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Total Qty</dt>
+              <dd>{purchaseOrderReceiptTotalQty(receipt)}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">Posted</dt>

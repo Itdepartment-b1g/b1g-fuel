@@ -10,7 +10,7 @@ The list uses the shared SearchFilterBar for request-number/hub/supplier search,
 
 The table uses shared column menus for Default, Ascending, Descending, and Freeze/Unfreeze. Reviewed by, Total SKUs, and Total Qty support freezing only. Total SKUs counts the requested lines, and Total Qty sums their requested quantities. Units stay on each line in the expanded materials table. The table/card switch displays the same API page and actions in either view. Page sizes use the shared 10/20/50/100 choices.
 
-`draft → submitted (Pending) → approved → partially dispatched / fully dispatched → partially received → received (Completed) / closed`, or `rejected` from review. `cancelled` remains available for drafts. The table shows one **Request Progress** badge for that status. Receiving progress stays in place when a later dispatch is posted. A request is Completed only when every requested quantity has been received.
+`draft → submitted (Pending) → approved → partially dispatched / fully dispatched → partially received → received (Completed) / closed`, or `rejected` from review. `cancelled` remains available for drafts. The table shows one **Request Progress** badge for that status, and a **Next action** column for the step still open: submission, approval, dispatch, or receipt. Receiving progress stays in place when a later dispatch is posted. A request is Completed only when every requested quantity has been received.
 
 The create form uses the signed-in user's current hub assignment and does not offer other hubs. A person assigned to more than one hub chooses only among those hubs. Someone with no hub assignment cannot create a request. The form offers **Save as draft** and **Submit request**. Drafts remain editable without a request number. Submit request creates and submits in one transaction, assigns a number, and makes the request available for supplier review. Submission requires requesting-side edit permission as well as add permission; failed submission leaves the form open without creating an extra draft.
 
@@ -18,9 +18,9 @@ The table and cards keep **View draft** or **View**, plus **Timeline**, in a ver
 
 The requesting side can edit drafts, submit drafts, or cancel drafts only. Supplier reviewers can approve or reject submitted requests. Approval and rejection accept an optional note. Approval accepts all requested quantities and assigns a warehouse owned by the supplying company. Approved and later requests cannot be edited or cancelled.
 
-The supplying warehouse dispatches available stock in one or more posted documents. Each dispatch receives `MRD-{INITIALS}-{YYYYMM}-{0000001}`, counted per supplying company, and deducts `stock_balance` at that warehouse through an append-only `stock_movement`. A line cannot exceed remaining requested quantity or warehouse stock. Dispatch is available from approved, partially dispatched, fully dispatched, and partially received requests while requested quantity remains. A later dispatch keeps Partially Received when any quantity has already been received.
+The supplying warehouse dispatches in one or more posted documents. Each dispatch receives `MRD-{INITIALS}-{YYYYMM}-{0000001}`, counted per supplying company. A line cannot exceed the quantity still to dispatch. When the warehouse balance covers the line, dispatch deducts `stock_balance` through an append-only `stock_movement`. A short or missing balance still posts the dispatch so the request can move forward before inventory is loaded. Dispatch is available from approved, partially dispatched, fully dispatched, and partially received requests while requested quantity remains. A later dispatch keeps Partially Received when any quantity has already been received.
 
-The requesting hub confirms what arrived. Each receipt receives `MRR-{INITIALS}-{YYYYMM}-{0000001}`, counted per requesting company, and adds stock at the requesting hub. A receipt cannot exceed dispatched quantity that has not yet been received. Partial receipt sets Partially Received. The request becomes received, shown as Completed, when every requested quantity has been received. Closing a short receipt and hub-to-hub transfers remain future work. Purchase-order receiving does not post this stock.
+The requesting hub confirms what arrived. Each receipt receives `RRMR-{INITIALS}-{YYYYMM}-{0000001}`, counted per requesting company, and adds stock at the requesting hub. A receipt cannot exceed dispatched quantity that has not yet been received. Partial receipt sets Partially Received. The request becomes received, shown as Completed, when every requested quantity has been received. Closing a short receipt and hub-to-hub transfers remain future work. Purchase-order receiving does not post this stock.
 
 Supplier users cannot see drafts, including drafts cancelled without submission. Deactivating a company supply link stops new drafts and submissions; already-submitted documents remain available for review. Historical requests do not disappear when a link becomes inactive.
 
@@ -63,6 +63,7 @@ Timeline events are generated by the server with each operation; there are no ev
 | POST | `/api/material-requests/action` | Submit, approve, reject or cancel |
 | POST | `/api/material-requests/dispatch` | Dispatch available warehouse stock for an approved request |
 | POST | `/api/material-requests/receive` | Confirm receipt of dispatched quantity at the requesting hub |
+| GET | `/api/material-requests/receivings` | List posted material request receipts |
 | GET | `/api/material-requests/options` | Accessible hubs, suppliers and reviewer warehouses |
 | GET | `/api/material-requests/catalog` | Paginated linked supplier products |
 

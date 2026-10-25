@@ -5,7 +5,7 @@ import { CardActionsMenu } from "@/components/common/card-actions-menu";
 import type { MaterialRequest } from "@/types/material-requests";
 import { formatDateTime } from "@/utils/date";
 import { materialRequestActions, type MaterialRequestActionProps } from "../table-view/material-requests-table-view";
-import { materialRequestReviewer, materialRequestSkuCount, materialRequestTotalQty } from "../table-view/material-requests-table-columns";
+import { materialRequestNextAction, materialRequestReviewer, materialRequestSkuCount, materialRequestTotalQty } from "../table-view/material-requests-table-columns";
 import { MATERIAL_REQUEST_PROGRESS_LABEL } from "@/utils/material-request-progress";
 
 export function MaterialRequestsCards(props: MaterialRequestActionProps & { rows: MaterialRequest[] }) {
@@ -21,6 +21,7 @@ export function MaterialRequestsCards(props: MaterialRequestActionProps & { rows
         </div>
       </div>
       <p className="mt-2 text-sm">{MATERIAL_REQUEST_PROGRESS_LABEL[row.status]}</p>
+      <p className="text-sm text-muted-foreground">{materialRequestNextAction(row)}</p>
       <dl className="mt-4 space-y-3 text-sm">
         <div><dt className="text-muted-foreground">Requesting company / hub</dt><dd className="break-words">{row.requesting_company.name} / {row.requesting_hub.name}</dd></div>
         <div><dt className="text-muted-foreground">Supplier</dt><dd className="break-words">{row.supplying_company.name}</dd></div>

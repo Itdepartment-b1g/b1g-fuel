@@ -106,14 +106,14 @@ export async function allocate_request_number(companyId: string, companyName: st
   return `MR-${code}-${period}-${String(counter.last_value).padStart(7, "0")}`;
 }
 export async function allocate_receipt_number(companyId: string, companyName: string, postedAt: Date, tx: DatabaseExecutor) {
-  const code = (companyName.match(/[\p{L}\p{N}]+/gu) ?? []).map((word) => [...word][0]).join("").toUpperCase().slice(0, 46) || "MR";
+  const code = (companyName.match(/[\p{L}\p{N}]+/gu) ?? []).map((word) => [...word][0]).join("").toUpperCase().slice(0, 44) || "MR";
   const parts = new Intl.DateTimeFormat("en", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).formatToParts(postedAt);
   const period = `${parts.find((part) => part.type === "year")!.value}${parts.find((part) => part.type === "month")!.value}`;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`mr-receipt:${companyId}`})::bigint)`;
   const latest = await tx.material_request_receiving.aggregate({ where: { requesting_company_id: companyId, receipt_seq: { not: null } }, _max: { receipt_seq: true } });
   const receipt_seq = (latest._max.receipt_seq ?? 0) + 1;
   if (receipt_seq > 9_999_999) throw new Error("Material request receipt sequence exhausted.");
-  return { receipt_seq, receiving_no: `MRR-${code}-${period}-${String(receipt_seq).padStart(7, "0")}` };
+  return { receipt_seq, receiving_no: `RRMR-${code}-${period}-${String(receipt_seq).padStart(7, "0")}` };
 }
 export function create_posted_request_receipt(data: Prisma.material_request_receivingUncheckedCreateInput, tx: DatabaseExecutor) {
   return tx.material_request_receiving.create({ data, select: { id: true, receiving_no: true, items: { select: { id: true, product_id: true, qty: true } } } });
@@ -145,6 +145,57 @@ export async function give_stock(locationId: string, productId: string, qty: Pri
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${locationId}:${productId}`})::bigint)`;
   await tx.stock_balance.upsert({ where: { location_id_product_id: { location_id: locationId, product_id: productId } }, create: { location_id: locationId, product_id: productId, qty }, update: { qty: { increment: qty } } });
   await tx.stock_movement.create({ data: { location_id: locationId, product_id: productId, qty, direction: "in", type: "receive_in", material_request_receiving_item_id: receivingItemId, created_by: userId } });
+}
+export async function list_request_receipts(visibility: Prisma.material_requestWhereInput, search: string, pagination: Pagination, sorting: Sorting | undefined, tx: DatabaseExecutor) {
+  const where: Prisma.material_request_receivingWhereInput = {
+    status: "posted",
+    AND: [
+      { request: visibility },
+      ...(search ? [{ OR: [
+        { receiving_no: { contains: search, mode: "insensitive" as const } },
+        { request: { request_no: { contains: search, mode: "insensitive" as const } } },
+        { request: { requesting_hub: { name: { contains: search, mode: "insensitive" as const } } } },
+        { request: { supplying_company: { name: { contains: search, mode: "insensitive" as const } } } },
+      ] }] : []),
+    ],
+  };
+  const rows = await tx.material_request_receiving.findMany({
+    where,
+    include: {
+      request: { select: { id: true, request_no: true, requesting_hub: { select: { name: true } }, requesting_company: { select: { name: true } }, supplying_company: { select: { name: true } } } },
+      items: { orderBy: { id: "asc" }, select: { id: true, qty: true, request_item: { select: { product_label: true, unit_label: true, requested_qty: true, dispatched_qty: true, received_qty: true } } } },
+    },
+    orderBy: build_sort<Prisma.material_request_receivingOrderByWithRelationInput>(sorting, {
+      fields: {
+        receiving_no: (direction) => ({ receiving_no: { sort: direction, nulls: "last" } }),
+        request_no: (direction) => ({ request: { request_no: { sort: direction, nulls: "last" } } }),
+        requesting_hub: (direction) => ({ request: { requesting_hub: { name: direction } } }),
+        supplying_company: (direction) => ({ request: { supplying_company: { name: direction } } }),
+        posted_at: (direction) => ({ posted_at: { sort: direction, nulls: "last" } }),
+        created_at: (direction) => ({ created_at: direction }),
+      },
+      default: { field: "created_at", direction: "desc" },
+      tieBreaker: { field: "id", order: { id: "asc" } },
+    }),
+    skip: pagination.skip,
+    take: pagination.take,
+  });
+  const users = await tx.user.findMany({ where: { id: { in: [...new Set(rows.flatMap((row) => row.posted_by ? [row.posted_by] : []))] } }, select: { id: true, name: true } });
+  const names = new Map(users.map((user) => [user.id, user.name]));
+  return {
+    receipts: rows.map((row) => {
+      const thousandths = row.items.reduce((sum, item) => sum + Math.round(Number(item.qty) * 1000), 0);
+      return {
+        id: row.id, receiving_no: row.receiving_no, notes: row.notes, created_at: row.created_at.toISOString(), posted_at: row.posted_at?.toISOString() ?? null,
+        posted_by_name: row.posted_by ? names.get(row.posted_by) ?? null : null,
+        request_id: row.request.id, request_no: row.request.request_no,
+        requesting_hub_name: row.request.requesting_hub.name, requesting_company_name: row.request.requesting_company.name,
+        supplying_company_name: row.request.supplying_company.name, line_count: row.items.length, qty: String(thousandths / 1000),
+        lines: row.items.map((item) => ({ id: item.id, product_label: item.request_item.product_label, unit_label: item.request_item.unit_label, qty: item.qty.toString(), requested_qty: item.request_item.requested_qty.toString(), dispatched_qty: item.request_item.dispatched_qty.toString(), received_qty: item.request_item.received_qty.toString() })),
+      };
+    }),
+    ...paginationMetadata(await tx.material_request_receiving.count({ where }), pagination),
+  };
 }
 export function list_request_hubs(tx: DatabaseExecutor) {
   return tx.location.findMany({ where: { type: "hub" }, select: { id: true, name: true, company_id: true, company: { select: { name: true } } }, orderBy: { name: "asc" } });

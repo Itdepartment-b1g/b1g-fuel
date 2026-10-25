@@ -25,8 +25,9 @@ import {
 import type { ReceivingSummary } from "@/types/receiving";
 import { CreateReceivingDialog } from "./dialog/create-receiving-dialog";
 import { EditReceivingDialog } from "./dialog/edit-receiving-dialog";
-import { ReceivingCards } from "./card-views/receiving-cards";
-import { ReceivingTableView } from "./table-view/receiving-table-view";
+import { TimelinePurchaseOrderReceivingDialog } from "./dialog/timeline-purchase-order-receiving-dialog";
+import { ReceivingCards } from "./card-views/purchase-order-receiving-cards";
+import { ReceivingTableView } from "./table-view/purchase-order-receiving-table-view";
 
 export default function ListReceiving() {
   const dispatch = useAppDispatch();
@@ -46,6 +47,7 @@ export default function ListReceiving() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<ReceivingSummary | null>(null);
+  const [timeline, setTimeline] = useState<ReceivingSummary | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
   const pagination = paginationFromApi({ page, page_size: pageSize, total });
@@ -86,7 +88,7 @@ export default function ListReceiving() {
     return (
       <section className="rounded-xl border p-6">
         <h1 className="text-xl font-semibold">Access restricted</h1>
-        <p className="mt-2 text-muted-foreground">You do not have permission to view receiving.</p>
+        <p className="mt-2 text-muted-foreground">You do not have permission to view purchase order receiving.</p>
       </section>
     );
   }
@@ -98,7 +100,7 @@ export default function ListReceiving() {
           <p className="text-sm font-medium text-muted-foreground">Procurement</p>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold">
             <PackageCheck className="size-7 text-primary" aria-hidden="true" />
-            Receiving
+            Purchase order receiving
           </h1>
         </div>
         {canPerform(access, "receiving", "add") && (
@@ -153,6 +155,7 @@ export default function ListReceiving() {
               setEditingId(row.id);
             }}
             onDelete={setRemoving}
+            onTimeline={setTimeline}
             disabled={pending}
           />
         ) : (
@@ -164,6 +167,7 @@ export default function ListReceiving() {
               setEditingId(row.id);
             }}
             onDelete={setRemoving}
+            onTimeline={setTimeline}
           />
         )}
       </div>
@@ -199,6 +203,7 @@ export default function ListReceiving() {
           }}
         />
       )}
+      {timeline && <TimelinePurchaseOrderReceivingDialog receipt={timeline} onClose={() => setTimeline(null)} />}
       {removing && (
         <DeleteReceivingDialog
           receipt={removing}

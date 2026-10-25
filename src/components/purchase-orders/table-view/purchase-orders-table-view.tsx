@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { CircleX, History, PackageCheck, Pencil } from "lucide-react";
+import { CircleX, Eye, History, PackageCheck, Pencil } from "lucide-react";
 import { useRecordAccess } from "@/components/providers/access-provider";
 import { Pagination } from "@/components/common/pagination";
-import { TableView } from "@/components/common/table/table-view";
+import { TableView, type TableAction } from "@/components/common/table/table-view";
+import type { RecordAccess } from "@/lib/auth/access-scope";
 import { canPerform } from "@/lib/auth/access-scope";
 import type { SortValue, TableSort } from "@/types/table-views";
-import { type PaymentMethod, type PurchaseOrderLine, type PurchaseOrderSummary } from "@/types/purchase-orders";
+import { PURCHASE_ORDER_STATUS_LABEL, type PaymentMethod, type PurchaseOrderLine, type PurchaseOrderSummary } from "@/types/purchase-orders";
 import { formatDateTime } from "@/utils/date";
 import { PAGE_SIZE_OPTIONS, paginationFromApi } from "@/utils/pagination";
 import { sortTableRows } from "@/utils/table-views";
@@ -44,7 +45,12 @@ function lineValue(row: PurchaseOrderLineRow, field: string): SortValue {
   return null;
 }
 
-function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
+const fittedLineColumns = PURCHASE_ORDER_LINE_COLUMNS.map((column, index) => ({
+  ...column,
+  className: [["w-[18%]", "w-[24%]", "w-[16%]", "w-[14%]", "w-[14%]", "w-[14%]"][index], column.className].filter(Boolean).join(" "),
+}));
+
+function PurchaseOrderLines({ items, fit = false }: { items: PurchaseOrderLine[]; fit?: boolean }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
   const [sorting, setSorting] = useState<TableSort | null>(null);
@@ -69,7 +75,11 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
   const visible = sorted.slice(start, start + pageSize);
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white">
+    <section className="min-w-0 overflow-hidden rounded-xl border bg-muted/30">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <h3 className="font-semibold">Ordered materials</h3>
+        <p className="text-sm text-muted-foreground">{rows.length} {rows.length === 1 ? "line" : "lines"}</p>
+      </div>
       <TableView
         data={visible}
         rowKey={(row) => row.id}
@@ -82,13 +92,14 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
         }}
         defaultSorting={{ field: "brand", direction: "asc" }}
         multipleFrozenColumns
+        fit={fit}
         emptyTitle="No lines yet"
         emptyDescription="This purchase order has no products."
-        columns={PURCHASE_ORDER_LINE_COLUMNS}
+        columns={fit ? fittedLineColumns : PURCHASE_ORDER_LINE_COLUMNS}
       />
       {rows.length > 0 && (
         <Pagination
-          className="border-t px-4"
+          className="border-t bg-card px-4"
           metadata={pagination}
           limitOptions={PAGE_SIZE_OPTIONS}
           onPrev={() => setPage(pagination.page - 1)}
@@ -100,69 +111,91 @@ function PurchaseOrderLines({ items }: { items: PurchaseOrderLine[] }) {
           }}
         />
       )}
-    </div>
+    </section>
   );
 }
 
-export function PurchaseOrderDetails({ order }: { order: PurchaseOrderSummary }) {
+export function PurchaseOrderDetails({ order, fit = false }: { order: PurchaseOrderSummary; fit?: boolean }) {
   const received = fullyReceivedEvent(order);
   return (
-    <div className="space-y-4">
-      <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2 lg:col-span-4">
-          <dt className="text-muted-foreground">PO no.</dt>
-          <dd className="mt-1 font-medium">{order.purchase_order_no}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Payment terms</dt>
-          <dd className="mt-1 font-medium break-words">{order.payment_terms || "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Payment method</dt>
-          <dd className="mt-1 font-medium">{order.payment_method ? PAYMENT_LABEL[order.payment_method] : "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Created by</dt>
-          <dd className="mt-1 font-medium">{order.created_by_name || "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Created at</dt>
-          <dd className="mt-1 font-medium">{when(order.created_at)}</dd>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <dt className="text-muted-foreground">Fully received at</dt>
-            <dd className="mt-1 font-medium">{when(received?.created_at ?? null)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Fully received by</dt>
-            <dd className="mt-1 font-medium">{received?.created_by_name || "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Warehouse address</dt>
-            <dd className="mt-1 font-medium break-words">{order.location.address || "—"}</dd>
-          </div>
-        </div>
-        <div className="sm:col-span-1 lg:col-span-3">
-          <dt className="text-muted-foreground">Notes</dt>
-          <dd className="mt-1 font-medium break-words">{order.notes || "—"}</dd>
-        </div>
+    <div className="min-w-0 space-y-4">
+      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <div className="min-w-0"><dt className="text-muted-foreground">PO no.</dt><dd className="break-words">{order.purchase_order_no}</dd></div>
+        <div className="min-w-0"><dt className="text-muted-foreground">Supplier / warehouse</dt><dd className="break-words">{order.supplier.name} / {order.location.name}</dd></div>
+        <div className="min-w-0"><dt className="text-muted-foreground">Company</dt><dd className="break-words">{order.company.name}</dd></div>
+        <div><dt className="text-muted-foreground">Status</dt><dd>{PURCHASE_ORDER_STATUS_LABEL[order.status]}</dd></div>
+        <div className="min-w-0"><dt className="text-muted-foreground">Payment terms</dt><dd className="break-words">{order.payment_terms || "—"}</dd></div>
+        <div><dt className="text-muted-foreground">Payment method</dt><dd>{order.payment_method ? PAYMENT_LABEL[order.payment_method] : "—"}</dd></div>
+        <div><dt className="text-muted-foreground">Needed date</dt><dd>{order.estimated_delivery_on ?? "Not specified"}</dd></div>
+        <div><dt className="text-muted-foreground">Created by</dt><dd>{order.created_by_name || "—"}</dd></div>
+        <div><dt className="text-muted-foreground">Created at</dt><dd>{when(order.created_at)}</dd></div>
+        <div><dt className="text-muted-foreground">Fully received by</dt><dd>{received?.created_by_name || "—"}</dd></div>
+        <div><dt className="text-muted-foreground">Fully received at</dt><dd>{when(received?.created_at ?? null)}</dd></div>
+        <div className="min-w-0 sm:col-span-2"><dt className="text-muted-foreground">Warehouse address</dt><dd className="break-words">{order.location.address || "—"}</dd></div>
       </dl>
-      <PurchaseOrderLines items={order.items} />
+      {order.notes ? <div className="text-sm"><h2 className="font-medium">Notes</h2><p className="whitespace-pre-wrap break-words">{order.notes}</p></div> : null}
+      <PurchaseOrderLines items={order.items} fit={fit} />
     </div>
   );
 }
 
-export function PurchaseOrdersTableView(props: {
-  purchaseOrders: PurchaseOrderSummary[];
-  loading: boolean;
-  sorting: TableSort | null;
-  onSortingChange: (sorting: TableSort | null) => void;
+export type PurchaseOrderActionProps = {
+  onView: (row: PurchaseOrderSummary) => void;
   onEdit: (row: PurchaseOrderSummary) => void;
   onCloseOrder: (row: PurchaseOrderSummary) => void;
   onReceive: (row: PurchaseOrderSummary) => void;
   onTimeline: (row: PurchaseOrderSummary) => void;
   disabled: boolean;
+};
+
+export function purchaseOrderActions(row: PurchaseOrderSummary, access: RecordAccess | null, props: PurchaseOrderActionProps): TableAction<PurchaseOrderSummary>[] {
+  const openForReceipt = row.status === "awaiting_receipt" || row.status === "partially_received";
+  return [
+    ...(row.status === "draft" ? [{
+      id: "edit",
+      label: "Edit",
+      inline: true,
+      icon: <Pencil className="text-indigo-600" />,
+      className: "border-indigo-200 text-indigo-700",
+      disabled: !canPerform(access, "purchaseOrders", "edit", row),
+      onSelect: props.onEdit,
+    }] : []),
+    ...(openForReceipt ? [
+      {
+        id: "receive",
+        label: "Receive",
+        inline: true,
+        icon: <PackageCheck className="text-sky-600" />,
+        className: "border-sky-200 text-sky-700",
+        disabled: !canPerform(access, "receiving", "add", row),
+        onSelect: props.onReceive,
+      },
+      {
+        id: "close",
+        label: "Close",
+        inline: true,
+        icon: <CircleX className="text-rose-600" />,
+        className: "border-rose-200 text-rose-700",
+        disabled: !canPerform(access, "purchaseOrders", "edit", row),
+        onSelect: props.onCloseOrder,
+      },
+    ] : []),
+    { id: "view", label: "View", icon: <Eye className="text-violet-600" />, onSelect: props.onView },
+    {
+      id: "timeline",
+      label: "Timeline",
+      icon: <History className="text-amber-600" />,
+      disabled: !canPerform(access, "purchaseOrders", "view", row),
+      onSelect: props.onTimeline,
+    },
+  ];
+}
+
+export function PurchaseOrdersTableView(props: PurchaseOrderActionProps & {
+  purchaseOrders: PurchaseOrderSummary[];
+  loading: boolean;
+  sorting: TableSort | null;
+  onSortingChange: (sorting: TableSort | null) => void;
 }) {
   const access = useRecordAccess();
   return (
@@ -177,45 +210,12 @@ export function PurchaseOrdersTableView(props: {
       onSortingChange={props.onSortingChange}
       multipleFrozenColumns
       actionsDisabled={props.disabled}
+      actionsMenu
+      actionsLabel={(row) => `Actions for ${row.purchase_order_no}`}
       emptyTitle="No purchase orders found"
       emptyDescription="Create a draft order for a supplier warehouse delivery."
       columns={PURCHASE_ORDER_TABLE_COLUMNS}
-      actions={(row) => [
-        ...(row.status === "draft"
-          ? [{
-              id: "edit",
-              label: "Edit",
-              icon: <Pencil />,
-              disabled: !canPerform(access, "purchaseOrders", "edit", row),
-              onSelect: props.onEdit,
-            }]
-          : []),
-        ...(row.status === "awaiting_receipt" || row.status === "partially_received"
-          ? [{
-              id: "close",
-              label: "Close",
-              icon: <CircleX />,
-              disabled: !canPerform(access, "purchaseOrders", "edit", row),
-              onSelect: props.onCloseOrder,
-            }]
-          : []),
-        ...(row.status === "awaiting_receipt" || row.status === "partially_received"
-          ? [{
-              id: "receive",
-              label: "Receive",
-              icon: <PackageCheck />,
-              disabled: !canPerform(access, "receiving", "add", row),
-              onSelect: props.onReceive,
-            }]
-          : []),
-        {
-          id: "timeline",
-          label: "Timeline",
-          icon: <History />,
-          disabled: !canPerform(access, "purchaseOrders", "view", row),
-          onSelect: props.onTimeline,
-        },
-      ]}
+      actions={(row) => purchaseOrderActions(row, access, props)}
     />
   );
 }

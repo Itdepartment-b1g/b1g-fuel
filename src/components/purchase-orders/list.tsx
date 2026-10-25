@@ -26,6 +26,7 @@ import { CreatePurchaseOrderDialog } from "./dialog/create-purchase-order-dialog
 import { EditPurchaseOrderDialog } from "./dialog/edit-purchase-order-dialog";
 import { ReceivePurchaseOrderDialog } from "./dialog/receive-purchase-order-dialog";
 import { TimelinePurchaseOrderDialog } from "./dialog/timeline-purchase-order-dialog";
+import { ViewPurchaseOrderDialog } from "./dialog/view-purchase-order-dialog";
 import { PurchaseOrderCards } from "./card-views/purchase-order-cards";
 import { PurchaseOrdersTableView } from "./table-view/purchase-orders-table-view";
 
@@ -57,6 +58,7 @@ export default function ListPurchaseOrders() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [receiving, setReceiving] = useState<PurchaseOrderSummary | null>(null);
+  const [viewing, setViewing] = useState<PurchaseOrderSummary | null>(null);
   const [timelineId, setTimelineId] = useState<string | null>(null);
   const loading = listStatus === "idle" || listStatus === "loading";
   const pending = mutationStatus === "loading";
@@ -94,6 +96,20 @@ export default function ListPurchaseOrders() {
     if ([listError, mutationError].some((error) => error?.status === 401))
       router.replace("/login");
   }, [listError, mutationError, router]);
+
+  function closeOrder(row: PurchaseOrderSummary) {
+    if (pending) return;
+    void dispatch(closePurchaseOrder(row.id))
+      .unwrap()
+      .then(() => {
+        toast.success("Purchase order was closed.");
+        setViewing(null);
+        setRevision((value) => value + 1);
+      })
+      .catch((error) => {
+        toast.error(toastErrorMessage(error, "Could not close the purchase order."));
+      });
+  }
 
   if (listError?.status === 403) {
     return (
@@ -167,22 +183,12 @@ export default function ListPurchaseOrders() {
               setSorting(next);
               setPage(1);
             }}
+            onView={setViewing}
             onEdit={(row) => {
               dispatch(clearPurchaseOrderMutation());
               setEditingId(row.id);
             }}
-            onCloseOrder={(row) => {
-              if (pending) return;
-              void dispatch(closePurchaseOrder(row.id))
-                .unwrap()
-                .then(() => {
-                  toast.success("Purchase order was closed.");
-                  setRevision((value) => value + 1);
-                })
-                .catch((error) => {
-                  toast.error(toastErrorMessage(error, "Could not close the purchase order."));
-                });
-            }}
+            onCloseOrder={closeOrder}
             onReceive={setReceiving}
             onTimeline={(row) => setTimelineId(row.id)}
             disabled={pending}
@@ -192,22 +198,12 @@ export default function ListPurchaseOrders() {
             purchaseOrders={purchase_orders}
             loading={loading}
             disabled={pending}
+            onView={setViewing}
             onEdit={(row) => {
               dispatch(clearPurchaseOrderMutation());
               setEditingId(row.id);
             }}
-            onCloseOrder={(row) => {
-              if (pending) return;
-              void dispatch(closePurchaseOrder(row.id))
-                .unwrap()
-                .then(() => {
-                  toast.success("Purchase order was closed.");
-                  setRevision((value) => value + 1);
-                })
-                .catch((error) => {
-                  toast.error(toastErrorMessage(error, "Could not close the purchase order."));
-                });
-            }}
+            onCloseOrder={closeOrder}
             onReceive={setReceiving}
             onTimeline={(row) => setTimelineId(row.id)}
           />
@@ -225,6 +221,23 @@ export default function ListPurchaseOrders() {
         }}
         limitOptions={PAGE_SIZE_OPTIONS}
       />
+      {viewing && (
+        <ViewPurchaseOrderDialog
+          order={viewing}
+          disabled={pending}
+          onClose={() => setViewing(null)}
+          onEdit={() => {
+            dispatch(clearPurchaseOrderMutation());
+            setEditingId(viewing.id);
+            setViewing(null);
+          }}
+          onReceive={() => {
+            setReceiving(viewing);
+            setViewing(null);
+          }}
+          onCloseOrder={() => closeOrder(viewing)}
+        />
+      )}
       {receiving && (
         <ReceivePurchaseOrderDialog
           order={receiving}

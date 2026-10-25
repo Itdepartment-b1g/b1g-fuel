@@ -174,7 +174,7 @@ function saved(result: Awaited<ReturnType<typeof repository.create_purchase_orde
   if (result === "invalid_line")
     throw new PurchaseOrderError(
       "invalid_input",
-      "Each line needs a variant, product type, and base unit available to this company.",
+      "Each line needs a brand and variant from the selected supplier, plus a product type and base unit available to this company.",
     );
   if (result === "unit_conflict")
     throw new PurchaseOrderError(
@@ -307,7 +307,7 @@ export async function get_purchase_order_options(access: RecordAccess) {
           id: true,
           name: true,
           company_id: true,
-          brand: { select: { id: true, name: true } },
+          brand: { select: { id: true, name: true, supplier_id: true } },
         },
         orderBy: [{ name: "asc" }, { id: "asc" }],
       }),

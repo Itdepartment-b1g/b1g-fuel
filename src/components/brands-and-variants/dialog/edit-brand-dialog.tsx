@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Loading } from "@/components/common/loading";
 import { useToast, toastErrorMessage } from "@/components/providers/toast-provider";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
-import { editBrand, selectBrand, updateBrand } from "@/lib/store/brands-slice";
+import { editBrand, getBrandOption, selectBrand, updateBrand } from "@/lib/store/brands-slice";
 import type { BrandSummary } from "@/types/brands";
 
 export function EditBrandDialog({
@@ -30,7 +30,11 @@ export function EditBrandDialog({
 
   useEffect(() => {
     const request = dispatch(editBrand(brandId));
-    return () => request.abort();
+    const options = dispatch(getBrandOption());
+    return () => {
+      request.abort();
+      options.abort();
+    };
   }, [dispatch, brandId]);
 
   useEffect(() => {
@@ -46,7 +50,7 @@ export function EditBrandDialog({
       >
         <DialogHeader>
           <DialogTitle>Edit brand</DialogTitle>
-          <DialogDescription>Update the brand name.</DialogDescription>
+          <DialogDescription>Update the brand name and the supplier that sells it.</DialogDescription>
         </DialogHeader>
         {ready && brand ? (
           <EditBrandFields brand={brand} onCancel={onClose} onSaved={onSaved} />
@@ -74,10 +78,12 @@ function EditBrandFields({
 }) {
   const dispatch = useAppDispatch();
   const toast = useToast();
-  const { mutationStatus, mutationError } = useAppSelector(selectBrand);
+  const { options, mutationStatus, mutationError } = useAppSelector(selectBrand);
   const pending = mutationStatus === "loading";
   const busy = useRef(false);
   const [name, setName] = useState(brand.name);
+  const [supplierId, setSupplierId] = useState(brand.supplier_id ?? "");
+  const suppliers = options.suppliers.filter((supplier) => !supplier.company_id || supplier.company_id === brand.company_id);
   const [error, setError] = useState<string | null>(null);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -87,10 +93,14 @@ function EditBrandFields({
       setError("Enter a brand name.");
       return;
     }
+    if (!supplierId) {
+      setError("Select a supplier.");
+      return;
+    }
     busy.current = true;
     setError(null);
     try {
-      const result = await dispatch(updateBrand({ id: brand.id, name: name.trim() })).unwrap();
+      const result = await dispatch(updateBrand({ id: brand.id, name: name.trim(), supplier_id: supplierId })).unwrap();
       toast.success(`${result.brand.name} was updated successfully.`);
       onSaved(result.brand);
     } catch (failure) {
@@ -106,6 +116,15 @@ function EditBrandFields({
         <label className="space-y-2 text-sm font-medium">
           Brand name
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Shell" required maxLength={160} />
+        </label>
+        <label className="space-y-2 text-sm font-medium">
+          Supplier
+          <select value={supplierId} onChange={(event) => setSupplierId(event.target.value)} required className="h-10 w-full rounded-md border bg-white px-3 text-sm">
+            <option value="">Select a supplier</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+            ))}
+          </select>
         </label>
       </fieldset>
       {(error || mutationError) && <p role="alert" className="text-sm text-destructive">{error ?? mutationError?.message}</p>}

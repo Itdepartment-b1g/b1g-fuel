@@ -13,6 +13,10 @@ export interface Brand {
   created_by_name: string | null;
   // Display name of the brand.
   name: string;
+  // UUID of the supplier that sells this brand. Null until a supplier is assigned.
+  supplier_id: string | null;
+  // Supplier that sells this brand.
+  supplier: { id: string; name: string } | null;
   // Number of variants that belong to this brand.
   variant_count: number;
   // ISO date string when the brand was created.
@@ -26,6 +30,8 @@ export type BrandSummary = Brand;
 export interface CreateBrandInput {
   // UUID of the company that will own the brand. Omitted for a shared super-admin brand.
   company_id?: string | null;
+  // UUID of the supplier that sells this brand.
+  supplier_id: string;
   // Display name of the new brand.
   name: string;
 }
@@ -35,6 +41,8 @@ export interface UpdateBrandInput {
   id: string;
   // Updated display name, when supplied.
   name?: string;
+  // UUID of the supplier that sells this brand.
+  supplier_id?: string;
 }
 
 export interface BrandResponse {
@@ -45,6 +53,8 @@ export interface BrandResponse {
 export interface BrandOptions {
   // Companies in which the user can create brands.
   companies: CompanyOption[];
+  // Suppliers that can own a brand in those companies.
+  suppliers: { id: string; name: string; company_id: string | null }[];
 }
 
 export interface BrandsPage {
